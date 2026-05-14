@@ -3,11 +3,10 @@ FROM node:20-alpine AS base
 # 1. Instalar dependências e construir a aplicação
 FROM base AS build
 WORKDIR /app
-COPY package.json pnpm-lock.yaml* ./ # Copiar pnpm-lock.yaml se estiver a usar pnpm
-COPY .npmrc ./
+COPY package.json package-lock.json ./
 
-# Instalar dependências com npm (preferência do utilizador)
-RUN npm install --frozen-lockfile --legacy-peer-deps
+# Instalar dependências com npm
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 RUN npm run build
