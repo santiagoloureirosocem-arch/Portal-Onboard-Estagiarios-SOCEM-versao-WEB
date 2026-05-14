@@ -1,21 +1,33 @@
+# Stage 1: Build
+FROM node:22-alpine AS builder
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+
+# Install ALL dependencies (devDependencies needed for vite/esbuild build)
+RUN npm install --legacy-peer-deps
+
+COPY . .
+
+RUN npm run build
+
+# Stage 2: Production
 FROM node:22-alpine
 
 WORKDIR /usr/src/app
 
-# Copy package files
 COPY package*.json ./
 
-# Install dependencies with npm
+# Production dependencies only
 RUN npm install --legacy-peer-deps --omit=dev
 
-# Copy application code
-COPY . .
+# Copy built output from builder
+COPY --from=builder /usr/src/app/dist ./dist
 
-# Build the application
-RUN npm run build
+# Copy data folder (local DB fallback)
+COPY --from=builder /usr/src/app/data ./data
 
-# Expose port
 EXPOSE 3000
 
-# Start the application
 CMD ["npm", "start"]
