@@ -1,33 +1,23 @@
-# Stage 1: Build
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS base
 
-WORKDIR /usr/src/app
+# 1. Instalar dependências e construir a aplicação
+FROM base AS build
+WORKDIR /app
+COPY package.json pnpm-lock.yaml* ./ # Copiar pnpm-lock.yaml se estiver a usar pnpm
+COPY .npmrc ./
 
-COPY package*.json ./
-
-# Install ALL dependencies (devDependencies needed for vite/esbuild build)
-RUN npm install --legacy-peer-deps
+# Instalar dependências com npm (preferência do utilizador)
+RUN npm install --frozen-lockfile --legacy-peer-deps
 
 COPY . .
-
 RUN npm run build
 
-# Stage 2: Production
-FROM node:22-alpine
-
-WORKDIR /usr/src/app
-
-COPY package*.json ./
-
-# Production dependencies only
-RUN npm install --legacy-peer-deps --omit=dev
-
-# Copy built output from builder
-COPY --from=builder /usr/src/app/dist ./dist
-
-# Copy data folder (local DB fallback)
-COPY --from=builder /usr/src/app/data ./data
+# 2. Imagem de produção leve
+FROM base AS deploy
+WORKDIR /app
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
 
 EXPOSE 3000
-
 CMD ["npm", "start"]
