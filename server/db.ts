@@ -9,12 +9,89 @@ export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(process.env.DATABASE_URL);
+      await initTables(_db);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
     }
   }
   return _db;
+}
+
+async function initTables(db: ReturnType<typeof drizzle>) {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        openId VARCHAR(64) NOT NULL UNIQUE,
+        name TEXT,
+        email VARCHAR(320),
+        loginMethod VARCHAR(64),
+        role ENUM('estagiario','tutor','admin') NOT NULL DEFAULT 'estagiario',
+        passwordHash VARCHAR(255),
+        department VARCHAR(255),
+        position VARCHAR(255),
+        isActive BOOLEAN NOT NULL DEFAULT TRUE,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        lastSignedIn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS onboarding_plans (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        status ENUM('draft','active','completed','archived') NOT NULL DEFAULT 'draft',
+        createdBy INT NOT NULL,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS onboarding_tasks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        planId INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        \`order\` INT NOT NULL,
+        dueDate DATETIME,
+        status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
+        assignedTo INT,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS plan_assignments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        planId INT NOT NULL,
+        userId INT NOT NULL,
+        assignedBy INT NOT NULL,
+        startDate DATETIME NOT NULL,
+        expectedEndDate DATETIME,
+        status ENUM('active','completed','paused','cancelled') NOT NULL DEFAULT 'active',
+        progress INT NOT NULL DEFAULT 0,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS task_completions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        taskId INT NOT NULL,
+        userId INT NOT NULL,
+        completedAt DATETIME,
+        notes TEXT,
+        status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("[Database] Tables ready");
+  } catch (err) {
+    console.warn("[Database] Table init error:", err);
+  }
 }
 
 // ─── File-backed persistent store (used when DATABASE_URL is not set) ────────
