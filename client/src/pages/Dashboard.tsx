@@ -6,130 +6,189 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Users, FileText, CheckCircle2, TrendingUp,
-  Plus, Edit2, Eye, ClipboardList, BookOpen,
+  Eye, ClipboardList, BookOpen, ArrowRight,
+  Clock, AlertCircle, Calendar,
 } from "lucide-react";
+
+function StatCard({ label, value, icon: Icon, color, sub }: {
+  label: string; value: string | number; icon: any; color: string; sub?: string;
+}) {
+  const colors: Record<string, { bg: string; icon: string; badge: string }> = {
+    blue:   { bg: "from-blue-50 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/20",   icon: "text-blue-500",   badge: "bg-blue-500/10 border-blue-200 dark:border-blue-800" },
+    green:  { bg: "from-green-50 to-green-100/60 dark:from-green-950/40 dark:to-green-900/20", icon: "text-green-500", badge: "bg-green-500/10 border-green-200 dark:border-green-800" },
+    orange: { bg: "from-orange-50 to-orange-100/60 dark:from-orange-950/40 dark:to-orange-900/20", icon: "text-orange-500", badge: "bg-orange-500/10 border-orange-200 dark:border-orange-800" },
+    purple: { bg: "from-purple-50 to-purple-100/60 dark:from-purple-950/40 dark:to-purple-900/20", icon: "text-purple-500", badge: "bg-purple-500/10 border-purple-200 dark:border-purple-800" },
+  };
+  const c = colors[color];
+  return (
+    <Card className={`p-6 bg-gradient-to-br ${c.bg} border-0 ring-1 ring-slate-200/80 dark:ring-slate-700/50`}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+          <p className="text-4xl font-bold text-slate-900 dark:text-slate-50 mt-2 tabular-nums">{value}</p>
+          {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
+        </div>
+        <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center ${c.badge}`}>
+          <Icon size={20} className={c.icon} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PlanStatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    active:    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+    completed: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    draft:     "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+    archived:  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  };
+  const labels: Record<string, string> = { active: "Ativo", completed: "Concluído", draft: "Rascunho", archived: "Arquivado" };
+  return (
+    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${map[status] || map.draft}`}>
+      {labels[status] || status}
+    </span>
+  );
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const map: Record<string, string> = {
+    admin:      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+    tutor:      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    estagiario: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  };
+  const labels: Record<string, string> = { admin: "Admin", tutor: "Tutor", estagiario: "Estagiário" };
+  return (
+    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${map[role] || ""}`}>
+      {labels[role] || role}
+    </span>
+  );
+}
+
+function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">{title}</h2>
+      {action && (
+        <button onClick={onAction} className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline underline-offset-2">
+          {action} <ArrowRight size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
 
 function StaffDashboard() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { data: stats } = trpc.dashboard.metrics.useQuery();
   const { data: plans } = trpc.plans.list.useQuery();
   const { data: users } = trpc.users.list.useQuery();
 
+  const pendingUsers = (users || []).filter((u: any) => u.isActive);
+  const recentPlans = (plans || []).slice(0, 4);
+  const recentUsers = (users || []).slice(0, 5);
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-blue-200 dark:border-blue-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Estagiários Ativos</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{stats?.activeInterns || 0}</p>
+    <div className="space-y-7">
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Estagiários Ativos" value={stats?.activeInterns || 0} icon={Users} color="blue" />
+        <StatCard label="Planos em Curso" value={stats?.activePlans || 0} icon={FileText} color="green" />
+        <StatCard label="Tarefas Pendentes" value={stats?.pendingTasks || 0} icon={AlertCircle} color="orange" />
+        <StatCard label="Taxa de Conclusão" value={`${stats?.completionRate || 0}%`} icon={TrendingUp} color="purple" />
+      </div>
+
+      {/* Two column section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Planos Recentes */}
+        <Card className="p-6">
+          <SectionHeader title="Planos Recentes" action="Ver todos" onAction={() => setLocation("/plans")} />
+          {recentPlans.length > 0 ? (
+            <div className="space-y-2">
+              {recentPlans.map((plan: any) => (
+                <div
+                  key={plan.id}
+                  onClick={() => setLocation(`/plans/${plan.id}`)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
+                      <FileText size={14} className="text-slate-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{plan.title}</p>
+                      {plan.description && <p className="text-xs text-slate-400 truncate">{plan.description}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <PlanStatusBadge status={plan.status} />
+                    <ArrowRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  </div>
+                </div>
+              ))}
             </div>
-            <Users className="w-12 h-12 text-blue-600 opacity-20" />
-          </div>
+          ) : (
+            <div className="text-center py-10">
+              <FileText size={32} className="text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">Nenhum plano criado ainda</p>
+            </div>
+          )}
         </Card>
-        <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 border-green-200 dark:border-green-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Planos em Curso</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{stats?.activePlans || 0}</p>
+
+        {/* Utilizadores Recentes */}
+        <Card className="p-6">
+          <SectionHeader title="Utilizadores" action="Ver todos" onAction={() => setLocation("/users")} />
+          {recentUsers.length > 0 ? (
+            <div className="space-y-2">
+              {recentUsers.map((u: any) => (
+                <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-transparent">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
+                      <span className="text-white text-xs font-bold">{(u.name || "?")[0].toUpperCase()}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{u.name}</p>
+                      {u.position && <p className="text-xs text-slate-400 truncate">{u.position}</p>}
+                    </div>
+                  </div>
+                  <RoleBadge role={u.role} />
+                </div>
+              ))}
             </div>
-            <FileText className="w-12 h-12 text-green-600 opacity-20" />
-          </div>
-        </Card>
-        <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900 dark:to-orange-800 border-orange-200 dark:border-orange-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Tarefas Pendentes</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{stats?.pendingTasks || 0}</p>
+          ) : (
+            <div className="text-center py-10">
+              <Users size={32} className="text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">Nenhum utilizador registado</p>
             </div>
-            <CheckCircle2 className="w-12 h-12 text-orange-600 opacity-20" />
-          </div>
-        </Card>
-        <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 border-purple-200 dark:border-purple-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Taxa de Conclusão</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{stats?.completionRate || 0}%</p>
-            </div>
-            <TrendingUp className="w-12 h-12 text-purple-600 opacity-20" />
-          </div>
+          )}
         </Card>
       </div>
 
-      <Card className="p-6 border-slate-200 dark:border-slate-700">
-        <h2 className="text-lg font-bold text-foreground mb-4">Ações Rápidas</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Button onClick={() => setLocation("/users")} className="gap-2 bg-blue-600 hover:bg-blue-700">
-            <Users size={18} /> Gerir Utilizadores
-          </Button>
-          <Button onClick={() => setLocation("/plans")} variant="outline" className="gap-2">
-            <FileText size={18} /> Ver Planos
-          </Button>
-          <Button onClick={() => setLocation("/plans")} variant="outline" className="gap-2">
-            <Plus size={18} /> Novo Plano
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="p-6 border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-foreground">Planos Recentes</h2>
-          <Button size="sm" variant="outline" onClick={() => setLocation("/plans")}>Ver Todos</Button>
-        </div>
-        {plans && plans.length > 0 ? (
-          <div className="space-y-3">
-            {plans.slice(0, 5).map((plan: any) => (
-              <div key={plan.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">{plan.title}</p>
-                  <p className="text-sm text-muted-foreground truncate">{plan.description}</p>
-                  <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full font-medium ${plan.status === "active" ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-700"}`}>
-                    {plan.status === "active" ? "Ativo" : plan.status === "completed" ? "Concluído" : "Rascunho"}
-                  </span>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => setLocation(`/plans/${plan.id}`)}>
-                  <Eye size={16} />
-                </Button>
-              </div>
-            ))}
+      {/* Completion rate bar */}
+      {stats && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Progresso Geral</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Taxa de conclusão de todas as tarefas</p>
+            </div>
+            <span className="text-2xl font-bold text-slate-800 dark:text-slate-100 tabular-nums">{stats.completionRate || 0}%</span>
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">Nenhum plano criado ainda</p>
-            <Button onClick={() => setLocation("/plans")} className="gap-2"><Plus size={18} /> Criar Primeiro Plano</Button>
+          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-700"
+              style={{ width: `${stats.completionRate || 0}%` }}
+            />
           </div>
-        )}
-      </Card>
-
-      <Card className="p-6 border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-foreground">Utilizadores Recentes</h2>
-          <Button size="sm" variant="outline" onClick={() => setLocation("/users")}>Ver Todos</Button>
-        </div>
-        {users && users.length > 0 ? (
-          <div className="space-y-2">
-            {users.slice(0, 5).map((u: any) => (
-              <div key={u.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground">{u.name}</p>
-                  <p className="text-sm text-muted-foreground truncate">{u.email}</p>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                  u.role === "admin" ? "bg-purple-100 text-purple-700"
-                  : u.role === "tutor" ? "bg-blue-100 text-blue-700"
-                  : "bg-green-100 text-green-700"
-                }`}>
-                  {u.role === "admin" ? "Admin" : u.role === "tutor" ? "Tutor" : "Estagiário"}
-                </span>
-              </div>
-            ))}
+          <div className="flex justify-between mt-2">
+            <span className="text-xs text-slate-400">{stats.pendingTasks || 0} pendentes</span>
+            <span className="text-xs text-slate-400">{stats.activePlans || 0} planos ativos</span>
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhum utilizador registado</p>
-          </div>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
@@ -140,87 +199,72 @@ function InternDashboard() {
   const { data: myPlans } = trpc.plans.list.useQuery();
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-blue-200 dark:border-blue-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Planos Atribuídos</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{progress?.assignedPlans ?? 0}</p>
-            </div>
-            <BookOpen className="w-12 h-12 text-blue-600 opacity-20" />
-          </div>
-        </Card>
-        <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900 dark:to-orange-800 border-orange-200 dark:border-orange-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Tarefas Concluídas</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">
-                {progress?.completedTasks ?? 0}
-                <span className="text-lg font-normal text-slate-500">/{progress?.totalTasks ?? 0}</span>
-              </p>
-            </div>
-            <ClipboardList className="w-12 h-12 text-orange-600 opacity-20" />
-          </div>
-        </Card>
-        <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 border-green-200 dark:border-green-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">Progresso Global</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{progress?.completionRate ?? 0}%</p>
-            </div>
-            <TrendingUp className="w-12 h-12 text-green-600 opacity-20" />
-          </div>
-        </Card>
+    <div className="space-y-7">
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Planos Atribuídos" value={progress?.assignedPlans ?? 0} icon={BookOpen} color="blue" />
+        <StatCard
+          label="Tarefas Concluídas"
+          value={progress?.completedTasks ?? 0}
+          icon={CheckCircle2}
+          color="green"
+          sub={`de ${progress?.totalTasks ?? 0} no total`}
+        />
+        <StatCard label="Progresso Global" value={`${progress?.completionRate ?? 0}%`} icon={TrendingUp} color="purple" />
       </div>
 
+      {/* Progress bar */}
       {progress && progress.totalTasks > 0 && (
-        <Card className="p-6 border-slate-200 dark:border-slate-700">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Progresso do Estágio</h2>
-          <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${progress.completionRate}%` }} />
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Progresso do Estágio</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{progress.completedTasks} de {progress.totalTasks} tarefas concluídas</p>
+            </div>
+            <span className="text-2xl font-bold text-slate-800 dark:text-slate-100 tabular-nums">{progress.completionRate}%</span>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            {progress.completedTasks} de {progress.totalTasks} tarefas concluídas
-          </p>
+          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-700"
+              style={{ width: `${progress.completionRate}%` }}
+            />
+          </div>
         </Card>
       )}
 
-      <Card className="p-6 border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-foreground">Os Meus Planos</h2>
-          <Button size="sm" variant="outline" onClick={() => setLocation("/plans")}>Ver Todos</Button>
-        </div>
+      {/* Plans */}
+      <Card className="p-6">
+        <SectionHeader title="Os Meus Planos" action="Ver todos" onAction={() => setLocation("/plans")} />
         {myPlans && myPlans.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {myPlans.slice(0, 5).map((plan: any) => (
               <div
                 key={plan.id}
-                className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 transition-colors cursor-pointer"
                 onClick={() => setLocation(`/plans/${plan.id}`)}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all group"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">{plan.title}</p>
-                  {plan.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{plan.description}</p>}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
+                    <FileText size={14} className="text-slate-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{plan.title}</p>
+                    {plan.description && <p className="text-xs text-slate-400 truncate">{plan.description}</p>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 ml-4">
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    plan.status === "active" ? "bg-green-100 text-green-700"
-                    : plan.status === "completed" ? "bg-blue-100 text-blue-700"
-                    : "bg-slate-200 text-slate-700"
-                  }`}>
-                    {plan.status === "active" ? "Ativo" : plan.status === "completed" ? "Concluído" : "Rascunho"}
-                  </span>
-                  <Eye size={16} className="text-muted-foreground" />
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <PlanStatusBadge status={plan.status} />
+                  <ArrowRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-10">
-            <BookOpen size={40} className="text-muted-foreground mx-auto mb-3 opacity-30" />
-            <p className="text-muted-foreground font-medium">Ainda não tens planos atribuídos</p>
-            <p className="text-sm text-muted-foreground mt-1">O teu tutor irá atribuir-te um plano em breve.</p>
+          <div className="text-center py-12">
+            <BookOpen size={36} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-sm font-medium text-slate-500">Ainda não tens planos atribuídos</p>
+            <p className="text-xs text-slate-400 mt-1">O teu tutor irá atribuir-te um plano em breve.</p>
           </div>
         )}
       </Card>

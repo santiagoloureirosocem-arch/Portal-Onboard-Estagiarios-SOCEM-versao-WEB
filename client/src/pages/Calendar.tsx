@@ -43,7 +43,7 @@ function ScheduleTaskModal({
   date, plans, onClose, onSuccess,
 }: { date: Date; plans: any[]; onClose: () => void; onSuccess: () => void }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const canCreate = user?.role === 'admin' || user?.role === 'tutor';
   const [planId, setPlanId] = useState<number | ''>('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -78,10 +78,10 @@ function ScheduleTaskModal({
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X size={18} /></button>
         </div>
 
-        {!isAdmin ? (
+        {!canCreate ? (
           <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
             <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
-            <p className="text-sm text-yellow-800 dark:text-yellow-300">Apenas administradores podem criar tarefas.</p>
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">Apenas tutores e administradores podem criar tarefas.</p>
           </div>
         ) : availablePlans.length === 0 ? (
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border">
