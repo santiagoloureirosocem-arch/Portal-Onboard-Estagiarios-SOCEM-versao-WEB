@@ -34,7 +34,10 @@ function ProtectedRoute({ component: Component, minRole }: { component: any; min
     );
   }
 
-  if (!user) return <NotFound />;
+  if (!user) {
+    window.location.replace("/login");
+    return null;
+  }
 
   if (minRole === "admin" && user.role !== "admin") return <NotFound />;
   if (minRole === "tutor" && user.role !== "admin" && user.role !== "tutor") return <NotFound />;

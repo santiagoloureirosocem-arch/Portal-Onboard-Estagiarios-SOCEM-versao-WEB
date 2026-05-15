@@ -76,7 +76,7 @@ export default function Login() {
             </div>
             <h2 className="text-white text-[2.6rem] font-bold leading-[1.15] tracking-tight mb-4">
               Gestão de Estágios<br />
-              <span className="text-blue-200">simplificada.</span>
+              <span className="text-blue-200">.</span>
             </h2>
             <p className="text-blue-200/80 text-base leading-relaxed max-w-sm">
               Planos de onboarding, acompanhamento de tarefas e relatórios de progresso — tudo numa só plataforma.
@@ -103,8 +103,7 @@ export default function Login() {
         </div>
 
         {/* Bottom */}
-        <div className="relative z-10 flex items-center justify-between">
-          <p className="text-blue-300/60 text-xs">© 2025 SOCEM</p>
+        <div className="relative z-10 flex items-center justify-end">
           <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
               <div key={i} className={`rounded-full ${i === 0 ? "w-5 h-1.5 bg-white/50" : "w-1.5 h-1.5 bg-white/20"}`} />
