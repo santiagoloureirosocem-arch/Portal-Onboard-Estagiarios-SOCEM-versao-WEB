@@ -40,13 +40,13 @@ export function getSessionCookieOptions(
   //       : undefined;
 
   const secure = isSecureRequest(req);
+  const hostname = req.hostname ?? "";
+  const isLocal = LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
 
   return {
     httpOnly: true,
     path: "/",
-    // sameSite: "none" requires secure: true (HTTPS).
-    // On HTTP (local dev), use "lax" so the cookie is actually accepted by the browser.
-    sameSite: secure ? "none" : "lax",
-    secure,
+    sameSite: "lax" as const,
+    secure: isLocal ? false : secure,
   };
 }
