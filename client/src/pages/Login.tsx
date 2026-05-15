@@ -75,8 +75,7 @@ export default function Login() {
               Sistema activo
             </div>
             <h2 className="text-white text-[2.6rem] font-bold leading-[1.15] tracking-tight mb-4">
-              Gestão de Estágios<br />
-              <span className="text-blue-200">.</span>
+              Gestão de Estágios
             </h2>
             <p className="text-blue-200/80 text-base leading-relaxed max-w-sm">
               Planos de onboarding, acompanhamento de tarefas e relatórios de progresso — tudo numa só plataforma.
