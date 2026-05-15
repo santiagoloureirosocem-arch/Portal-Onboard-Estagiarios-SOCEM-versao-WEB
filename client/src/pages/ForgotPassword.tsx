@@ -9,7 +9,7 @@ export default function ForgotPassword() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [generatedCode] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
+  const [devCode, setDevCode] = useState(""); // código devolvido pelo servidor (apenas dev/demo)
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -33,10 +33,12 @@ export default function ForgotPassword() {
         setError(data.error || "Email não encontrado");
         return;
       }
+      const data = await res.json().catch(() => ({}));
+      // Em dev o servidor devolve o código para facilitar testes
+      if (data.code) setDevCode(data.code);
       setStep("code");
     } catch {
-      // fallback demo: avançar na mesma (para testar sem backend)
-      setStep("code");
+      setError("Não foi possível contactar o servidor. Tenta novamente.");
     } finally {
       setLoading(false);
     }
@@ -183,6 +185,12 @@ export default function ForgotPassword() {
                   className="w-full py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md text-sm">
                   Verificar código
                 </button>
+                {devCode && (
+                  <p className="text-xs text-center text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-800">
+                    <span className="font-mono font-bold text-slate-600 dark:text-slate-300">{devCode}</span>
+                    <span className="ml-2 opacity-60">(código dev — remover em produção)</span>
+                  </p>
+                )}
                 <button type="button" onClick={() => { setError(""); }}
                   className="w-full text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                   Não recebeste o código? <span className="text-red-600 font-medium">Reenviar</span>
