@@ -68,9 +68,6 @@ function StaffDashboard() {
           <Button onClick={() => setLocation("/plans")} variant="outline" className="gap-2">
             <Plus size={18} /> Novo Plano
           </Button>
-          <Button onClick={() => setLocation("/assign-plan")} variant="outline" className="gap-2">
-            <Edit2 size={18} /> Atribuir Plano
-          </Button>
         </div>
       </Card>
 

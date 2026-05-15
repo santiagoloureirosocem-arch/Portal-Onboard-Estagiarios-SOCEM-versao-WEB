@@ -115,12 +115,17 @@ export default function Plans() {
             </p>
           </div>
           {canEdit && (
-            <Button onClick={() => {
-              setShowForm(!showForm);
-              if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null }); }
-            }} className="gap-2">
-              <Plus size={20} /> Novo Plano
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setLocation("/assign-plan")} variant="outline" className="gap-2">
+                <User size={18} /> Atribuir Plano
+              </Button>
+              <Button onClick={() => {
+                setShowForm(!showForm);
+                if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null }); }
+              }} className="gap-2">
+                <Plus size={20} /> Novo Plano
+              </Button>
+            </div>
           )}
         </div>
 
