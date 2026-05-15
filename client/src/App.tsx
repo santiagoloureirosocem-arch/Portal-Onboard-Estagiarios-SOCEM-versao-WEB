@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import Calendar from "./pages/Calendar";
 import Tasks from "./pages/Tasks";
 import ActivityLog from "./pages/ActivityLog";
+import ForgotPassword from "./pages/ForgotPassword";
 
 function ProtectedRoute({ component: Component, minRole }: { component: any; minRole?: "tutor" | "admin" }) {
   const { user, loading } = useAuth();
@@ -51,6 +52,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/login"} component={Login} />
+      <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/dashboard"} component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path={"/users"} component={() => <ProtectedRoute component={Users} minRole="tutor" />} />
       <Route path={"/plans"} component={() => <ProtectedRoute component={Plans} />} />
