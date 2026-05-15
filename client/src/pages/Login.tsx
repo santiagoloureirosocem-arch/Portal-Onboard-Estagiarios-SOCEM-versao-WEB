@@ -41,7 +41,7 @@ export default function Login() {
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950">
 
       {/* Left decorative panel */}
-      <div className="hidden lg:flex lg:w-[52%] bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 flex-col justify-between p-14 relative overflow-hidden select-none">
+      <div className="hidden lg:flex lg:w-[52%] bg-gradient-to-br from-red-600 via-red-700 to-red-900 flex-col justify-between p-14 relative overflow-hidden select-none">
 
         {/* Grid pattern */}
         <div className="absolute inset-0 opacity-[0.07]" style={{
@@ -50,9 +50,9 @@ export default function Login() {
         }} />
 
         {/* Glow orbs */}
-        <div className="absolute top-[-80px] right-[-80px] w-[340px] h-[340px] bg-blue-400/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-[-100px] left-[-60px] w-[300px] h-[300px] bg-indigo-500/25 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 right-12 w-[180px] h-[180px] bg-blue-300/15 rounded-full blur-2xl" />
+        <div className="absolute top-[-80px] right-[-80px] w-[340px] h-[340px] bg-red-400/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-100px] left-[-60px] w-[300px] h-[300px] bg-red-500/25 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 right-12 w-[180px] h-[180px] bg-red-300/15 rounded-full blur-2xl" />
 
         {/* Logo */}
         <div className="relative z-10">
@@ -70,14 +70,14 @@ export default function Login() {
         {/* Center content */}
         <div className="relative z-10 space-y-10">
           <div>
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 text-blue-100 text-xs font-medium px-3 py-1.5 rounded-full mb-5">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 text-red-100 text-xs font-medium px-3 py-1.5 rounded-full mb-5">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
               Sistema activo
             </div>
             <h2 className="text-white text-[2.6rem] font-bold leading-[1.15] tracking-tight mb-4">
               Gestão de Estágios
             </h2>
-            <p className="text-blue-200/80 text-base leading-relaxed max-w-sm">
+            <p className="text-red-200/80 text-base leading-relaxed max-w-sm">
               Planos de onboarding, acompanhamento de tarefas e relatórios de progresso — tudo numa só plataforma.
             </p>
           </div>
@@ -95,7 +95,7 @@ export default function Login() {
                   <Icon size={16} className="text-white" />
                 </div>
                 <p className="text-white text-sm font-semibold leading-none mb-1">{label}</p>
-                <p className="text-blue-200/70 text-xs">{desc}</p>
+                <p className="text-red-200/70 text-xs">{desc}</p>
               </div>
             ))}
           </div>
@@ -116,7 +116,7 @@ export default function Login() {
 
         {/* Mobile logo */}
         <div className="lg:hidden text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 shadow-lg mb-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-600 shadow-lg mb-3">
             <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
@@ -146,7 +146,7 @@ export default function Login() {
                   required
                   autoComplete="username"
                   autoFocus
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 dark:focus:border-blue-500 transition-all text-sm"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-400 dark:focus:border-red-500 transition-all text-sm"
                 />
               </div>
             </div>
@@ -163,7 +163,7 @@ export default function Login() {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 dark:focus:border-blue-500 transition-all text-sm"
+                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-400 dark:focus:border-red-500 transition-all text-sm"
                 />
                 <button
                   type="button"
@@ -190,7 +190,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading || !username || !password}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-200 dark:shadow-none hover:shadow-lg hover:shadow-blue-300/40 dark:hover:shadow-none text-sm mt-1"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 dark:shadow-none hover:shadow-lg hover:shadow-red-300/40 dark:hover:shadow-none text-sm mt-1"
             >
               {loading ? (
                 <>
