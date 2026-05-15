@@ -9,6 +9,41 @@ import { ArrowLeft, Plus, CheckCircle, Clock, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/_core/hooks/useAuth';
 
+// ── Markdown renderer simples ─────────────────────────────────────────────────
+function renderMarkdown(text: string): string {
+  return text
+    // Headings
+    .replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-foreground mt-4 mb-1">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-foreground mt-5 mb-2">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-foreground mt-6 mb-2">$1</h1>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Bullet lists (lines starting with * or -)
+    .replace(/^[\*\-] (.+)$/gm, '<li class="ml-4 list-disc text-muted-foreground">$1</li>')
+    // Wrap consecutive <li> in <ul>
+    .replace(/(<li[\s\S]*?<\/li>)(\n<li)/g, '$1$2')
+    .replace(/(<li[^>]*>[\s\S]*?<\/li>)+/g, '<ul class="space-y-1 my-2">$&</ul>')
+    // Numbered lists
+    .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-muted-foreground">$1</li>')
+    // Paragraphs — wrap plain lines (not already HTML) in <p>
+    .replace(/^(?!<[a-z])(.+)$/gm, '<p class="text-muted-foreground leading-relaxed">$1</p>')
+    // Clean up empty lines between block elements
+    .replace(/\n{2,}/g, '\n');
+}
+
+function MarkdownRenderer({ content }: { content: string }) {
+  if (!content) return null;
+  return (
+    <div
+      className="prose-sm max-w-none space-y-1"
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+    />
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function PlanDetail() {
   const [, params] = useRoute('/plans/:id');
   const [, setLocation] = useLocation();
@@ -104,7 +139,9 @@ export default function PlanDetail() {
           </button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-foreground">{plan.title}</h1>
-            <p className="text-muted-foreground mt-1">{plan.description}</p>
+            <div className="mt-2">
+              <MarkdownRenderer content={plan.description || ''} />
+            </div>
           </div>
           <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[plan.status] || statusColors.draft}`}>
             {statusLabels[plan.status] || plan.status}

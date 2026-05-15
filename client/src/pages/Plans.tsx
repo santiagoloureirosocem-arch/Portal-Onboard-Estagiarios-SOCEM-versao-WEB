@@ -206,7 +206,11 @@ export default function Plans() {
                         {getStatusLabel(plan.status)}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4 flex-1">{plan.description || 'Sem descrição'}</p>
+                    <p className="text-sm text-muted-foreground mb-4 flex-1 line-clamp-3">
+                      {plan.description
+                        ? plan.description.replace(/[#*_`>\-]/g, '').replace(/\n+/g, ' ').trim()
+                        : 'Sem descrição'}
+                    </p>
                     <div className={`flex gap-2 pt-4 border-t border-border ${isIntern ? '' : ''}`}>
                       <button onClick={() => setLocation(`/plans/${plan.id}`)}
                         className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
