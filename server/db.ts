@@ -396,7 +396,24 @@ export async function getPlanAssignmentsByPlanId(planId: number) {
         return { ...a, userName: user?.name ?? null };
       });
   }
-  return await db.select().from(planAssignments).where(eq(planAssignments.planId, planId));
+  const results = await db
+    .select({
+      id: planAssignments.id,
+      planId: planAssignments.planId,
+      userId: planAssignments.userId,
+      assignedBy: planAssignments.assignedBy,
+      startDate: planAssignments.startDate,
+      expectedEndDate: planAssignments.expectedEndDate,
+      status: planAssignments.status,
+      progress: planAssignments.progress,
+      createdAt: planAssignments.createdAt,
+      updatedAt: planAssignments.updatedAt,
+      userName: users.name,
+    })
+    .from(planAssignments)
+    .leftJoin(users, eq(planAssignments.userId, users.id))
+    .where(eq(planAssignments.planId, planId));
+  return results;
 }
 
 export async function updatePlanAssignment(id: number, data: Partial<{ status: 'active' | 'completed' | 'paused' | 'cancelled'; progress: number }>) {
