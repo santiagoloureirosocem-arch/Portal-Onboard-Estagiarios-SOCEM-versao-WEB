@@ -5,6 +5,7 @@ import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useEffect } from "react";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -20,9 +21,24 @@ import Calendar from "./pages/Calendar";
 import Tasks from "./pages/Tasks";
 import ActivityLog from "./pages/ActivityLog";
 
+function useSessionWarning(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Modern browsers show their own message; this string is a fallback
+      e.returnValue = "Não se esqueça de terminar sessão antes de sair!";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [active]);
+}
+
 function ProtectedRoute({ component: Component, minRole }: { component: any; minRole?: "tutor" | "admin" }) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+
+  useSessionWarning(!!user);
 
   if (loading) {
     return (

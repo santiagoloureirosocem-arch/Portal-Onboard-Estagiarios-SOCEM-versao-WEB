@@ -40,7 +40,7 @@ function RoleBadge({ role }: { role: Role }) {
   );
 }
 
-const EMPTY_FORM = { name: "", email: "", username: "", password: "", role: "estagiario" as Role, department: "", position: "" };
+const EMPTY_FORM = { name: "", email: "", username: "", newUsername: "", password: "", role: "estagiario" as Role, department: "", position: "" };
 
 export default function Users() {
   const { user: me } = useAuth();
@@ -91,6 +91,7 @@ export default function Users() {
         if (formData.department) updatePayload.department = formData.department;
         if (formData.position) updatePayload.position = formData.position;
         if (formData.password) updatePayload.password = formData.password;
+        if (formData.newUsername.trim()) updatePayload.username = formData.newUsername.trim();
         await updateUserMutation.mutateAsync(updatePayload);
         toast.success("Utilizador atualizado com sucesso");
       } else {
@@ -118,6 +119,7 @@ export default function Users() {
       name: user.name || "",
       email: user.email || "",
       username: "",
+      newUsername: user.openId?.replace(/^local-dyn-/, "") || "",
       password: "",
       role: user.role as Role,
       department: user.department || "",
@@ -217,6 +219,16 @@ export default function Users() {
                   <Input type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} placeholder="ana@exemplo.com" />
                 </Field>
               </div>
+
+              {editingId && (
+                <Field label="Nome de utilizador (deixar em branco para manter)" error={formErrors.newUsername}>
+                  <Input
+                    value={formData.newUsername}
+                    onChange={e => setFormData(p => ({ ...p, newUsername: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "") }))}
+                    placeholder="ana.silva"
+                  />
+                </Field>
+              )}
 
               {!editingId && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
