@@ -21,11 +21,51 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity, AlertTriangle } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+
+// ── Modal de lembrete de logout ──────────────────────────────────────────────
+function LogoutReminderModal({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-sm p-6 animate-in fade-in-0 zoom-in-95 duration-200">
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+            <AlertTriangle className="w-7 h-7 text-amber-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              Não se esqueça de terminar sessão!
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+              Ainda tem sessão iniciada. Recomendamos que termine a sessão antes de sair para proteger a sua conta.
+            </p>
+          </div>
+          <div className="flex gap-2 w-full mt-1">
+            <Button variant="outline" className="flex-1" onClick={onClose}>
+              Sair mesmo assim
+            </Button>
+            <Button
+              className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700"
+              onClick={onLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              Terminar sessão
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 type MenuRole = "estagiario" | "tutor" | "admin";
 
@@ -122,6 +162,18 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const allMenuItems = [...visibleMenuItems, ...footerItems];
   const activeMenuItem = allMenuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+  const [showLogoutReminder, setShowLogoutReminder] = useState(false);
+
+  // Aviso ao fechar/recarregar o separador com sessão ativa
+  useEffect(() => {
+    if (!user) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      setShowLogoutReminder(true);
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [user]);
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
@@ -151,6 +203,12 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
 
   return (
     <>
+      {showLogoutReminder && (
+        <LogoutReminderModal
+          onClose={() => setShowLogoutReminder(false)}
+          onLogout={() => { setShowLogoutReminder(false); logout(); }}
+        />
+      )}
       <div className="relative" ref={sidebarRef}>
         <Sidebar collapsible="icon" className="border-r-0" disableTransition={isResizing}>
           <SidebarHeader className="h-16 justify-center">
