@@ -3,40 +3,71 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, Lock, User, Shield, Moon, Sun, Save } from "lucide-react";
+import { Bell, Lock, User, Moon, Sun, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
+function PasswordInput({ value, onChange, placeholder, show, onToggle }: {
+  value: string; onChange: (v: string) => void; placeholder: string;
+  show: boolean; onToggle: () => void;
+}) {
+  return (
+    <div className="relative mt-1">
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 pr-10 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+      />
+      <button type="button" onClick={onToggle}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
+      </button>
+    </div>
+  );
+}
+
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailDigest, setEmailDigest] = useState(true);
 
+  // Profile state
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [role, setRole] = useState(user?.role || "estagiario");
   const [saving, setSaving] = useState(false);
 
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const isAdmin = user?.role === "admin";
 
   const updateSelfMutation = trpc.users.updateSelf.useMutation();
   const updateUserMutation = trpc.users.update.useMutation();
+  const changePasswordMutation = trpc.users.changePassword.useMutation();
 
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
     try {
       await updateSelfMutation.mutateAsync({
-        name: name || undefined,
-        email: email || undefined,
+        name: name.trim() || undefined,
+        email: email.trim() || undefined,
       });
-
       if (isAdmin && role !== user.role) {
         await updateUserMutation.mutateAsync({ id: user.id, role: role as any });
       }
-
+      if (refresh) await refresh();
       toast.success("Perfil atualizado com sucesso");
     } catch (err: any) {
       toast.error(err?.message || "Erro ao guardar perfil");
@@ -45,186 +76,156 @@ export default function Settings() {
     }
   };
 
-  const handleToggleTheme = () => {
-    if (toggleTheme) {
-      toggleTheme();
-      toast.success(`Tema alterado para ${theme === "light" ? "escuro" : "claro"}`);
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      toast.error("Preenche todos os campos de password");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("As passwords novas não coincidem");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("A nova password deve ter pelo menos 6 caracteres");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
+      toast.success("Password alterada com sucesso");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao alterar password");
+    } finally {
+      setSavingPassword(false);
     }
   };
 
   return (
-    <DashboardLayout title="Definições - Portal de Estagiários SOCEM">
-      <div className="space-y-6 max-w-2xl">
+    <DashboardLayout title="Definições">
+      <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Definições</h1>
-          <p className="text-muted-foreground mt-1">
-            Personalize a sua experiência no Portal de Estagiários SOCEM
-          </p>
+          <p className="text-muted-foreground mt-1">Personaliza a tua experiência no portal</p>
         </div>
 
         {/* Perfil */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-5 flex items-center gap-2">
-            <User className="h-5 w-5 text-blue-600" />
-            Perfil
+        <Card className="p-6 space-y-4">
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <User size={17} className="text-primary" /> Perfil
           </h2>
-
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-foreground">Nome</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="O seu nome"
-              />
+              <input value={name} onChange={e => setName(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                placeholder="O seu nome" />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="O seu email"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">
-                Função
-                {!isAdmin && (
-                  <span className="ml-2 text-xs text-muted-foreground">(apenas administradores podem alterar)</span>
-                )}
-              </label>
-              {isAdmin ? (
-                <select
-                  value={role}
-                  onChange={e => setRole(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="estagiario">Estagiário</option>
-                  <option value="tutor">Tutor</option>
-                  <option value="admin">Administrador</option>
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  value={{ admin: "Administrador", tutor: "Tutor", estagiario: "Estagiário" }[user?.role ?? "estagiario"] ?? user?.role ?? ""}
-                  className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
-                  disabled
-                />
-              )}
+              <input value={email} onChange={e => setEmail(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                placeholder="O seu email" />
             </div>
           </div>
-
-          <div className="flex gap-3 mt-6">
-            <Button onClick={handleSaveProfile} disabled={saving} className="gap-2">
-              <Save className="h-4 w-4" />
+          <div>
+            <label className="text-sm font-medium text-foreground flex items-center gap-1">
+              Função {!isAdmin && <span className="text-xs text-muted-foreground">(só admins podem alterar)</span>}
+            </label>
+            {isAdmin ? (
+              <select value={role} onChange={e => setRole(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm">
+                <option value="estagiario">Estagiário</option>
+                <option value="tutor">Tutor</option>
+                <option value="admin">Administrador</option>
+              </select>
+            ) : (
+              <p className="mt-1 px-3 py-2 border border-border rounded-lg bg-muted text-muted-foreground text-sm capitalize">
+                {user?.role === "estagiario" ? "Estagiário" : user?.role === "tutor" ? "Tutor" : user?.role}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button onClick={handleSaveProfile} disabled={saving} size="sm" className="gap-1.5">
               {saving ? "A guardar..." : "Guardar Perfil"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setName(user?.name || "");
-                setEmail(user?.email || "");
-                setRole(user?.role || "estagiario");
-              }}
-            >
-              Cancelar
-            </Button>
+            <Button variant="ghost" size="sm" onClick={() => {
+              setName(user?.name || ""); setEmail(user?.email || ""); setRole(user?.role || "estagiario");
+            }}>Cancelar</Button>
           </div>
         </Card>
 
-        {/* Tema */}
+        {/* Password */}
+        <Card className="p-6 space-y-4">
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <Lock size={17} className="text-primary" /> Alterar Password
+          </h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-foreground">Password atual</label>
+              <PasswordInput value={currentPassword} onChange={setCurrentPassword}
+                placeholder="A tua password atual" show={showCurrent} onToggle={() => setShowCurrent(v => !v)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Nova password</label>
+              <PasswordInput value={newPassword} onChange={setNewPassword}
+                placeholder="Mínimo 6 caracteres" show={showNew} onToggle={() => setShowNew(v => !v)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Confirmar nova password</label>
+              <PasswordInput value={confirmPassword} onChange={setConfirmPassword}
+                placeholder="Repete a nova password" show={showConfirm} onToggle={() => setShowConfirm(v => !v)} />
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-destructive mt-1">As passwords não coincidem</p>
+              )}
+            </div>
+          </div>
+          <Button onClick={handleChangePassword} disabled={savingPassword || !currentPassword || !newPassword || newPassword !== confirmPassword} size="sm" variant="outline" className="gap-1.5">
+            {savingPassword ? "A alterar..." : "Alterar Password"}
+          </Button>
+        </Card>
+
+        {/* Aparência */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            {theme === "dark" ? (
-              <Moon className="h-5 w-5 text-indigo-600" />
-            ) : (
-              <Sun className="h-5 w-5 text-yellow-600" />
-            )}
+          <h2 className="font-semibold text-foreground flex items-center gap-2 mb-4">
+            {theme === "dark" ? <Moon size={17} className="text-primary" /> : <Sun size={17} className="text-primary" />}
             Aparência
           </h2>
-          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-foreground">Tema da Aplicação</p>
-              <p className="text-sm text-muted-foreground">
-                {theme === "light" ? "Tema Claro" : "Tema Escuro"}
-              </p>
+              <p className="text-sm font-medium text-foreground">Tema da Aplicação</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{theme === "light" ? "Tema Claro ativo" : "Tema Escuro ativo"}</p>
             </div>
-            <Button onClick={handleToggleTheme} variant="outline" className="gap-2">
-              {theme === "light" ? (
-                <><Moon className="h-4 w-4" />Escuro</>
-              ) : (
-                <><Sun className="h-4 w-4" />Claro</>
-              )}
+            <Button onClick={() => { if (toggleTheme) { toggleTheme(); toast.success(`Tema ${theme === "light" ? "escuro" : "claro"} ativado`); } }}
+              variant="outline" size="sm" className="gap-2">
+              {theme === "light" ? <><Moon size={15} /> Escuro</> : <><Sun size={15} /> Claro</>}
             </Button>
           </div>
         </Card>
 
         {/* Notificações */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-orange-600" />
-            Notificações
+          <h2 className="font-semibold text-foreground flex items-center gap-2 mb-4">
+            <Bell size={17} className="text-primary" /> Notificações
           </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
-              <div>
-                <p className="font-medium text-foreground">Notificações no Sistema</p>
-                <p className="text-sm text-muted-foreground">Receba alertas sobre atividades importantes</p>
+          <div className="space-y-4">
+            {[
+              { label: "Notificações no Sistema", desc: "Alertas sobre atividades importantes", value: notificationsEnabled, set: setNotificationsEnabled },
+              { label: "Resumo por Email", desc: "Resumo semanal das atividades", value: emailDigest, set: setEmailDigest },
+            ].map(item => (
+              <div key={item.label} className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                </div>
+                <button onClick={() => { item.set(!item.value); toast.success(`${item.label} ${!item.value ? "ativado" : "desativado"}`); }}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${item.value ? "bg-primary" : "bg-muted-foreground/30"}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${item.value ? "translate-x-5" : ""}`} />
+                </button>
               </div>
-              <input
-                type="checkbox"
-                checked={notificationsEnabled}
-                onChange={e => setNotificationsEnabled(e.target.checked)}
-                className="w-5 h-5 cursor-pointer"
-              />
-            </div>
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
-              <div>
-                <p className="font-medium text-foreground">Resumo por Email</p>
-                <p className="text-sm text-muted-foreground">Receba um resumo semanal por email</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={emailDigest}
-                onChange={e => setEmailDigest(e.target.checked)}
-                className="w-5 h-5 cursor-pointer"
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Segurança */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Lock className="h-5 w-5 text-red-600" />
-            Segurança
-          </h2>
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-foreground mb-3">
-              A sua conta está protegida. Para alterar a sua senha, contacte o administrador.
-            </p>
-            <Button variant="outline" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Gerir Segurança
-            </Button>
-          </div>
-        </Card>
-
-        {/* Privacidade */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Privacidade</h2>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              Os seus dados pessoais são tratados de acordo com a nossa Política de Privacidade.
-            </p>
-            <div className="flex gap-3 pt-3">
-              <Button variant="outline">Política de Privacidade</Button>
-              <Button variant="outline">Termos de Serviço</Button>
-            </div>
+            ))}
           </div>
         </Card>
       </div>

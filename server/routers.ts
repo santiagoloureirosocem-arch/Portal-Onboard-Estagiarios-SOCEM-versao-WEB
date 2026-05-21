@@ -115,6 +115,19 @@ export const appRouter = router({
       await db.updateUser(ctx.user.id, input as any);
       return { success: true };
     }),
+
+    changePassword: protectedProcedure.input(z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(6, "A password deve ter pelo menos 6 caracteres"),
+    })).mutation(async ({ ctx, input }) => {
+      const user = await db.getUserById(ctx.user.id);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Utilizador não encontrado" });
+      if (user.passwordHash !== input.currentPassword) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Password atual incorreta" });
+      }
+      await db.updateUser(ctx.user.id, { passwordHash: input.newPassword } as any);
+      return { success: true };
+    }),
   }),
 
   plans: router({
