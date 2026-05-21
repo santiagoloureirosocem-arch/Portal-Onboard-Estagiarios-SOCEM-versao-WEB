@@ -332,6 +332,51 @@ export const appRouter = router({
       };
     }),
   }),
+
+  taskComments: router({
+    getByTaskId: protectedProcedure.input(z.object({ taskId: z.number() })).query(async ({ input }) => {
+      return await db.getCommentsByTaskId(input.taskId);
+    }),
+    create: protectedProcedure.input(z.object({
+      taskId: z.number(),
+      text: z.string().min(1),
+    })).mutation(async ({ input, ctx }) => {
+      return await db.createComment({
+        taskId: input.taskId,
+        userId: ctx.user.id,
+        userName: (ctx.user as any).name ?? ctx.user.openId,
+        text: input.text,
+      });
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteComment(input.id);
+      return { success: true };
+    }),
+  }),
+
+  taskAttachments: router({
+    getByTaskId: protectedProcedure.input(z.object({ taskId: z.number() })).query(async ({ input }) => {
+      return await db.getAttachmentsByTaskId(input.taskId);
+    }),
+    create: protectedProcedure.input(z.object({
+      taskId: z.number(),
+      fileName: z.string(),
+      fileUrl: z.string(),
+      fileSize: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      return await db.createAttachment({
+        taskId: input.taskId,
+        userId: ctx.user.id,
+        fileName: input.fileName,
+        fileUrl: input.fileUrl,
+        fileSize: input.fileSize,
+      });
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.deleteAttachment(input.id);
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

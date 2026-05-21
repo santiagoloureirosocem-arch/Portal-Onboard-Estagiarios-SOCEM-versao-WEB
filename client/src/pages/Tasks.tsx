@@ -39,30 +39,42 @@ function FileIcon({ name }: { name: string }) {
   return <File size={14} className="text-muted-foreground" />;
 }
 
-// ── Task panel (comments + attachments) ──────────────────────────────────────
+// ── Task panel (comments + attachments) — connected to DB ────────────────────
 function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void; canEdit: boolean }) {
   const [comment, setComment] = useState('');
-  const [comments, setComments] = useState<{ id: number; author: string; text: string; date: string }[]>(
-    task._comments || []
-  );
-  const [attachments, setAttachments] = useState<{ name: string; url: string; size: string }[]>(
-    task._attachments || []
-  );
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
-  const handleComment = () => {
+  // DB-backed queries
+  const { data: comments = [], refetch: refetchComments } = trpc.taskComments.getByTaskId.useQuery({ taskId: task.id });
+  const { data: attachments = [], refetch: refetchAttachments } = trpc.taskAttachments.getByTaskId.useQuery({ taskId: task.id });
+
+  const createComment = trpc.taskComments.create.useMutation();
+  const deleteComment = trpc.taskComments.delete.useMutation();
+  const createAttachment = trpc.taskAttachments.create.useMutation();
+  const deleteAttachment = trpc.taskAttachments.delete.useMutation();
+
+  const handleComment = async () => {
     if (!comment.trim()) return;
-    const newComment = {
-      id: Date.now(),
-      author: (user as any)?.name ?? 'Eu',
-      text: comment.trim(),
-      date: new Date().toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-    };
-    setComments(prev => [...prev, newComment]);
-    setComment('');
-    toast.success('Comentário adicionado');
+    try {
+      await createComment.mutateAsync({ taskId: task.id, text: comment.trim() });
+      setComment('');
+      refetchComments();
+      toast.success('Comentário adicionado');
+    } catch {
+      toast.error('Erro ao adicionar comentário');
+    }
+  };
+
+  const handleDeleteComment = async (id: number) => {
+    try {
+      await deleteComment.mutateAsync({ id });
+      refetchComments();
+      toast.success('Comentário eliminado');
+    } catch {
+      toast.error('Erro ao eliminar comentário');
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,13 +89,9 @@ function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void;
       const size = file.size < 1024 * 1024
         ? `${(file.size / 1024).toFixed(1)} KB`
         : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-      if (res.ok) {
-        const { url } = await res.json();
-        setAttachments(prev => [...prev, { name: file.name, url, size }]);
-      } else {
-        const url = URL.createObjectURL(file);
-        setAttachments(prev => [...prev, { name: file.name, url, size }]);
-      }
+      const url = res.ok ? (await res.json()).url : URL.createObjectURL(file);
+      await createAttachment.mutateAsync({ taskId: task.id, fileName: file.name, fileUrl: url, fileSize: size });
+      refetchAttachments();
       toast.success('Ficheiro anexado');
     } catch {
       toast.error('Erro ao fazer upload');
@@ -93,14 +101,37 @@ function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void;
     }
   };
 
+  const handleDeleteAttachment = async (id: number) => {
+    try {
+      await deleteAttachment.mutateAsync({ id });
+      refetchAttachments();
+      toast.success('Anexo eliminado');
+    } catch {
+      toast.error('Erro ao eliminar anexo');
+    }
+  };
+
+  const formatDate = (d: any) => {
+    if (!d) return '';
+    return new Date(d).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between p-5 border-b border-border">
           <div className="flex-1 min-w-0 pr-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefa</p>
             <h3 className="font-bold text-foreground text-base leading-snug">{task.title}</h3>
             {task.description && <p className="text-sm text-muted-foreground mt-1">{task.description}</p>}
+            {task.dueDate && (
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                <CalendarIcon size={11} />Prazo: {new Date(task.dueDate).toLocaleDateString('pt-PT')}
+              </p>
+            )}
+            <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-2 ${STATUS_COLORS[task.status]}`}>
+              {STATUS_LABELS[task.status]}
+            </span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
             <X size={18} className="text-muted-foreground" />
@@ -128,18 +159,24 @@ function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void;
               </button>
             ) : (
               <div className="space-y-2">
-                {attachments.map((att, i) => (
-                  <a key={i} href={att.url} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group border border-border/50">
-                    <div className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center flex-shrink-0">
-                      <FileIcon name={att.name} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{att.name}</p>
-                      <p className="text-xs text-muted-foreground">{att.size}</p>
-                    </div>
-                    <ChevronRightIcon size={14} className="text-muted-foreground flex-shrink-0" />
-                  </a>
+                {attachments.map((att: any) => (
+                  <div key={att.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group border border-border/50">
+                    <a href={att.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center flex-shrink-0">
+                        <FileIcon name={att.fileName} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{att.fileName}</p>
+                        {att.fileSize && <p className="text-xs text-muted-foreground">{att.fileSize}</p>}
+                      </div>
+                      <ChevronRightIcon size={14} className="text-muted-foreground flex-shrink-0" />
+                    </a>
+                    <button onClick={() => handleDeleteAttachment(att.id)}
+                      className="p-1 rounded hover:bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                      title="Eliminar anexo">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -153,15 +190,24 @@ function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void;
               <p className="text-sm text-muted-foreground text-center py-4">Sem comentários ainda. Sê o primeiro!</p>
             ) : (
               <div className="space-y-3">
-                {comments.map(c => (
-                  <div key={c.id} className="flex gap-3">
+                {comments.map((c: any) => (
+                  <div key={c.id} className="flex gap-3 group">
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
-                      {c.author[0].toUpperCase()}
+                      {(c.userName || 'U')[0].toUpperCase()}
                     </div>
                     <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2 border border-border/50">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-foreground">{c.author}</span>
-                        <span className="text-xs text-muted-foreground">{c.date}</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-foreground">{c.userName}</span>
+                          <span className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</span>
+                        </div>
+                        {(canEdit || (user as any)?.id === c.userId) && (
+                          <button onClick={() => handleDeleteComment(c.id)}
+                            className="p-1 rounded hover:bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                            title="Eliminar">
+                            <Trash2 size={11} />
+                          </button>
+                        )}
                       </div>
                       <p className="text-sm text-foreground leading-relaxed">{c.text}</p>
                     </div>
@@ -177,7 +223,7 @@ function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void;
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleComment()}
               placeholder="Adicionar comentário..."
               className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-            <button onClick={handleComment} disabled={!comment.trim()}
+            <button onClick={handleComment} disabled={!comment.trim() || createComment.isPending}
               className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors flex-shrink-0">
               <Send size={16} />
             </button>
@@ -260,8 +306,8 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
   const totalCount = allTasks.length;
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  // Staff: cycle through all statuses. Intern: only toggle pending ↔ completed.
-  const handleStatusChange = async (task: any) => {
+  const handleStatusChange = async (task: any, e: React.MouseEvent) => {
+    e.stopPropagation();
     let nextStatus: string;
     if (canEdit) {
       const cycle: Record<string, string> = { pending: 'in_progress', in_progress: 'completed', completed: 'pending' };
@@ -277,7 +323,8 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
     }
   };
 
-  const handleDelete = async (taskId: number) => {
+  const handleDelete = async (taskId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!confirm('Eliminar esta tarefa?')) return;
     try {
       await deleteTaskMutation.mutateAsync({ id: taskId });
@@ -337,16 +384,24 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
             </div>
           ) : (
             tasks.map((task: any, idx: number) => (
-              <div key={task.id} className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/20 group ${idx > 0 ? 'border-t border-border/50' : ''}`}>
-                {/* For interns: simple checkbox. For staff: cycle icon button */}
+              <div
+                key={task.id}
+                className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/30 group cursor-pointer ${idx > 0 ? 'border-t border-border/50' : ''}`}
+                onClick={() => setSelectedTask(task)}
+                title="Abrir detalhes da tarefa"
+              >
+                {/* Status toggle — click stops propagation so it doesn't open panel */}
                 {canEdit ? (
-                  <button onClick={() => handleStatusChange(task)} className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform"
-                    title={`${STATUS_LABELS[task.status]} — clique para avançar`}>
+                  <button
+                    onClick={(e) => handleStatusChange(task, e)}
+                    className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform"
+                    title={`${STATUS_LABELS[task.status]} — clique para avançar`}
+                  >
                     {STATUS_ICON[task.status as keyof typeof STATUS_ICON] || <Circle size={16} />}
                   </button>
                 ) : (
                   <button
-                    onClick={() => handleStatusChange(task)}
+                    onClick={(e) => handleStatusChange(task, e)}
                     className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform"
                     title={task.status === 'completed' ? 'Marcar como pendente' : 'Marcar como concluída'}
                   >
@@ -367,36 +422,19 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {canEdit ? (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                        className="p-1 rounded hover:bg-muted transition-colors"
-                        title="Comentários e anexos"
-                      >
-                        <MessageSquare size={13} className="text-muted-foreground" />
-                      </button>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[task.status]}`}>
-                        {STATUS_LABELS[task.status]}
-                      </span>
-                      <button onClick={() => handleDelete(task.id)} className="p-1 rounded hover:bg-destructive/10 text-destructive transition-colors" title="Eliminar tarefa">
-                        <Trash2 size={13} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                        className="p-1 rounded hover:bg-muted transition-colors"
-                        title="Comentários e anexos"
-                      >
-                        <MessageSquare size={13} className="text-muted-foreground" />
-                      </button>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[task.status]}`}>
-                        {STATUS_LABELS[task.status]}
-                      </span>
-                    </>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[task.status]}`}>
+                    {STATUS_LABELS[task.status]}
+                  </span>
+                  <MessageSquare size={13} className="text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity" />
+                  {canEdit && (
+                    <button
+                      onClick={(e) => handleDelete(task.id, e)}
+                      className="p-1 rounded hover:bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                      title="Eliminar tarefa"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   )}
                 </div>
               </div>
@@ -435,7 +473,6 @@ export default function Tasks() {
     { label: 'Concluídas', value: 'completed', icon: <CheckCircle2 size={14} className="text-green-500" /> },
   ];
 
-  // Interns: hide "in_progress" filter since they only toggle pending/completed
   const visibleFilters = canEdit ? filterButtons : filterButtons.filter(b => b.value !== 'in_progress');
 
   return (

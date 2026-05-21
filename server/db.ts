@@ -1,6 +1,6 @@
 import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions } from "../drizzle/schema";
+import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -86,6 +86,27 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS task_comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        taskId INT NOT NULL,
+        userId INT NOT NULL,
+        userName VARCHAR(255) NOT NULL,
+        text TEXT NOT NULL,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS task_attachments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        taskId INT NOT NULL,
+        userId INT NOT NULL,
+        fileName VARCHAR(255) NOT NULL,
+        fileUrl TEXT NOT NULL,
+        fileSize VARCHAR(50),
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log("[Database] Tables ready");
@@ -557,4 +578,60 @@ export function addActivityLog(entry: Omit<ActivityLogEntry, 'id' | 'createdAt'>
 
 export function getActivityLog(limit = 50): ActivityLogEntry[] {
   return _activityLog.slice(0, limit);
+}
+
+// ─── Task Comments ────────────────────────────────────────────────────────────
+let _memComments: any[] = [];
+let _commentNextId = 1;
+
+export async function getCommentsByTaskId(taskId: number) {
+  const dbConn = await getDb();
+  if (!dbConn) return _memComments.filter(c => c.taskId === taskId).sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  return await dbConn.select().from(taskComments).where(eq(taskComments.taskId, taskId));
+}
+
+export async function createComment(data: { taskId: number; userId: number; userName: string; text: string }) {
+  const dbConn = await getDb();
+  if (!dbConn) {
+    const comment = { id: _commentNextId++, ...data, createdAt: new Date() };
+    _memComments.push(comment);
+    return comment;
+  }
+  await dbConn.insert(taskComments).values(data);
+  const rows = await dbConn.select().from(taskComments).where(eq(taskComments.taskId, data.taskId));
+  return rows[rows.length - 1];
+}
+
+export async function deleteComment(id: number) {
+  const dbConn = await getDb();
+  if (!dbConn) { _memComments = _memComments.filter(c => c.id !== id); return; }
+  await dbConn.delete(taskComments).where(eq(taskComments.id, id));
+}
+
+// ─── Task Attachments ─────────────────────────────────────────────────────────
+let _memAttachments: any[] = [];
+let _attachmentNextId = 1;
+
+export async function getAttachmentsByTaskId(taskId: number) {
+  const dbConn = await getDb();
+  if (!dbConn) return _memAttachments.filter(a => a.taskId === taskId);
+  return await dbConn.select().from(taskAttachments).where(eq(taskAttachments.taskId, taskId));
+}
+
+export async function createAttachment(data: { taskId: number; userId: number; fileName: string; fileUrl: string; fileSize?: string }) {
+  const dbConn = await getDb();
+  if (!dbConn) {
+    const att = { id: _attachmentNextId++, ...data, createdAt: new Date() };
+    _memAttachments.push(att);
+    return att;
+  }
+  await dbConn.insert(taskAttachments).values(data);
+  const rows = await dbConn.select().from(taskAttachments).where(eq(taskAttachments.taskId, data.taskId));
+  return rows[rows.length - 1];
+}
+
+export async function deleteAttachment(id: number) {
+  const dbConn = await getDb();
+  if (!dbConn) { _memAttachments = _memAttachments.filter(a => a.id !== id); return; }
+  await dbConn.delete(taskAttachments).where(eq(taskAttachments.id, id));
 }
