@@ -48,7 +48,7 @@ function ScheduleTaskModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const createTask = trpc.tasks.create.useMutation();
-  const availablePlans = (plans || []).filter((p: any) => p.status === 'active' || p.status === 'draft');
+  const availablePlans = (plans || []).filter((p: any) => p.status !== 'archived');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,7 +224,7 @@ export default function Calendar() {
   const isToday = (d: number) => d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
   const isSelected = (d: number) => d === selectedDate.getDate() && currentMonth === selectedDate.getMonth() && currentYear === selectedDate.getFullYear();
 
-  const activePlans = (plans || []).filter((p: any) => p.status === 'active');
+  const activePlans = (plans || []);
   const scheduledCount = allTasks.filter(t => t.dueDate).length;
 
   return (
@@ -374,7 +374,7 @@ export default function Calendar() {
             <Card className="p-5">
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
                 <Clock size={15} className="text-primary" />
-                Planos Ativos
+                Os meus Planos
               </h3>
               {activePlans.length > 0 ? (
                 <div className="space-y-2">
@@ -395,7 +395,7 @@ export default function Calendar() {
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Nenhum plano ativo.</p>
+                <p className="text-sm text-muted-foreground">Nenhum plano atribuído.</p>
               )}
             </Card>
 
@@ -405,7 +405,7 @@ export default function Calendar() {
               <div className="space-y-2.5">
                 {[
                   { label: 'Total de Planos', value: (plans || []).length, color: 'text-foreground' },
-                  { label: 'Planos Ativos', value: activePlans.length, color: 'text-green-600 dark:text-green-400' },
+                  { label: 'Planos Ativos', value: (plans || []).filter((p: any) => p.status === 'active').length, color: 'text-green-600 dark:text-green-400' },
                   { label: 'Tarefas agendadas', value: scheduledCount, color: 'text-primary' },
                   { label: 'Tarefas concluídas', value: allTasks.filter(t => t.status === 'completed').length, color: 'text-blue-600 dark:text-blue-400' },
                   { label: 'Tarefas pendentes', value: allTasks.filter(t => t.status === 'pending').length, color: 'text-yellow-600 dark:text-yellow-400' },

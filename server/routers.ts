@@ -207,7 +207,17 @@ export const appRouter = router({
   }),
 
   tasks: router({
-    listAll: protectedProcedure.query(async () => await db.getAllTasks()),
+    listAll: protectedProcedure.query(async ({ ctx }) => {
+      // Estagiários only see tasks from their assigned plans
+      if (ctx.user.role === 'estagiario') {
+        const assignedPlans = await db.getPlansAssignedToUser(ctx.user.id);
+        if (assignedPlans.length === 0) return [];
+        const planIds = assignedPlans.map((p: any) => p.id);
+        const allTasks = await db.getAllTasks();
+        return allTasks.filter((t: any) => planIds.includes(t.planId));
+      }
+      return await db.getAllTasks();
+    }),
     getByPlanId: protectedProcedure.input(z.object({ planId: z.number() })).query(async ({ input }) => await db.getTasksByPlanId(input.planId)),
     create: tutorProcedure.input(z.object({
       planId: z.number(),
