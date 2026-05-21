@@ -105,6 +105,17 @@ export const appRouter = router({
       await db.deactivateUser(input.id);
       return { success: true };
     }),
+
+    // Allow any logged-in user to update their own profile (name, email, avatar)
+    // Admins can also change role of any user via the regular update endpoint
+    updateSelf: protectedProcedure.input(z.object({
+      name: z.string().min(1).optional(),
+      email: z.string().email().optional(),
+      avatarUrl: z.string().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      await db.updateUser(ctx.user.id, input as any);
+      return { success: true };
+    }),
   }),
 
   plans: router({

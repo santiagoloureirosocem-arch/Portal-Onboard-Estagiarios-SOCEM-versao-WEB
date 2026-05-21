@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/card';
@@ -8,7 +8,8 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import {
   CheckCircle2, Clock, Circle, ChevronDown, ChevronRight,
-  Eye, FileText, Plus, X, CalendarIcon, Trash2
+  Eye, FileText, Plus, X, CalendarIcon, Trash2,
+  MessageSquare, Paperclip, Send, Upload, Image as ImageIcon, File, ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,6 +30,163 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   in_progress: <Clock size={16} className="text-blue-500" />,
   completed: <CheckCircle2 size={16} className="text-green-500" />,
 };
+
+// ── File icon helper ──────────────────────────────────────────────────────────
+function FileIcon({ name }: { name: string }) {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return <ImageIcon size={14} className="text-blue-500" />;
+  if (['pdf'].includes(ext)) return <FileText size={14} className="text-red-500" />;
+  return <File size={14} className="text-muted-foreground" />;
+}
+
+// ── Task panel (comments + attachments) ──────────────────────────────────────
+function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void; canEdit: boolean }) {
+  const [comment, setComment] = useState('');
+  const [comments, setComments] = useState<{ id: number; author: string; text: string; date: string }[]>(
+    task._comments || []
+  );
+  const [attachments, setAttachments] = useState<{ name: string; url: string; size: string }[]>(
+    task._attachments || []
+  );
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+
+  const handleComment = () => {
+    if (!comment.trim()) return;
+    const newComment = {
+      id: Date.now(),
+      author: (user as any)?.name ?? 'Eu',
+      text: comment.trim(),
+      date: new Date().toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    };
+    setComments(prev => [...prev, newComment]);
+    setComment('');
+    toast.success('Comentário adicionado');
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('key', `tasks/${task.id}/${file.name}`);
+      const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
+      const size = file.size < 1024 * 1024
+        ? `${(file.size / 1024).toFixed(1)} KB`
+        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      if (res.ok) {
+        const { url } = await res.json();
+        setAttachments(prev => [...prev, { name: file.name, url, size }]);
+      } else {
+        const url = URL.createObjectURL(file);
+        setAttachments(prev => [...prev, { name: file.name, url, size }]);
+      }
+      toast.success('Ficheiro anexado');
+    } catch {
+      toast.error('Erro ao fazer upload');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[85vh] flex flex-col">
+        <div className="flex items-start justify-between p-5 border-b border-border">
+          <div className="flex-1 min-w-0 pr-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefa</p>
+            <h3 className="font-bold text-foreground text-base leading-snug">{task.title}</h3>
+            {task.description && <p className="text-sm text-muted-foreground mt-1">{task.description}</p>}
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
+            <X size={18} className="text-muted-foreground" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-5 space-y-5">
+          {/* Attachments */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Paperclip size={14} /> Anexos ({attachments.length})
+              </h4>
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 disabled:opacity-40 transition-colors">
+                <Upload size={13} />{uploading ? 'A enviar...' : 'Anexar ficheiro'}
+              </button>
+              <input ref={fileRef} type="file" className="hidden" onChange={handleFileChange} />
+            </div>
+            {attachments.length === 0 ? (
+              <button onClick={() => fileRef.current?.click()}
+                className="w-full border-2 border-dashed border-border rounded-xl py-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors group">
+                <Upload size={20} className="mx-auto mb-2 text-muted-foreground group-hover:text-primary transition-colors" />
+                <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Clica para anexar um ficheiro</p>
+                <p className="text-xs text-muted-foreground mt-1">PDF, imagens, documentos</p>
+              </button>
+            ) : (
+              <div className="space-y-2">
+                {attachments.map((att, i) => (
+                  <a key={i} href={att.url} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group border border-border/50">
+                    <div className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center flex-shrink-0">
+                      <FileIcon name={att.name} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{att.name}</p>
+                      <p className="text-xs text-muted-foreground">{att.size}</p>
+                    </div>
+                    <ChevronRightIcon size={14} className="text-muted-foreground flex-shrink-0" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Comments */}
+          <div>
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+              <MessageSquare size={14} /> Comentários ({comments.length})
+            </h4>
+            {comments.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Sem comentários ainda. Sê o primeiro!</p>
+            ) : (
+              <div className="space-y-3">
+                {comments.map(c => (
+                  <div key={c.id} className="flex gap-3">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
+                      {c.author[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2 border border-border/50">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold text-foreground">{c.author}</span>
+                        <span className="text-xs text-muted-foreground">{c.date}</span>
+                      </div>
+                      <p className="text-sm text-foreground leading-relaxed">{c.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="p-4 border-t border-border bg-muted/30">
+          <div className="flex gap-2">
+            <input value={comment} onChange={e => setComment(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleComment()}
+              placeholder="Adicionar comentário..."
+              className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            <button onClick={handleComment} disabled={!comment.trim()}
+              className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors flex-shrink-0">
+              <Send size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddTaskForm({ planId, nextOrder, onSuccess, onCancel }: {
   planId: number; nextOrder: number; onSuccess: () => void; onCancel: () => void;
@@ -85,6 +243,7 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
   const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
 
   const { data: planDetail, isLoading, refetch } = trpc.plans.getById.useQuery({ id: plan.id });
   const updateTaskMutation = trpc.tasks.update.useMutation();
@@ -211,6 +370,13 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {canEdit ? (
                     <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
+                        className="p-1 rounded hover:bg-muted transition-colors"
+                        title="Comentários e anexos"
+                      >
+                        <MessageSquare size={13} className="text-muted-foreground" />
+                      </button>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[task.status]}`}>
                         {STATUS_LABELS[task.status]}
                       </span>
@@ -219,9 +385,18 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
                       </button>
                     </>
                   ) : (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[task.status]}`}>
-                      {STATUS_LABELS[task.status]}
-                    </span>
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
+                        className="p-1 rounded hover:bg-muted transition-colors"
+                        title="Comentários e anexos"
+                      >
+                        <MessageSquare size={13} className="text-muted-foreground" />
+                      </button>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[task.status]}`}>
+                        {STATUS_LABELS[task.status]}
+                      </span>
+                    </>
                   )}
                 </div>
               </div>
@@ -233,6 +408,14 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
               onCancel={() => setShowAddForm(false)} />
           )}
         </div>
+      )}
+
+      {selectedTask && (
+        <TaskPanel
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          canEdit={canEdit}
+        />
       )}
     </Card>
   );

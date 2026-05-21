@@ -196,6 +196,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       if (user.isActive !== undefined) patch.isActive = user.isActive;
       if (user.lastSignedIn !== undefined) patch.lastSignedIn = user.lastSignedIn;
       if (user.passwordHash !== undefined) patch.passwordHash = user.passwordHash ?? null;
+      if ((user as any).avatarUrl !== undefined) (patch as any).avatarUrl = (user as any).avatarUrl ?? null;
       memUsers.set(user.openId, { ...existing, ...patch });
     } else {
       memUsers.set(user.openId, makeUser(user));

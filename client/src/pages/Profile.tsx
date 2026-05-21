@@ -3,10 +3,13 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/card';
-import { User, Mail, Briefcase, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { User, Mail, Briefcase, Calendar, CheckCircle, Clock, Settings } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 export default function Profile() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const { data: assignments } = trpc.assignments.getByUserId.useQuery(
     { userId: user?.id || 0 },
     { enabled: !!user?.id }
@@ -30,8 +33,12 @@ export default function Profile() {
         {/* Profile Card */}
         <Card className="card-elevated p-8">
           <div className="flex items-start gap-6">
-            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
-              <User size={40} className="text-primary" />
+            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-border flex-shrink-0">
+              {(user as any)?.avatarUrl ? (
+                <img src={(user as any).avatarUrl} alt={user?.name || ""} className="w-full h-full object-cover" />
+              ) : (
+                <User size={40} className="text-primary" />
+              )}
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-playfair font-bold text-foreground">
@@ -56,7 +63,7 @@ export default function Profile() {
                 )}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end gap-3">
               <span
                 className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
                   user?.role === 'admin'
@@ -64,8 +71,11 @@ export default function Profile() {
                     : 'bg-secondary/20 text-secondary'
                 }`}
               >
-                {user?.role === 'admin' ? 'Administrador' : 'Estagiário'}
+                {user?.role === 'admin' ? 'Administrador' : user?.role === 'tutor' ? 'Tutor' : 'Estagiário'}
               </span>
+              <Button variant="outline" size="sm" onClick={() => setLocation('/settings')} className="gap-2">
+                <Settings size={14} /> Editar Perfil
+              </Button>
             </div>
           </div>
         </Card>

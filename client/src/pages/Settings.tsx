@@ -3,9 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, Lock, User, Shield, Moon, Sun } from "lucide-react";
-import { useState } from "react";
+import { Bell, Lock, User, Shield, Moon, Sun, Camera, Save, X } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -13,68 +14,196 @@ export default function Settings() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailDigest, setEmailDigest] = useState(true);
 
-  const handleSaveSettings = () => {
-    toast.success("Definições guardadas com sucesso");
+  // Profile form state
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [role, setRole] = useState(user?.role || "estagiario");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>((user as any)?.avatarUrl || null);
+  const [avatarBase64, setAvatarBase64] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const isAdmin = user?.role === "admin";
+
+  const updateSelfMutation = trpc.users.updateSelf.useMutation();
+  const updateUserMutation = trpc.users.update.useMutation();
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Imagem demasiado grande (máximo 2MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setAvatarPreview(result);
+      setAvatarBase64(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      // Update basic profile (name, email, avatar)
+      await updateSelfMutation.mutateAsync({
+        name: name || undefined,
+        email: email || undefined,
+        avatarUrl: avatarBase64 || (user as any).avatarUrl || undefined,
+      });
+
+      // If admin and role changed, also update role via admin endpoint
+      if (isAdmin && role !== user.role) {
+        await updateUserMutation.mutateAsync({ id: user.id, role: role as any });
+      }
+
+      toast.success("Perfil atualizado com sucesso");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao guardar perfil");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleToggleTheme = () => {
     if (toggleTheme) {
       toggleTheme();
-      toast.success(`Tema alterado para ${theme === 'light' ? 'escuro' : 'claro'}`);
+      toast.success(`Tema alterado para ${theme === "light" ? "escuro" : "claro"}`);
     }
   };
+
+  const initials = (name || user?.name || "U").charAt(0).toUpperCase();
 
   return (
     <DashboardLayout title="Definições - Portal de Estagiários SOCEM">
       <div className="space-y-6 max-w-2xl">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Definições</h1>
-          <p className="text-slate-600 mt-1">
-            Personalize sua experiência no Portal de Estagiários SOCEM
+          <h1 className="text-3xl font-bold text-foreground">Definições</h1>
+          <p className="text-muted-foreground mt-1">
+            Personalize a sua experiência no Portal de Estagiários SOCEM
           </p>
         </div>
 
         {/* Perfil */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-foreground mb-5 flex items-center gap-2">
             <User className="h-5 w-5 text-blue-600" />
             Perfil
           </h2>
+
+          {/* Avatar */}
+          <div className="flex items-center gap-5 mb-6">
+            <div className="relative group">
+              <div className="w-20 h-20 rounded-full border-2 border-border overflow-hidden bg-primary/10 flex items-center justify-center">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-bold text-primary">{initials}</span>
+                )}
+              </div>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                title="Alterar foto"
+              >
+                <Camera className="w-6 h-6 text-white" />
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">{name || user?.name || "Utilizador"}</p>
+              <p className="text-sm text-muted-foreground">{email || user?.email}</p>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
+              >
+                <Camera className="w-3 h-3" /> Alterar foto de perfil
+              </button>
+              {avatarPreview && (avatarPreview !== (user as any)?.avatarUrl) && (
+                <button
+                  onClick={() => { setAvatarPreview((user as any)?.avatarUrl || null); setAvatarBase64(null); }}
+                  className="text-xs text-destructive hover:underline mt-1 flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Remover nova foto
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-slate-700">Nome</label>
+              <label className="text-sm font-medium text-foreground">Nome</label>
               <input
                 type="text"
-                defaultValue={user?.name || ""}
-                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="O seu nome"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Email</label>
+              <label className="text-sm font-medium text-foreground">Email</label>
               <input
                 type="email"
-                defaultValue={user?.email || ""}
-                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="O seu email"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Função</label>
-              <input
-                type="text"
-                defaultValue={user?.role === "admin" ? "Administrador" : "Utilizador"}
-                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled
-              />
+              <label className="text-sm font-medium text-foreground">
+                Função
+                {!isAdmin && <span className="ml-2 text-xs text-muted-foreground">(apenas administradores podem alterar)</span>}
+              </label>
+              {isAdmin ? (
+                <select
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="estagiario">Estagiário</option>
+                  <option value="tutor">Tutor</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={{ admin: "Administrador", tutor: "Tutor", estagiario: "Estagiário" }[user?.role ?? "estagiario"] ?? user?.role ?? ""}
+                  className="mt-1 w-full px-3 py-2 border border-border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
+                  disabled
+                />
+              )}
             </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <Button onClick={handleSaveProfile} disabled={saving} className="gap-2">
+              <Save className="h-4 w-4" />
+              {saving ? "A guardar..." : "Guardar Perfil"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setName(user?.name || "");
+                setEmail(user?.email || "");
+                setRole(user?.role || "estagiario");
+                setAvatarPreview((user as any)?.avatarUrl || null);
+                setAvatarBase64(null);
+              }}
+            >
+              Cancelar
+            </Button>
           </div>
         </Card>
 
         {/* Tema */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-            {theme === 'dark' ? (
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            {theme === "dark" ? (
               <Moon className="h-5 w-5 text-indigo-600" />
             ) : (
               <Sun className="h-5 w-5 text-yellow-600" />
@@ -82,73 +211,52 @@ export default function Settings() {
             Aparência
           </h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
               <div>
-                <p className="font-medium text-slate-900 dark:text-slate-100">
-                  Tema da Aplicação
-                </p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {theme === 'light' ? 'Tema Claro' : 'Tema Escuro'}
+                <p className="font-medium text-foreground">Tema da Aplicação</p>
+                <p className="text-sm text-muted-foreground">
+                  {theme === "light" ? "Tema Claro" : "Tema Escuro"}
                 </p>
               </div>
-              <Button
-                onClick={handleToggleTheme}
-                variant="outline"
-                className="gap-2"
-              >
-                {theme === 'light' ? (
-                  <>
-                    <Moon className="h-4 w-4" />
-                    Escuro
-                  </>
+              <Button onClick={handleToggleTheme} variant="outline" className="gap-2">
+                {theme === "light" ? (
+                  <><Moon className="h-4 w-4" />Escuro</>
                 ) : (
-                  <>
-                    <Sun className="h-4 w-4" />
-                    Claro
-                  </>
+                  <><Sun className="h-4 w-4" />Claro</>
                 )}
               </Button>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Alternar entre tema claro e escuro para melhor conforto visual
-            </p>
           </div>
         </Card>
 
         {/* Notificações */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <Bell className="h-5 w-5 text-orange-600" />
             Notificações
           </h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
               <div>
-                <p className="font-medium text-slate-900">
-                  Notificações no Sistema
-                </p>
-                <p className="text-sm text-slate-600">
-                  Receba alertas sobre atividades importantes
-                </p>
+                <p className="font-medium text-foreground">Notificações no Sistema</p>
+                <p className="text-sm text-muted-foreground">Receba alertas sobre atividades importantes</p>
               </div>
               <input
                 type="checkbox"
                 checked={notificationsEnabled}
-                onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                onChange={e => setNotificationsEnabled(e.target.checked)}
                 className="w-5 h-5 cursor-pointer"
               />
             </div>
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
               <div>
-                <p className="font-medium text-slate-900">Resumo por Email</p>
-                <p className="text-sm text-slate-600">
-                  Receba um resumo semanal por email
-                </p>
+                <p className="font-medium text-foreground">Resumo por Email</p>
+                <p className="text-sm text-muted-foreground">Receba um resumo semanal por email</p>
               </div>
               <input
                 type="checkbox"
                 checked={emailDigest}
-                onChange={(e) => setEmailDigest(e.target.checked)}
+                onChange={e => setEmailDigest(e.target.checked)}
                 className="w-5 h-5 cursor-pointer"
               />
             </div>
@@ -157,33 +265,27 @@ export default function Settings() {
 
         {/* Segurança */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
             <Lock className="h-5 w-5 text-red-600" />
             Segurança
           </h2>
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-slate-700 mb-3">
-                Sua conta está protegida com autenticação OAuth. Para alterar sua
-                senha, aceda ao seu perfil na plataforma de autenticação.
-              </p>
-              <Button variant="outline" className="gap-2">
-                <Shield className="h-4 w-4" />
-                Gerir Segurança
-              </Button>
-            </div>
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-foreground mb-3">
+              A sua conta está protegida com autenticação. Para alterar a sua senha, aceda ao seu perfil na plataforma de autenticação.
+            </p>
+            <Button variant="outline" className="gap-2">
+              <Shield className="h-4 w-4" />
+              Gerir Segurança
+            </Button>
           </div>
         </Card>
 
         {/* Privacidade */}
         <Card className="p-6">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
-            Privacidade
-          </h2>
-          <div className="space-y-3 text-sm text-slate-700">
+          <h2 className="text-xl font-semibold text-foreground mb-4">Privacidade</h2>
+          <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Seus dados pessoais são tratados de acordo com a nossa Política de
-              Privacidade. Apenas administradores podem aceder aos seus dados.
+              Os seus dados pessoais são tratados de acordo com a nossa Política de Privacidade. Apenas administradores podem aceder aos seus dados.
             </p>
             <div className="flex gap-3 pt-3">
               <Button variant="outline">Política de Privacidade</Button>
@@ -191,14 +293,6 @@ export default function Settings() {
             </div>
           </div>
         </Card>
-
-        {/* Ações */}
-        <div className="flex gap-3 pt-4">
-          <Button onClick={handleSaveSettings} className="gap-2">
-            Guardar Definições
-          </Button>
-          <Button variant="outline">Cancelar</Button>
-        </div>
       </div>
     </DashboardLayout>
   );
