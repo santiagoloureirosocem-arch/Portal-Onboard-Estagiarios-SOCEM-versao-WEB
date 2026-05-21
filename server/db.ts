@@ -31,7 +31,6 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         passwordHash VARCHAR(255),
         department VARCHAR(255),
         position VARCHAR(255),
-        avatarUrl TEXT,
         isActive BOOLEAN NOT NULL DEFAULT TRUE,
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -167,7 +166,6 @@ function makeUser(data: InsertUser): User {
     role: (data.role ?? "estagiario") as any,
     department: data.department ?? null,
     position: data.position ?? null,
-    avatarUrl: (data as any).avatarUrl ?? null,
     isActive: data.isActive ?? true,
     createdAt: now,
     updatedAt: now,
@@ -198,7 +196,6 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       if (user.isActive !== undefined) patch.isActive = user.isActive;
       if (user.lastSignedIn !== undefined) patch.lastSignedIn = user.lastSignedIn;
       if (user.passwordHash !== undefined) patch.passwordHash = user.passwordHash ?? null;
-      if ((user as any).avatarUrl !== undefined) (patch as any).avatarUrl = (user as any).avatarUrl ?? null;
       memUsers.set(user.openId, { ...existing, ...patch });
     } else {
       memUsers.set(user.openId, makeUser(user));

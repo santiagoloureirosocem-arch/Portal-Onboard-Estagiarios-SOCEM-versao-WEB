@@ -22,7 +22,6 @@ export const users = mysqlTable("users", {
   // Additional fields for onboarding system
   department: varchar("department", { length: 255 }),
   position: varchar("position", { length: 255 }),
-  avatarUrl: text("avatarUrl"),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

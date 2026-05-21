@@ -34,11 +34,7 @@ export default function Profile() {
         <Card className="card-elevated p-8">
           <div className="flex items-start gap-6">
             <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-border flex-shrink-0">
-              {(user as any)?.avatarUrl ? (
-                <img src={(user as any).avatarUrl} alt={user?.name || ""} className="w-full h-full object-cover" />
-              ) : (
-                <User size={40} className="text-primary" />
-              )}
+              <User size={40} className="text-primary" />
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-playfair font-bold text-foreground">

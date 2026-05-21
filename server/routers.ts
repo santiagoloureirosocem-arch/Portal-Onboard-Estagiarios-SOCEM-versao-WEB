@@ -111,7 +111,6 @@ export const appRouter = router({
     updateSelf: protectedProcedure.input(z.object({
       name: z.string().min(1).optional(),
       email: z.string().email().optional(),
-      avatarUrl: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
       await db.updateUser(ctx.user.id, input as any);
       return { success: true };

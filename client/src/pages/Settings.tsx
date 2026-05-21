@@ -3,8 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, Lock, User, Shield, Moon, Sun, Camera, Save, X } from "lucide-react";
-import { useState, useRef } from "react";
+import { Bell, Lock, User, Shield, Moon, Sun, Save } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -14,48 +14,25 @@ export default function Settings() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailDigest, setEmailDigest] = useState(true);
 
-  // Profile form state
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [role, setRole] = useState(user?.role || "estagiario");
-  const [avatarPreview, setAvatarPreview] = useState<string | null>((user as any)?.avatarUrl || null);
-  const [avatarBase64, setAvatarBase64] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = user?.role === "admin";
 
   const updateSelfMutation = trpc.users.updateSelf.useMutation();
   const updateUserMutation = trpc.users.update.useMutation();
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Imagem demasiado grande (máximo 2MB)");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setAvatarPreview(result);
-      setAvatarBase64(result);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
     try {
-      // Update basic profile (name, email, avatar)
       await updateSelfMutation.mutateAsync({
         name: name || undefined,
         email: email || undefined,
-        avatarUrl: avatarBase64 || (user as any).avatarUrl || undefined,
       });
 
-      // If admin and role changed, also update role via admin endpoint
       if (isAdmin && role !== user.role) {
         await updateUserMutation.mutateAsync({ id: user.id, role: role as any });
       }
@@ -75,8 +52,6 @@ export default function Settings() {
     }
   };
 
-  const initials = (name || user?.name || "U").charAt(0).toUpperCase();
-
   return (
     <DashboardLayout title="Definições - Portal de Estagiários SOCEM">
       <div className="space-y-6 max-w-2xl">
@@ -93,45 +68,6 @@ export default function Settings() {
             <User className="h-5 w-5 text-blue-600" />
             Perfil
           </h2>
-
-          {/* Avatar */}
-          <div className="flex items-center gap-5 mb-6">
-            <div className="relative group">
-              <div className="w-20 h-20 rounded-full border-2 border-border overflow-hidden bg-primary/10 flex items-center justify-center">
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-2xl font-bold text-primary">{initials}</span>
-                )}
-              </div>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                title="Alterar foto"
-              >
-                <Camera className="w-6 h-6 text-white" />
-              </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">{name || user?.name || "Utilizador"}</p>
-              <p className="text-sm text-muted-foreground">{email || user?.email}</p>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
-              >
-                <Camera className="w-3 h-3" /> Alterar foto de perfil
-              </button>
-              {avatarPreview && (avatarPreview !== (user as any)?.avatarUrl) && (
-                <button
-                  onClick={() => { setAvatarPreview((user as any)?.avatarUrl || null); setAvatarBase64(null); }}
-                  className="text-xs text-destructive hover:underline mt-1 flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" /> Remover nova foto
-                </button>
-              )}
-            </div>
-          </div>
 
           <div className="space-y-4">
             <div>
@@ -157,7 +93,9 @@ export default function Settings() {
             <div>
               <label className="text-sm font-medium text-foreground">
                 Função
-                {!isAdmin && <span className="ml-2 text-xs text-muted-foreground">(apenas administradores podem alterar)</span>}
+                {!isAdmin && (
+                  <span className="ml-2 text-xs text-muted-foreground">(apenas administradores podem alterar)</span>
+                )}
               </label>
               {isAdmin ? (
                 <select
@@ -191,8 +129,6 @@ export default function Settings() {
                 setName(user?.name || "");
                 setEmail(user?.email || "");
                 setRole(user?.role || "estagiario");
-                setAvatarPreview((user as any)?.avatarUrl || null);
-                setAvatarBase64(null);
               }}
             >
               Cancelar
@@ -210,22 +146,20 @@ export default function Settings() {
             )}
             Aparência
           </h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
-              <div>
-                <p className="font-medium text-foreground">Tema da Aplicação</p>
-                <p className="text-sm text-muted-foreground">
-                  {theme === "light" ? "Tema Claro" : "Tema Escuro"}
-                </p>
-              </div>
-              <Button onClick={handleToggleTheme} variant="outline" className="gap-2">
-                {theme === "light" ? (
-                  <><Moon className="h-4 w-4" />Escuro</>
-                ) : (
-                  <><Sun className="h-4 w-4" />Claro</>
-                )}
-              </Button>
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
+            <div>
+              <p className="font-medium text-foreground">Tema da Aplicação</p>
+              <p className="text-sm text-muted-foreground">
+                {theme === "light" ? "Tema Claro" : "Tema Escuro"}
+              </p>
             </div>
+            <Button onClick={handleToggleTheme} variant="outline" className="gap-2">
+              {theme === "light" ? (
+                <><Moon className="h-4 w-4" />Escuro</>
+              ) : (
+                <><Sun className="h-4 w-4" />Claro</>
+              )}
+            </Button>
           </div>
         </Card>
 
@@ -235,7 +169,7 @@ export default function Settings() {
             <Bell className="h-5 w-5 text-orange-600" />
             Notificações
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
               <div>
                 <p className="font-medium text-foreground">Notificações no Sistema</p>
@@ -271,7 +205,7 @@ export default function Settings() {
           </h2>
           <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-foreground mb-3">
-              A sua conta está protegida com autenticação. Para alterar a sua senha, aceda ao seu perfil na plataforma de autenticação.
+              A sua conta está protegida. Para alterar a sua senha, contacte o administrador.
             </p>
             <Button variant="outline" className="gap-2">
               <Shield className="h-4 w-4" />
@@ -285,7 +219,7 @@ export default function Settings() {
           <h2 className="text-xl font-semibold text-foreground mb-4">Privacidade</h2>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Os seus dados pessoais são tratados de acordo com a nossa Política de Privacidade. Apenas administradores podem aceder aos seus dados.
+              Os seus dados pessoais são tratados de acordo com a nossa Política de Privacidade.
             </p>
             <div className="flex gap-3 pt-3">
               <Button variant="outline">Política de Privacidade</Button>
