@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   ArrowLeft, Plus, CheckCircle, Clock, Circle, Trash2,
-  MessageSquare, Paperclip, Send, X, LayoutGrid, List,
-  ChevronRight, Upload, FileText, Image as ImageIcon, File
+  X, LayoutGrid, List, ChevronRight, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -33,185 +32,8 @@ function MarkdownRenderer({ content }: { content: string }) {
   return <div className="prose-sm max-w-none space-y-1" dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />;
 }
 
-// ── File icon helper ──────────────────────────────────────────────────────────
-function FileIcon({ name }: { name: string }) {
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return <ImageIcon size={14} className="text-blue-500" />;
-  if (['pdf'].includes(ext)) return <FileText size={14} className="text-red-500" />;
-  return <File size={14} className="text-muted-foreground" />;
-}
 
-// ── Comments & Attachments panel ─────────────────────────────────────────────
-function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void; canEdit: boolean }) {
-  const [comment, setComment] = useState('');
-  const [comments, setComments] = useState<{ id: number; author: string; text: string; date: string }[]>(
-    (task._comments || [])
-  );
-  const [attachments, setAttachments] = useState<{ name: string; url: string; size: string }[]>(
-    task._attachments || []
-  );
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
-
-  const handleComment = () => {
-    if (!comment.trim()) return;
-    const newComment = {
-      id: Date.now(),
-      author: (user as any)?.name ?? 'Eu',
-      text: comment.trim(),
-      date: new Date().toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-    };
-    setComments(prev => [...prev, newComment]);
-    setComment('');
-    toast.success('Comentário adicionado');
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      // Upload via presigned URL (server/storage.ts)
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('key', `tasks/${task.id}/${file.name}`);
-      const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
-      if (res.ok) {
-        const { url } = await res.json();
-        const size = file.size < 1024 * 1024
-          ? `${(file.size / 1024).toFixed(1)} KB`
-          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-        setAttachments(prev => [...prev, { name: file.name, url, size }]);
-        toast.success('Ficheiro anexado com sucesso');
-      } else {
-        // fallback: store locally for demo
-        const url = URL.createObjectURL(file);
-        const size = file.size < 1024 * 1024
-          ? `${(file.size / 1024).toFixed(1)} KB`
-          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-        setAttachments(prev => [...prev, { name: file.name, url, size }]);
-        toast.success('Ficheiro anexado');
-      }
-    } catch {
-      toast.error('Erro ao fazer upload');
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[85vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-border">
-          <div className="flex-1 min-w-0 pr-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefa</p>
-            <h3 className="font-bold text-foreground text-base leading-snug">{task.title}</h3>
-            {task.description && <p className="text-sm text-muted-foreground mt-1">{task.description}</p>}
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
-            <X size={18} className="text-muted-foreground" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 p-5 space-y-5">
-          {/* Attachments */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Paperclip size={14} /> Anexos ({attachments.length})
-              </h4>
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 disabled:opacity-40 transition-colors"
-              >
-                <Upload size={13} />{uploading ? 'A enviar...' : 'Anexar ficheiro'}
-              </button>
-              <input ref={fileRef} type="file" className="hidden" onChange={handleFileChange} />
-            </div>
-            {attachments.length === 0 ? (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="w-full border-2 border-dashed border-border rounded-xl py-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors group"
-              >
-                <Upload size={20} className="mx-auto mb-2 text-muted-foreground group-hover:text-primary transition-colors" />
-                <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Clica para anexar um ficheiro</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, imagens, documentos</p>
-              </button>
-            ) : (
-              <div className="space-y-2">
-                {attachments.map((att, i) => (
-                  <a key={i} href={att.url} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group border border-border/50">
-                    <div className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center flex-shrink-0">
-                      <FileIcon name={att.name} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{att.name}</p>
-                      <p className="text-xs text-muted-foreground">{att.size}</p>
-                    </div>
-                    <ChevronRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Comments */}
-          <div>
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-              <MessageSquare size={14} /> Comentários ({comments.length})
-            </h4>
-            {comments.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Sem comentários ainda. Sê o primeiro!</p>
-            ) : (
-              <div className="space-y-3">
-                {comments.map(c => (
-                  <div key={c.id} className="flex gap-3">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
-                      {c.author[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2 border border-border/50">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-foreground">{c.author}</span>
-                        <span className="text-xs text-muted-foreground">{c.date}</span>
-                      </div>
-                      <p className="text-sm text-foreground leading-relaxed">{c.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Comment input */}
-        <div className="p-4 border-t border-border bg-muted/30">
-          <div className="flex gap-2">
-            <input
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleComment()}
-              placeholder="Adicionar comentário..."
-              className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <button
-              onClick={handleComment}
-              disabled={!comment.trim()}
-              className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors flex-shrink-0"
-            >
-              <Send size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// ── Kanban column ─────────────────────────────────────────────────────────────
 // ── Kanban column ─────────────────────────────────────────────────────────────
 const KANBAN_COLS = [
   { key: 'pending',     label: 'Pendente',     color: 'bg-yellow-500', light: 'bg-yellow-50 dark:bg-yellow-950/20', border: 'border-yellow-200 dark:border-yellow-800' },
@@ -219,8 +41,8 @@ const KANBAN_COLS = [
   { key: 'completed',   label: 'Concluída',    color: 'bg-green-500',  light: 'bg-green-50 dark:bg-green-950/20',  border: 'border-green-200 dark:border-green-800' },
 ];
 
-function KanbanView({ tasks, onTaskClick, onStatusChange, onDelete, canEdit }: {
-  tasks: any[]; onTaskClick: (t: any) => void;
+function KanbanView({ tasks, onStatusChange, onDelete, canEdit }: {
+  tasks: any[];
   onStatusChange: (t: any, s: string) => void;
   onDelete: (id: number) => void; canEdit: boolean;
 }) {
@@ -241,8 +63,7 @@ function KanbanView({ tasks, onTaskClick, onStatusChange, onDelete, canEdit }: {
               {colTasks.map(task => (
                 <div
                   key={task.id}
-                  className="bg-background rounded-xl border border-border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-                  onClick={() => onTaskClick(task)}
+                  className="bg-background rounded-xl border border-border p-3 shadow-sm hover:shadow-md transition-shadow group"
                 >
                   <p className="text-sm font-medium text-foreground leading-snug mb-2">{task.title}</p>
                   {task.description && (
@@ -291,8 +112,8 @@ function KanbanView({ tasks, onTaskClick, onStatusChange, onDelete, canEdit }: {
 }
 
 // ── List view ─────────────────────────────────────────────────────────────────
-function ListView({ tasks, onTaskClick, onStatusChange, onDelete, canEdit }: {
-  tasks: any[]; onTaskClick: (t: any) => void;
+function ListView({ tasks, onStatusChange, onDelete, canEdit }: {
+  tasks: any[];
   onStatusChange: (t: any, s: string) => void;
   onDelete: (id: number) => void; canEdit: boolean;
 }) {
@@ -307,8 +128,7 @@ function ListView({ tasks, onTaskClick, onStatusChange, onDelete, canEdit }: {
     <div className="space-y-2">
       {tasks.map((task, idx) => (
         <div key={task.id}
-          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors cursor-pointer group"
-          onClick={() => onTaskClick(task)}
+          className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors group"
         >
           <button
             onClick={e => { e.stopPropagation(); onStatusChange(task, task.status === 'completed' ? 'pending' : canEdit ? (task.status === 'pending' ? 'in_progress' : 'completed') : 'completed'); }}
@@ -337,9 +157,6 @@ function ListView({ tasks, onTaskClick, onStatusChange, onDelete, canEdit }: {
               {STATUS_LABELS[task.status]}
             </span>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-              <button className="p-1 rounded hover:bg-muted transition-colors" title="Comentários">
-                <MessageSquare size={14} className="text-muted-foreground" />
-              </button>
               {canEdit && (
                 <button onClick={() => onDelete(task.id)} className="p-1 rounded hover:bg-destructive/10 transition-colors">
                   <Trash2 size={14} className="text-destructive" />
@@ -371,7 +188,7 @@ export default function PlanDetail() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskForm, setTaskForm] = useState({ title: '', description: '', dueDate: '' });
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -572,7 +389,6 @@ export default function PlanDetail() {
             viewMode === 'kanban' ? (
               <KanbanView
                 tasks={plan.tasks}
-                onTaskClick={setSelectedTask}
                 onStatusChange={handleStatusChange}
                 onDelete={handleDelete}
                 canEdit={canEdit}
@@ -580,7 +396,6 @@ export default function PlanDetail() {
             ) : (
               <ListView
                 tasks={plan.tasks}
-                onTaskClick={setSelectedTask}
                 onStatusChange={handleStatusChange}
                 onDelete={handleDelete}
                 canEdit={canEdit}
@@ -598,14 +413,6 @@ export default function PlanDetail() {
         </div>
       </div>
 
-      {/* Task panel (comments + attachments) */}
-      {selectedTask && (
-        <TaskPanel
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          canEdit={canEdit}
-        />
-      )}
     </DashboardLayout>
   );
 }
