@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import {
-  Users, UserPlus, ArrowRight, ArrowLeft, Building2, Hash,
-  Briefcase, Shield, Phone, Monitor, Package, ChevronDown,
-  CheckCircle2, User, Check, X,
+  ArrowRight, ArrowLeft, Building2, Hash,
+  Briefcase, Shield, Phone,
+  CheckCircle2, User, Check,
 } from "lucide-react";
 
 function GridBg() {
@@ -15,40 +15,12 @@ function GridBg() {
   );
 }
 
-const EMPRESAS = ["SOCEM", "Maxiplas", "Outra"];
-const DEPARTAMENTOS = ["Tecnologias de Informação", "Recursos Humanos", "Financeiro", "Operações", "Comercial", "Jurídico", "Marketing"];
-const PERMISSOES = ["Utilizador padrão", "Utilizador avançado", "Gestor de equipa", "Administrador", "Acesso read-only"];
-const PROGRAMAS = ["AutoCAD", "Adobe Creative Suite", "SAP", "Power BI", "Visual Studio Code", "Outro"];
 
 const STEPS = [
   { id: 1, label: "Identificação", icon: User },
   { id: 2, label: "Empresa & Acesso", icon: Building2 },
-  { id: 3, label: "Equipamento", icon: Monitor },
 ];
 
-function SelectField({ id, label, value, onChange, options, icon: Icon, required }: {
-  id: string; label: string; value: string; onChange: (v: string) => void;
-  options: string[]; icon?: any; required?: boolean;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      <div className="relative">
-        {Icon && <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />}
-        <select
-          id={id} value={value} onChange={e => onChange(e.target.value)} required={required}
-          className={`w-full ${Icon ? "pl-10" : "pl-4"} pr-9 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-400 transition-all text-sm appearance-none`}
-        >
-          <option value="">Selecionar...</option>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-      </div>
-    </div>
-  );
-}
 
 function InputField({ id, label, value, onChange, type = "text", placeholder, icon: Icon, required, hint }: {
   id: string; label: string; value: string; onChange: (v: string) => void;
@@ -72,41 +44,6 @@ function InputField({ id, label, value, onChange, type = "text", placeholder, ic
   );
 }
 
-function Toggle({ checked, onChange, label, desc }: {
-  checked: boolean; onChange: (v: boolean) => void; label: string; desc?: string;
-}) {
-  return (
-    <label className="flex items-start gap-3 cursor-pointer">
-      <div
-        onClick={() => onChange(!checked)}
-        className={`relative w-10 h-6 rounded-full flex-shrink-0 mt-0.5 transition-colors duration-200 ${checked ? "bg-red-600" : "bg-slate-200 dark:bg-slate-700"}`}
-      >
-        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"}`} />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</p>
-        {desc && <p className="text-xs text-slate-400 mt-0.5">{desc}</p>}
-      </div>
-    </label>
-  );
-}
-
-function CheckBox({ checked, onChange, label }: {
-  checked: boolean; onChange: (v: boolean) => void; label: string;
-}) {
-  return (
-    <label className="flex items-center gap-2.5 cursor-pointer group">
-      <div
-        onClick={() => onChange(!checked)}
-        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
-          ${checked ? "bg-red-600 border-red-600" : "border-slate-300 dark:border-slate-600 group-hover:border-red-400"}`}
-      >
-        {checked && <Check size={12} className="text-white" />}
-      </div>
-      <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
-    </label>
-  );
-}
 
 export default function NovoColaborador() {
   const [, setLocation] = useLocation();
@@ -120,15 +57,8 @@ export default function NovoColaborador() {
   const [permissoes, setPermissoes] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [telefone, setTelefone] = useState("");
-  const [temComputador, setTemComputador] = useState(false);
-  const [temOffice, setTemOffice] = useState(false);
-  const [programas, setProgramas] = useState<string[]>([]);
-  const [outroPrograma, setOutroPrograma] = useState("");
 
-  const isMaxiplas = empresa === "Maxiplas";
-
-  const togglePrograma = (p: string) =>
-    setProgramas(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
+  const isMaxiplas = empresa.toLowerCase().includes("maxiplas");
 
   const canNext = () => {
     if (step === 1) return nome.trim() && numColaborador.trim();
@@ -138,6 +68,18 @@ export default function NovoColaborador() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const subject = encodeURIComponent(`Novo Colaborador: ${nome}`);
+    const body = encodeURIComponent(
+      `Registo de Novo Colaborador\n\n` +
+      `Nome: ${nome}\n` +
+      `Nº Colaborador: ${numColaborador}\n` +
+      `Empresa: ${empresa}\n` +
+      `Departamento: ${departamento}\n` +
+      `Permissões: ${permissoes}\n` +
+      `Responsável: ${responsavel}\n` +
+      (isMaxiplas ? `Telefone: ${telefone}\n` : "")
+    );
+    window.location.href = `mailto:informatica@socem.pt?subject=${subject}&body=${body}`;
     setSubmitted(true);
   };
 
@@ -207,9 +149,6 @@ export default function NovoColaborador() {
       ["Empresa", empresa], ["Departamento", departamento],
       ["Permissões", permissoes], ["Responsável", responsavel],
       ...(isMaxiplas ? [["Telefone", telefone]] : []),
-      ["Computador", temComputador ? "Sim" : "Não"],
-      ...(temComputador && temOffice ? [["Microsoft Office", "Sim"]] : []),
-      ...(programas.length ? [["Programas", [...programas.filter(p => p !== "Outro"), ...(programas.includes("Outro") && outroPrograma ? [outroPrograma] : [])].join(", ")]] : []),
     ] as [string, string][];
 
     return (
@@ -234,7 +173,7 @@ export default function NovoColaborador() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => { setSubmitted(false); setStep(1); setNome(""); setNumColaborador(""); setEmpresa(""); setDepartamento(""); setPermissoes(""); setResponsavel(""); setTelefone(""); setTemComputador(false); setTemOffice(false); setProgramas([]); setOutroPrograma(""); }}
+                onClick={() => { setSubmitted(false); setStep(1); setNome(""); setNumColaborador(""); setEmpresa(""); setDepartamento(""); setPermissoes(""); setResponsavel(""); setTelefone(""); }}
                 className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
               >
                 Novo registo
@@ -289,15 +228,15 @@ export default function NovoColaborador() {
             {step === 1 && (
               <div className="space-y-4">
                 <InputField id="nome" label="Nome completo" value={nome} onChange={setNome} placeholder="João Silva" icon={User} required />
-                <InputField id="num" label="Número de colaborador" value={numColaborador} onChange={setNumColaborador} placeholder="C-00123" icon={Hash} required hint="Atribuído pelo departamento de RH" />
+                <InputField id="num" label="Número de colaborador" value={numColaborador} onChange={setNumColaborador} placeholder="" icon={Hash} required hint="Atribuído pelo departamento de RH" />
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-4">
-                <SelectField id="empresa" label="Empresa" value={empresa} onChange={setEmpresa} options={EMPRESAS} icon={Building2} required />
-                <SelectField id="dept" label="Departamento" value={departamento} onChange={setDepartamento} options={DEPARTAMENTOS} icon={Briefcase} required />
-                <SelectField id="perm" label="Permissões" value={permissoes} onChange={setPermissoes} options={PERMISSOES} icon={Shield} required />
+                <InputField id="empresa" label="Empresa" value={empresa} onChange={setEmpresa} placeholder="" icon={Building2} required />
+                <InputField id="dept" label="Departamento" value={departamento} onChange={setDepartamento} placeholder="" icon={Briefcase} required />
+                <InputField id="perm" label="Permissões" value={permissoes} onChange={setPermissoes} placeholder="" icon={Shield} required />
                 <InputField id="resp" label="Responsável / Gestor direto" value={responsavel} onChange={setResponsavel} placeholder="Nome do responsável" icon={User} required />
 
                 <div className={`transition-all duration-300 overflow-hidden ${isMaxiplas ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}>
@@ -310,40 +249,6 @@ export default function NovoColaborador() {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-5">
-                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4">
-                  <Toggle checked={temComputador} onChange={(v) => { setTemComputador(v); if (!v) { setTemOffice(false); setProgramas([]); } }} label="Precisa de computador" desc="Será atribuído pela equipa de TI" />
-
-                  {temComputador && (
-                    <div className="ml-13 pl-3 border-l-2 border-slate-200 dark:border-slate-700 space-y-4">
-                      <Toggle checked={temOffice} onChange={setTemOffice} label="Precisa de Microsoft Office" desc="Word, Excel, Outlook, PowerPoint..." />
-                      <div>
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Programas adicionais a instalar</p>
-                        <div className="space-y-2.5">
-                          {PROGRAMAS.map(p => (
-                            <CheckBox key={p} checked={programas.includes(p)} onChange={() => togglePrograma(p)} label={p} />
-                          ))}
-                        </div>
-                        {programas.includes("Outro") && (
-                          <div className="mt-3">
-                            <InputField id="outroPrograma" label="Especificar outro programa" value={outroPrograma} onChange={setOutroPrograma} placeholder="Nome do programa" icon={Package} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {!temComputador && (
-                  <div className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl">
-                    <X size={16} className="text-slate-400 flex-shrink-0" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Sem equipamento informático atribuído</p>
-                  </div>
-                )}
               </div>
             )}
 
