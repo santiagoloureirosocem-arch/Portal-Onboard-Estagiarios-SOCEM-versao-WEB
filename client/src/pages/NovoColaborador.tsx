@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight, ArrowLeft, Building2, Hash,
-  Briefcase, Shield, Phone,
-  CheckCircle2, User, Check,
+  Briefcase, Shield, Phone, Monitor, Package,
+  CheckCircle2, User, Check, X,
 } from "lucide-react";
 
 function GridBg() {
@@ -15,12 +15,13 @@ function GridBg() {
   );
 }
 
+const PROGRAMAS = ["AutoCAD", "Adobe Creative Suite", "SAP", "Power BI", "Visual Studio Code", "Outro"];
 
 const STEPS = [
   { id: 1, label: "Identificação", icon: User },
   { id: 2, label: "Empresa & Acesso", icon: Building2 },
+  { id: 3, label: "Equipamento", icon: Monitor },
 ];
-
 
 function InputField({ id, label, value, onChange, type = "text", placeholder, icon: Icon, required, hint }: {
   id: string; label: string; value: string; onChange: (v: string) => void;
@@ -44,6 +45,41 @@ function InputField({ id, label, value, onChange, type = "text", placeholder, ic
   );
 }
 
+function Toggle({ checked, onChange, label, desc }: {
+  checked: boolean; onChange: (v: boolean) => void; label: string; desc?: string;
+}) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer">
+      <div
+        onClick={() => onChange(!checked)}
+        className={`relative w-10 h-6 rounded-full flex-shrink-0 mt-0.5 transition-colors duration-200 ${checked ? "bg-red-600" : "bg-slate-200 dark:bg-slate-700"}`}
+      >
+        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"}`} />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</p>
+        {desc && <p className="text-xs text-slate-400 mt-0.5">{desc}</p>}
+      </div>
+    </label>
+  );
+}
+
+function CheckBox({ checked, onChange, label }: {
+  checked: boolean; onChange: (v: boolean) => void; label: string;
+}) {
+  return (
+    <label className="flex items-center gap-2.5 cursor-pointer group">
+      <div
+        onClick={() => onChange(!checked)}
+        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
+          ${checked ? "bg-red-600 border-red-600" : "border-slate-300 dark:border-slate-600 group-hover:border-red-400"}`}
+      >
+        {checked && <Check size={12} className="text-white" />}
+      </div>
+      <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+    </label>
+  );
+}
 
 export default function NovoColaborador() {
   const [, setLocation] = useLocation();
@@ -56,18 +92,21 @@ export default function NovoColaborador() {
   const [departamento, setDepartamento] = useState("");
   const [permissoes, setPermissoes] = useState("");
   const [responsavel, setResponsavel] = useState("");
-  const [telefone, setTelefone] = useState("");
+  const [temComputador, setTemComputador] = useState(false);
+  const [temOffice, setTemOffice] = useState(false);
+  const [programas, setProgramas] = useState<string[]>([]);
+  const [outroPrograma, setOutroPrograma] = useState("");
 
-  const isMaxiplas = empresa.toLowerCase().includes("maxiplas");
+  const togglePrograma = (p: string) =>
+    setProgramas(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
 
   const canNext = () => {
-    if (step === 1) return nome.trim() && numColaborador.trim();
-    if (step === 2) return empresa && departamento && permissoes && responsavel.trim() && (!isMaxiplas || telefone.trim());
+    if (step === 1) return nome.trim() !== "" && numColaborador.trim() !== "";
+    if (step === 2) return empresa.trim() !== "" && departamento.trim() !== "" && permissoes.trim() !== "" && responsavel.trim() !== "";
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
     const subject = encodeURIComponent(`Novo Colaborador: ${nome}`);
     const body = encodeURIComponent(
       `Registo de Novo Colaborador\n\n` +
@@ -77,7 +116,9 @@ export default function NovoColaborador() {
       `Departamento: ${departamento}\n` +
       `Permissões: ${permissoes}\n` +
       `Responsável: ${responsavel}\n` +
-      (isMaxiplas ? `Telefone: ${telefone}\n` : "")
+      `Computador: ${temComputador ? "Sim" : "Não"}\n` +
+      (temComputador && temOffice ? `Microsoft Office: Sim\n` : "") +
+      (programas.length ? `Programas: ${[...programas.filter(p => p !== "Outro"), ...(programas.includes("Outro") && outroPrograma ? [outroPrograma] : [])].join(", ")}\n` : "")
     );
     window.location.href = `mailto:informatica@socem.pt?subject=${subject}&body=${body}`;
     setSubmitted(true);
@@ -148,7 +189,9 @@ export default function NovoColaborador() {
       ["Colaborador", nome], ["Nº Colaborador", numColaborador],
       ["Empresa", empresa], ["Departamento", departamento],
       ["Permissões", permissoes], ["Responsável", responsavel],
-      ...(isMaxiplas ? [["Telefone", telefone]] : []),
+      ["Computador", temComputador ? "Sim" : "Não"],
+      ...(temComputador && temOffice ? [["Microsoft Office", "Sim"]] : []),
+      ...(programas.length ? [["Programas", [...programas.filter(p => p !== "Outro"), ...(programas.includes("Outro") && outroPrograma ? [outroPrograma] : [])].join(", ")]] : []),
     ] as [string, string][];
 
     return (
@@ -161,7 +204,7 @@ export default function NovoColaborador() {
             </div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Pedido submetido!</h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
-              O registo de <strong className="text-slate-700 dark:text-slate-200">{nome}</strong> foi enviado com sucesso.
+              O registo de <strong className="text-slate-700 dark:text-slate-200">{nome}</strong> foi enviado com sucesso para <strong className="text-slate-700 dark:text-slate-200">informatica@socem.pt</strong>.
             </p>
             <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 text-left space-y-3 mb-8">
               {summary.map(([k, v]) => (
@@ -173,7 +216,7 @@ export default function NovoColaborador() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => { setSubmitted(false); setStep(1); setNome(""); setNumColaborador(""); setEmpresa(""); setDepartamento(""); setPermissoes(""); setResponsavel(""); setTelefone(""); }}
+                onClick={() => { setSubmitted(false); setStep(1); setNome(""); setNumColaborador(""); setEmpresa(""); setDepartamento(""); setPermissoes(""); setResponsavel(""); setTemComputador(false); setTemOffice(false); setProgramas([]); setOutroPrograma(""); }}
                 className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
               >
                 Novo registo
@@ -224,31 +267,54 @@ export default function NovoColaborador() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <div>
             {step === 1 && (
               <div className="space-y-4">
                 <InputField id="nome" label="Nome completo" value={nome} onChange={setNome} placeholder="João Silva" icon={User} required />
-                <InputField id="num" label="Número de colaborador" value={numColaborador} onChange={setNumColaborador} placeholder="" icon={Hash} required hint="Atribuído pelo departamento de RH" />
+                <InputField id="num" label="Número de colaborador" value={numColaborador} onChange={setNumColaborador} icon={Hash} required hint="Atribuído pelo departamento de RH" />
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-4">
-                <InputField id="empresa" label="Empresa" value={empresa} onChange={setEmpresa} placeholder="" icon={Building2} required />
-                <InputField id="dept" label="Departamento" value={departamento} onChange={setDepartamento} placeholder="" icon={Briefcase} required />
-                <InputField id="perm" label="Permissões" value={permissoes} onChange={setPermissoes} placeholder="" icon={Shield} required />
+                <InputField id="empresa" label="Empresa" value={empresa} onChange={setEmpresa} icon={Building2} required />
+                <InputField id="dept" label="Departamento" value={departamento} onChange={setDepartamento} icon={Briefcase} required />
+                <InputField id="perm" label="Permissões" value={permissoes} onChange={setPermissoes} icon={Shield} required />
                 <InputField id="resp" label="Responsável / Gestor direto" value={responsavel} onChange={setResponsavel} placeholder="Nome do responsável" icon={User} required />
+              </div>
+            )}
 
-                <div className={`transition-all duration-300 overflow-hidden ${isMaxiplas ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}>
-                  {isMaxiplas && (
-                    <div className="pt-1 space-y-3">
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl">
-                        <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">📋 Colaboradores Maxiplas necessitam de telefone</span>
+            {step === 3 && (
+              <div className="space-y-5">
+                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4">
+                  <Toggle checked={temComputador} onChange={(v) => { setTemComputador(v); if (!v) { setTemOffice(false); setProgramas([]); } }} label="Precisa de computador" desc="Será atribuído pela equipa de TI" />
+
+                  {temComputador && (
+                    <div className="ml-13 pl-3 border-l-2 border-slate-200 dark:border-slate-700 space-y-4">
+                      <Toggle checked={temOffice} onChange={setTemOffice} label="Precisa de Microsoft Office" desc="Word, Excel, Outlook, PowerPoint..." />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Programas adicionais a instalar</p>
+                        <div className="space-y-2.5">
+                          {PROGRAMAS.map(p => (
+                            <CheckBox key={p} checked={programas.includes(p)} onChange={() => togglePrograma(p)} label={p} />
+                          ))}
+                        </div>
+                        {programas.includes("Outro") && (
+                          <div className="mt-3">
+                            <InputField id="outroPrograma" label="Especificar outro programa" value={outroPrograma} onChange={setOutroPrograma} placeholder="Nome do programa" icon={Package} />
+                          </div>
+                        )}
                       </div>
-                      <InputField id="tel" label="Número de telefone" value={telefone} onChange={setTelefone} placeholder="+351 9xx xxx xxx" icon={Phone} required={isMaxiplas} type="tel" />
                     </div>
                   )}
                 </div>
+
+                {!temComputador && (
+                  <div className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <X size={16} className="text-slate-400 flex-shrink-0" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Sem equipamento informático atribuído</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -264,13 +330,13 @@ export default function NovoColaborador() {
                   Continuar <ArrowRight size={16} />
                 </button>
               ) : (
-                <button type="submit" className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 transition-all shadow-md shadow-red-200 dark:shadow-none text-sm">
+                <button type="button" onClick={handleSubmit} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 transition-all shadow-md shadow-red-200 dark:shadow-none text-sm">
                   <CheckCircle2 size={16} />
                   Submeter registo
                 </button>
               )}
             </div>
-          </form>
+          </div>
 
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/60">
             <p className="text-center text-xs text-slate-400 dark:text-slate-600">
