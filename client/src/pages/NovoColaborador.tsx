@@ -15,7 +15,7 @@ function GridBg() {
   );
 }
 
-const PROGRAMAS = ["AutoCAD", "Adobe Creative Suite", "TopSolid", "CADMOULD", "Visual Studio Code", "AnyDesk", "Outro"];
+const PROGRAMAS = ["AutoCAD", "Adobe Creative Suite", "TopSolid", "CADMOULD", "Tebis", "Inventor", "MouldFLOW", "Outro"];
 
 const STEPS = [
   { id: 1, label: "Identificação", icon: User },
