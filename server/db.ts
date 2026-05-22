@@ -109,6 +109,21 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS direct_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        senderId INT NOT NULL,
+        senderName VARCHAR(255) NOT NULL,
+        receiverId INT NOT NULL,
+        text TEXT NOT NULL DEFAULT '',
+        fileName VARCHAR(255),
+        fileUrl LONGTEXT,
+        fileSize VARCHAR(50),
+        fileType VARCHAR(50),
+        isRead BOOLEAN NOT NULL DEFAULT FALSE,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     console.log("[Database] Tables ready");
   } catch (err) {
     console.warn("[Database] Table init error:", err);
@@ -628,6 +643,77 @@ export async function createAttachment(data: { taskId: number; userId: number; f
   await dbConn.insert(taskAttachments).values(data);
   const rows = await dbConn.select().from(taskAttachments).where(eq(taskAttachments.taskId, data.taskId));
   return rows[rows.length - 1];
+}
+
+// ─── Direct Messages ─────────────────────────────────────────────────────────
+let _memMessages: any[] = [];
+let _messageNextId = 1;
+
+export async function getDirectMessages(userA: number, userB: number) {
+  const dbConn = await getDb();
+  const minId = Math.min(userA, userB);
+  const maxId = Math.max(userA, userB);
+  if (!dbConn) {
+    return _memMessages
+      .filter(m => (m.senderId === userA && m.receiverId === userB) || (m.senderId === userB && m.receiverId === userA))
+      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+  return await dbConn.execute(sql`
+    SELECT * FROM direct_messages
+    WHERE (senderId = ${userA} AND receiverId = ${userB})
+       OR (senderId = ${userB} AND receiverId = ${userA})
+    ORDER BY createdAt ASC
+  `).then((r: any) => r[0] ?? r);
+}
+
+export async function createDirectMessage(data: {
+  senderId: number; senderName: string; receiverId: number;
+  text: string; fileName?: string; fileUrl?: string; fileSize?: string; fileType?: string;
+}) {
+  const dbConn = await getDb();
+  if (!dbConn) {
+    const msg = { id: _messageNextId++, ...data, isRead: false, createdAt: new Date() };
+    _memMessages.push(msg);
+    return msg;
+  }
+  await dbConn.execute(sql`
+    INSERT INTO direct_messages (senderId, senderName, receiverId, text, fileName, fileUrl, fileSize, fileType)
+    VALUES (${data.senderId}, ${data.senderName}, ${data.receiverId}, ${data.text},
+            ${data.fileName ?? null}, ${data.fileUrl ?? null}, ${data.fileSize ?? null}, ${data.fileType ?? null})
+  `);
+  const rows: any = await dbConn.execute(sql`SELECT * FROM direct_messages WHERE senderId=${data.senderId} ORDER BY id DESC LIMIT 1`);
+  return (rows[0] ?? rows)[0];
+}
+
+export async function markMessagesAsRead(receiverId: number, senderId: number) {
+  const dbConn = await getDb();
+  if (!dbConn) {
+    _memMessages.forEach(m => { if (m.senderId === senderId && m.receiverId === receiverId) m.isRead = true; });
+    return;
+  }
+  await dbConn.execute(sql`
+    UPDATE direct_messages SET isRead = TRUE
+    WHERE senderId = ${senderId} AND receiverId = ${receiverId} AND isRead = FALSE
+  `);
+}
+
+export async function getUnreadCounts(userId: number) {
+  const dbConn = await getDb();
+  if (!dbConn) {
+    const counts: Record<number, number> = {};
+    _memMessages.filter(m => m.receiverId === userId && !m.isRead).forEach(m => {
+      counts[m.senderId] = (counts[m.senderId] ?? 0) + 1;
+    });
+    return counts;
+  }
+  const rows: any = await dbConn.execute(sql`
+    SELECT senderId, COUNT(*) as cnt FROM direct_messages
+    WHERE receiverId = ${userId} AND isRead = FALSE
+    GROUP BY senderId
+  `);
+  const result: Record<number, number> = {};
+  (rows[0] ?? rows).forEach((r: any) => { result[Number(r.senderId)] = Number(r.cnt); });
+  return result;
 }
 
 export async function deleteAttachment(id: number) {

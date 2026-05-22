@@ -38,6 +38,11 @@ export const appRouter = router({
 
   users: router({
     list: tutorProcedure.query(async () => await db.getAllUsers()),
+    listForMessaging: protectedProcedure.query(async ({ ctx }) => {
+      // All authenticated users can see others for messaging (estagiários need to reach tutors)
+      const all = await db.getAllUsers();
+      return all.filter((u: any) => u.id !== ctx.user.id);
+    }),
     getById: tutorProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => await db.getUserById(input.id)),
 
     create: adminProcedure.input(z.object({
@@ -398,6 +403,43 @@ export const appRouter = router({
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await db.deleteAttachment(input.id);
       return { success: true };
+    }),
+  }),
+
+  messages: router({
+    getConversation: protectedProcedure
+      .input(z.object({ otherUserId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const msgs = await db.getDirectMessages(ctx.user.id, input.otherUserId);
+        await db.markMessagesAsRead(ctx.user.id, input.otherUserId);
+        return msgs;
+      }),
+
+    send: protectedProcedure
+      .input(z.object({
+        receiverId: z.number(),
+        text: z.string().default(""),
+        fileName: z.string().optional(),
+        fileUrl: z.string().optional(),
+        fileSize: z.string().optional(),
+        fileType: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const senderName = (ctx.user as any).name ?? ctx.user.openId;
+        return await db.createDirectMessage({
+          senderId: ctx.user.id,
+          senderName,
+          receiverId: input.receiverId,
+          text: input.text,
+          fileName: input.fileName,
+          fileUrl: input.fileUrl,
+          fileSize: input.fileSize,
+          fileType: input.fileType,
+        });
+      }),
+
+    unreadCounts: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUnreadCounts(ctx.user.id);
     }),
   }),
 });
