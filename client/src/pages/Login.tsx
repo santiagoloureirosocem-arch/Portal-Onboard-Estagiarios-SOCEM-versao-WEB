@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { Eye, EyeOff, User, Lock, CheckCircle2, Users, ClipboardList, TrendingUp } from "lucide-react";
+import { Eye, EyeOff, User, Lock, CheckCircle2, Users, ClipboardList, TrendingUp, ArrowLeft } from "lucide-react";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -198,7 +198,15 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/60">
+          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/60 space-y-3">
+            <button
+              type="button"
+              onClick={() => setLocation("/")}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-slate-300 transition-all text-sm font-medium"
+            >
+              <ArrowLeft size={15} />
+              Voltar ao Portal de Gestão de Pessoas
+            </button>
             <p className="text-center text-xs text-slate-400 dark:text-slate-600">
               Acesso restrito a membros autorizados da SOCEM
             </p>

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity, AlertTriangle, MessageCircle } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -77,6 +77,7 @@ const menuItems: { icon: any; label: string; path: string; roles: MenuRole[] }[]
   { icon: CheckSquare, label: "Tarefas", path: "/tasks", roles: ["estagiario", "tutor", "admin"] },
   { icon: BarChart3, label: "Relatórios", path: "/reports", roles: ["tutor", "admin"] },
   { icon: Activity, label: "Atividade", path: "/activity-log", roles: ["tutor", "admin"] },
+  { icon: MessageCircle, label: "Mensagens", path: "/mensagens", roles: ["estagiario", "tutor", "admin"] },
 ];
 
 const footerItems = [
