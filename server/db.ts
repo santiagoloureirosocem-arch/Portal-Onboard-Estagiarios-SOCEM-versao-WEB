@@ -1,6 +1,6 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments } from "../drizzle/schema";
+import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -651,19 +651,21 @@ let _messageNextId = 1;
 
 export async function getDirectMessages(userA: number, userB: number) {
   const dbConn = await getDb();
-  const minId = Math.min(userA, userB);
-  const maxId = Math.max(userA, userB);
   if (!dbConn) {
     return _memMessages
       .filter(m => (m.senderId === userA && m.receiverId === userB) || (m.senderId === userB && m.receiverId === userA))
       .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
-  return await dbConn.execute(sql`
-    SELECT * FROM direct_messages
-    WHERE (senderId = ${userA} AND receiverId = ${userB})
-       OR (senderId = ${userB} AND receiverId = ${userA})
-    ORDER BY createdAt ASC
-  `).then((r: any) => r[0] ?? r);
+  return await dbConn
+    .select()
+    .from(directMessages)
+    .where(
+      or(
+        and(eq(directMessages.senderId, userA), eq(directMessages.receiverId, userB)),
+        and(eq(directMessages.senderId, userB), eq(directMessages.receiverId, userA))
+      )
+    )
+    .orderBy(directMessages.createdAt);
 }
 
 export async function createDirectMessage(data: {
@@ -676,13 +678,23 @@ export async function createDirectMessage(data: {
     _memMessages.push(msg);
     return msg;
   }
-  await dbConn.execute(sql`
-    INSERT INTO direct_messages (senderId, senderName, receiverId, text, fileName, fileUrl, fileSize, fileType)
-    VALUES (${data.senderId}, ${data.senderName}, ${data.receiverId}, ${data.text},
-            ${data.fileName ?? null}, ${data.fileUrl ?? null}, ${data.fileSize ?? null}, ${data.fileType ?? null})
-  `);
-  const rows: any = await dbConn.execute(sql`SELECT * FROM direct_messages WHERE senderId=${data.senderId} ORDER BY id DESC LIMIT 1`);
-  return (rows[0] ?? rows)[0];
+  await dbConn.insert(directMessages).values({
+    senderId: data.senderId,
+    senderName: data.senderName,
+    receiverId: data.receiverId,
+    text: data.text,
+    fileName: data.fileName ?? null,
+    fileUrl: data.fileUrl ?? null,
+    fileSize: data.fileSize ?? null,
+    fileType: data.fileType ?? null,
+  });
+  const rows = await dbConn
+    .select()
+    .from(directMessages)
+    .where(eq(directMessages.senderId, data.senderId))
+    .orderBy(desc(directMessages.id))
+    .limit(1);
+  return rows[0];
 }
 
 export async function markMessagesAsRead(receiverId: number, senderId: number) {
@@ -691,10 +703,10 @@ export async function markMessagesAsRead(receiverId: number, senderId: number) {
     _memMessages.forEach(m => { if (m.senderId === senderId && m.receiverId === receiverId) m.isRead = true; });
     return;
   }
-  await dbConn.execute(sql`
-    UPDATE direct_messages SET isRead = TRUE
-    WHERE senderId = ${senderId} AND receiverId = ${receiverId} AND isRead = FALSE
-  `);
+  await dbConn
+    .update(directMessages)
+    .set({ isRead: true })
+    .where(and(eq(directMessages.senderId, senderId), eq(directMessages.receiverId, receiverId), eq(directMessages.isRead, false)));
 }
 
 export async function getUnreadCounts(userId: number) {
@@ -706,13 +718,13 @@ export async function getUnreadCounts(userId: number) {
     });
     return counts;
   }
-  const rows: any = await dbConn.execute(sql`
-    SELECT senderId, COUNT(*) as cnt FROM direct_messages
-    WHERE receiverId = ${userId} AND isRead = FALSE
-    GROUP BY senderId
-  `);
+  const rows = await dbConn
+    .select({ senderId: directMessages.senderId, cnt: sql<number>`COUNT(*)` })
+    .from(directMessages)
+    .where(and(eq(directMessages.receiverId, userId), eq(directMessages.isRead, false)))
+    .groupBy(directMessages.senderId);
   const result: Record<number, number> = {};
-  (rows[0] ?? rows).forEach((r: any) => { result[Number(r.senderId)] = Number(r.cnt); });
+  rows.forEach(r => { result[Number(r.senderId)] = Number(r.cnt); });
   return result;
 }
 

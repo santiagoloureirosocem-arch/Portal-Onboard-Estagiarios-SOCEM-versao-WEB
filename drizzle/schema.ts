@@ -132,3 +132,23 @@ export const taskAttachments = mysqlTable("task_attachments", {
 
 export type TaskAttachment = typeof taskAttachments.$inferSelect;
 export type InsertTaskAttachment = typeof taskAttachments.$inferInsert;
+
+/**
+ * Direct messages between users (estagiários <-> tutores)
+ */
+export const directMessages = mysqlTable("direct_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  senderId: int("senderId").notNull(),
+  senderName: varchar("senderName", { length: 255 }).notNull(),
+  receiverId: int("receiverId").notNull(),
+  text: text("text").notNull().default(""),
+  fileName: varchar("fileName", { length: 255 }),
+  fileUrl: text("fileUrl"),
+  fileSize: varchar("fileSize", { length: 50 }),
+  fileType: varchar("fileType", { length: 50 }),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type InsertDirectMessage = typeof directMessages.$inferInsert;
