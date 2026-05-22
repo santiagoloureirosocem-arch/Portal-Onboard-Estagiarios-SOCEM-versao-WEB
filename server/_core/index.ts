@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerPasswordResetRoutes } from "./passwordReset";
+import { registerEmailColaboradorRoute } from "./emailColaborador";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -38,6 +39,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerPasswordResetRoutes(app);
+  registerEmailColaboradorRoute(app);
   // tRPC API
   app.use(
     "/api/trpc",

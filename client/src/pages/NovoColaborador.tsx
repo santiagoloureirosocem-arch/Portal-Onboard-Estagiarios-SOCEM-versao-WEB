@@ -85,6 +85,8 @@ export default function NovoColaborador() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
 
   const [nome, setNome] = useState("");
   const [numColaborador, setNumColaborador] = useState("");
@@ -106,22 +108,29 @@ export default function NovoColaborador() {
     return true;
   };
 
-  const handleSubmit = () => {
-    const subject = encodeURIComponent(`Novo Colaborador: ${nome}`);
-    const body = encodeURIComponent(
-      `Registo de Novo Colaborador\n\n` +
-      `Nome: ${nome}\n` +
-      `Nº Colaborador: ${numColaborador}\n` +
-      `Empresa: ${empresa}\n` +
-      `Departamento: ${departamento}\n` +
-      `Permissões: ${permissoes}\n` +
-      `Responsável: ${responsavel}\n` +
-      `Computador: ${temComputador ? "Sim" : "Não"}\n` +
-      (temComputador && temOffice ? `Microsoft Office: Sim\n` : "") +
-      (programas.length ? `Programas: ${[...programas.filter(p => p !== "Outro"), ...(programas.includes("Outro") && outroPrograma ? [outroPrograma] : [])].join(", ")}\n` : "")
-    );
-    window.location.href = `mailto:informatica@socem.pt?subject=${subject}&body=${body}`;
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    setSending(true);
+    setSendError("");
+    try {
+      const res = await fetch("/api/email/novo-colaborador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome, numColaborador, empresa, departamento,
+          permissoes, responsavel, temComputador, temOffice,
+          programas: [
+            ...programas.filter(p => p !== "Outro"),
+            ...(programas.includes("Outro") && outroPrograma ? [outroPrograma] : []),
+          ],
+        }),
+      });
+      if (!res.ok) throw new Error("Erro no servidor");
+      setSubmitted(true);
+    } catch {
+      setSendError("Não foi possível enviar o email. Tenta novamente.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const leftPanel = (title: string, subtitle: string) => (
@@ -330,10 +339,18 @@ export default function NovoColaborador() {
                   Continuar <ArrowRight size={16} />
                 </button>
               ) : (
-                <button type="button" onClick={handleSubmit} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 transition-all shadow-md shadow-red-200 dark:shadow-none text-sm">
-                  <CheckCircle2 size={16} />
-                  Submeter registo
-                </button>
+                <>
+                  {sendError && (
+                    <p className="text-sm text-red-500 text-center mb-2">{sendError}</p>
+                  )}
+                  <button type="button" onClick={handleSubmit} disabled={sending} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 dark:shadow-none text-sm">
+                    {sending ? (
+                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> A enviar...</>
+                    ) : (
+                      <><CheckCircle2 size={16} /> Submeter registo</>
+                    )}
+                  </button>
+                </>
               )}
             </div>
           </div>
