@@ -1,0 +1,141 @@
+{
+  "nextId": 12,
+  "users": [
+    {
+      "id": 1,
+      "openId": "local-admin",
+      "name": "Administrador",
+      "email": "admin@local.dev",
+      "loginMethod": "local",
+      "role": "admin",
+      "department": null,
+      "position": null,
+      "isActive": true,
+      "createdAt": "2026-05-14T14:27:36.731Z",
+      "updatedAt": "2026-05-14T15:30:59.482Z",
+      "lastSignedIn": "2026-05-14T15:30:59.482Z",
+      "passwordHash": null
+    },
+    {
+      "id": 2,
+      "openId": "local-dyn-santiago.loureiro",
+      "name": "Santiago Mendonça Loureiro ",
+      "email": "santiago.loureiro.socem@gmail.com",
+      "loginMethod": "local",
+      "role": "estagiario",
+      "department": "informática",
+      "position": "Estagiário de informática",
+      "isActive": true,
+      "createdAt": "2026-05-14T14:30:23.432Z",
+      "updatedAt": "2026-05-14T14:32:06.009Z",
+      "lastSignedIn": "2026-05-14T14:32:06.009Z",
+      "passwordHash": "1234"
+    },
+    {
+      "id": 3,
+      "openId": "local-tutor",
+      "name": "Tutor Demo",
+      "email": "tutor@local.dev",
+      "loginMethod": "local",
+      "role": "tutor",
+      "department": null,
+      "position": null,
+      "isActive": true,
+      "createdAt": "2026-05-14T14:30:26.860Z",
+      "updatedAt": "2026-05-14T15:21:59.590Z",
+      "lastSignedIn": "2026-05-14T15:21:59.590Z",
+      "passwordHash": null
+    },
+    {
+      "id": 4,
+      "openId": "local-estagiario",
+      "name": "Estagiário Demo",
+      "email": "estagiario@local.dev",
+      "loginMethod": "local",
+      "role": "estagiario",
+      "department": null,
+      "position": null,
+      "isActive": true,
+      "createdAt": "2026-05-14T14:30:30.873Z",
+      "updatedAt": "2026-05-14T14:30:32.363Z",
+      "lastSignedIn": "2026-05-14T14:30:32.363Z",
+      "passwordHash": null
+    }
+  ],
+  "plans": [
+    {
+      "id": 5,
+      "title": "dadawdda",
+      "description": "dadawdadw",
+      "createdBy": 3,
+      "status": "completed",
+      "createdAt": "2026-05-14T14:30:40.769Z",
+      "updatedAt": "2026-05-14T14:32:04.270Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": 7,
+      "planId": 5,
+      "title": "dddddddddddddddd",
+      "description": "ddddddddddddddd",
+      "order": 1,
+      "status": "completed",
+      "createdAt": "2026-05-14T14:30:45.913Z",
+      "updatedAt": "2026-05-14T14:31:24.882Z"
+    },
+    {
+      "id": 8,
+      "planId": 5,
+      "title": "dddddddddddddddddd",
+      "description": "ddawawawawawawawawawawawawawawawaw",
+      "order": 2,
+      "status": "completed",
+      "createdAt": "2026-05-14T14:30:50.483Z",
+      "updatedAt": "2026-05-14T14:31:25.299Z"
+    },
+    {
+      "id": 9,
+      "planId": 5,
+      "title": "dwaaaaaaaaaaaaaaaaaadawda",
+      "order": 3,
+      "status": "completed",
+      "createdAt": "2026-05-14T14:30:54.214Z",
+      "updatedAt": "2026-05-14T14:31:26.049Z"
+    },
+    {
+      "id": 10,
+      "planId": 5,
+      "title": "dwasdwas",
+      "description": "dwasdwasd",
+      "order": 4,
+      "status": "completed",
+      "createdAt": "2026-05-14T14:30:59.814Z",
+      "updatedAt": "2026-05-14T14:32:03.731Z"
+    },
+    {
+      "id": 11,
+      "planId": 5,
+      "title": "dwadsadsa",
+      "description": "dsadaaddddddddddddd",
+      "order": 5,
+      "status": "completed",
+      "createdAt": "2026-05-14T14:31:04.310Z",
+      "updatedAt": "2026-05-14T14:32:04.270Z"
+    }
+  ],
+  "assignments": [
+    {
+      "id": 6,
+      "planId": 5,
+      "userId": 2,
+      "assignedBy": 3,
+      "startDate": "2026-05-14T14:30:40.769Z",
+      "status": "active",
+      "progress": 0,
+      "createdAt": "2026-05-14T14:30:40.769Z",
+      "updatedAt": "2026-05-14T14:30:40.769Z"
+    }
+  ],
+  "completions": []
+}

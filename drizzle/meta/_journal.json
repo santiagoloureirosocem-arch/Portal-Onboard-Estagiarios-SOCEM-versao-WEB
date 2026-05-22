@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1778581299323,
+      "tag": "0000_optimal_sheva_callister",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1778581428883,
+      "tag": "0001_puzzling_vanisher",
+      "breakpoints": true
+    }
+  ]
+}
