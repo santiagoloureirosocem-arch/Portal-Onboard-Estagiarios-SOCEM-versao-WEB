@@ -23,6 +23,7 @@ export const users = mysqlTable("users", {
   department: varchar("department", { length: 255 }),
   position: varchar("position", { length: 255 }),
   isActive: boolean("isActive").default(true).notNull(),
+  darkMode: boolean("darkMode").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

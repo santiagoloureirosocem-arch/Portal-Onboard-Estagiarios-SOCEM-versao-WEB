@@ -34,6 +34,12 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    updateTheme: protectedProcedure
+      .input(z.object({ darkMode: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateUser(ctx.user.id, { darkMode: input.darkMode } as any);
+        return { success: true };
+      }),
   }),
 
   users: router({

@@ -1,34 +1,34 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
-  toggleTheme?: () => void;
+  toggleTheme: () => void;
   switchable: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-interface ThemeProviderProps {
-  children: React.ReactNode;
-  defaultTheme?: Theme;
-  switchable?: boolean;
-}
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const [theme, setTheme] = useState<Theme>("light");
 
-export function ThemeProvider({
-  children,
-  defaultTheme = "light",
-  switchable = false,
-}: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+  const updateTheme = trpc.auth.updateTheme.useMutation();
+
+  // Quando o utilizador carrega, aplica o tema guardado na sua conta
+  useEffect(() => {
+    if (user) {
+      setTheme((user as any).darkMode ? "dark" : "light");
+    } else {
+      // Sem sessão: usa sempre tema claro
+      setTheme("light");
     }
-    return defaultTheme;
-  });
+  }, [user]);
 
+  // Aplica/remove a classe "dark" no <html>
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") {
@@ -36,20 +36,18 @@ export function ThemeProvider({
     } else {
       root.classList.remove("dark");
     }
+  }, [theme]);
 
-    if (switchable) {
-      localStorage.setItem("theme", theme);
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    if (user) {
+      updateTheme.mutate({ darkMode: newTheme === "dark" });
     }
-  }, [theme, switchable]);
-
-  const toggleTheme = switchable
-    ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
-      }
-    : undefined;
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, switchable: true }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -57,8 +55,6 @@ export function ThemeProvider({
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within ThemeProvider");
-  }
+  if (!context) throw new Error("useTheme must be used within ThemeProvider");
   return context;
 }
