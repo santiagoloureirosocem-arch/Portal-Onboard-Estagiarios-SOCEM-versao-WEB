@@ -3,8 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, Lock, User, Moon, Sun, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { Bell, Lock, User, Moon, Sun, Eye, EyeOff, Camera } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -41,6 +41,11 @@ export default function Settings() {
   const [role, setRole] = useState(user?.role || "estagiario");
   const [saving, setSaving] = useState(false);
 
+  // Avatar state
+  const [avatarPreview, setAvatarPreview] = useState<string | null>((user as any)?.avatar || null);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Password state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -55,6 +60,37 @@ export default function Settings() {
   const updateSelfMutation = trpc.users.updateSelf.useMutation();
   const updateUserMutation = trpc.users.update.useMutation();
   const changePasswordMutation = trpc.users.changePassword.useMutation();
+  const updateAvatarMutation = trpc.auth.updateAvatar.useMutation();
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("A imagem não pode ter mais de 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!avatarPreview) return;
+    setSavingAvatar(true);
+    try {
+      await updateAvatarMutation.mutateAsync({ avatar: avatarPreview });
+      if (refresh) await refresh();
+      toast.success("Foto de perfil atualizada");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao guardar foto");
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -110,6 +146,59 @@ export default function Settings() {
           <h1 className="text-3xl font-bold text-foreground">Definições</h1>
           <p className="text-muted-foreground mt-1">Personaliza a tua experiência no portal</p>
         </div>
+
+        {/* Foto de Perfil */}
+        <Card className="p-6 space-y-4">
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            <Camera size={17} className="text-primary" /> Foto de Perfil
+          </h2>
+          <div className="flex items-center gap-6">
+            <div className="relative flex-shrink-0">
+              <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-border">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={40} className="text-primary" />
+                )}
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors"
+              >
+                <Camera size={14} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-foreground font-medium">Escolhe uma foto</p>
+              <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WEBP. Máximo 2MB.</p>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  size="sm"
+                  onClick={handleSaveAvatar}
+                  disabled={savingAvatar || !avatarPreview || avatarPreview === (user as any)?.avatar}
+                >
+                  {savingAvatar ? "A guardar..." : "Guardar Foto"}
+                </Button>
+                {avatarPreview && avatarPreview !== (user as any)?.avatar && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setAvatarPreview((user as any)?.avatar || null)}
+                  >
+                    Cancelar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* Perfil */}
         <Card className="p-6 space-y-4">

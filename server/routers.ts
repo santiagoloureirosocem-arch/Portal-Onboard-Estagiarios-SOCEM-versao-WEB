@@ -40,6 +40,12 @@ export const appRouter = router({
         await db.updateUser(ctx.user.id, { darkMode: input.darkMode } as any);
         return { success: true };
       }),
+    updateAvatar: protectedProcedure
+      .input(z.object({ avatar: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateUser(ctx.user.id, { avatar: input.avatar } as any);
+        return { success: true };
+      }),
   }),
 
   users: router({
