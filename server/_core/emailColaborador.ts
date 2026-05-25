@@ -12,8 +12,12 @@ export function registerEmailColaboradorRoute(app: Express) {
         permissoes,
         temComputador,
         temOffice,
-        programasLista,
+        programas,
       } = req.body;
+
+      const programasLista = Array.isArray(programas) && programas.length > 0
+        ? programas.join(", ")
+        : "Nenhum";
 
       const response = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
