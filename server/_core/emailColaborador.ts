@@ -54,7 +54,7 @@ export function registerEmailColaboradorRoute(app: Express) {
     try {
       await resend.emails.send({
         from: "Portal SOCEM <onboarding@resend.dev>",
-        to: "informatica@socem.pt",
+        to: "santiago.loureiro.socem@gmail.com",
         subject: `Novo Colaborador: ${nome}`,
         html: htmlBody,
       });
