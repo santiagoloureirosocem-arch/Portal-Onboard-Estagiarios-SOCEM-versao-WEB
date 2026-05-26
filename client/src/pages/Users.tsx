@@ -147,6 +147,7 @@ export default function Users() {
           role: formData.role,
           department: formData.department || undefined,
           position: formData.position || undefined,
+          avatar: avatarPreview || undefined,
         });
         toast.success("Utilizador criado com sucesso");
       }
@@ -259,9 +260,8 @@ export default function Users() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Avatar upload - only shown when editing */}
-              {editingId && (
-                <div className="flex items-center gap-5 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+              {/* Avatar upload */}
+              <div className="flex items-center gap-5 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
                   <div className="relative flex-shrink-0">
                     <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden border-2 border-slate-200 dark:border-slate-600">
                       {avatarPreview ? (
@@ -299,7 +299,7 @@ export default function Users() {
                       >
                         Escolher Ficheiro
                       </Button>
-                      {avatarPreview && avatarPreview !== currentAvatar && (
+                      {editingId && avatarPreview && avatarPreview !== currentAvatar && (
                         <>
                           <Button
                             type="button"
@@ -324,7 +324,7 @@ export default function Users() {
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Nome completo *" error={formErrors.name}>
                   <Input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="Ana Silva" />

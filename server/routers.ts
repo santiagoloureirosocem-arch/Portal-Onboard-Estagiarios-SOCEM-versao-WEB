@@ -66,6 +66,7 @@ export const appRouter = router({
       role: roleSchema.default("estagiario"),
       department: z.string().optional(),
       position: z.string().optional(),
+      avatar: z.string().optional(),
     })).mutation(async ({ input }) => {
       // Check if username is already taken
       const existing = await db.getUserByUsername(input.username);
@@ -83,6 +84,7 @@ export const appRouter = router({
         isActive: true,
         passwordHash: input.password, // plain text for local dev
         loginMethod: "local",
+        avatar: input.avatar,
       });
       const newUser = await db.getUserByUsername(input.username);
       db.addActivityLog({
