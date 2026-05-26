@@ -32,11 +32,16 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         department VARCHAR(255),
         position VARCHAR(255),
         isActive BOOLEAN NOT NULL DEFAULT TRUE,
+        darkMode BOOLEAN NOT NULL DEFAULT FALSE,
+        avatar TEXT,
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         lastSignedIn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // Migração: adicionar colunas em falta se a tabela já existir
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS darkMode BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`).catch(() => {});
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS onboarding_plans (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -115,7 +120,7 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         senderId INT NOT NULL,
         senderName VARCHAR(255) NOT NULL,
         receiverId INT NOT NULL,
-        text TEXT NOT NULL DEFAULT '',
+        text TEXT NOT NULL,
         fileName VARCHAR(255),
         fileUrl LONGTEXT,
         fileSize VARCHAR(50),
