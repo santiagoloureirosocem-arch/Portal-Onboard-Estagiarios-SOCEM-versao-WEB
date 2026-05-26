@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Plus, Edit2, UserX, Search, Eye, EyeOff,
-  Shield, Users as UsersIcon, GraduationCap, X, Check
+  Shield, Users as UsersIcon, GraduationCap, X, Check, Camera, User
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +48,7 @@ export default function Users() {
   const createUserMutation = trpc.users.create.useMutation();
   const updateUserMutation = trpc.users.update.useMutation();
   const deactivateMutation = trpc.users.deactivate.useMutation();
+  const updateUserAvatarMutation = trpc.users.updateUserAvatar.useMutation();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -56,8 +57,39 @@ export default function Users() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = me?.role === "admin";
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Imagem demasiado grande (máx. 2MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!avatarPreview || !editingId) return;
+    setSavingAvatar(true);
+    try {
+      await updateUserAvatarMutation.mutateAsync({ id: editingId, avatar: avatarPreview });
+      setCurrentAvatar(avatarPreview);
+      toast.success("Foto de perfil atualizada");
+      refetch();
+    } catch {
+      toast.error("Erro ao guardar foto de perfil");
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
 
   const filteredUsers = users?.filter((u: any) => {
     const matchSearch =
@@ -128,6 +160,8 @@ export default function Users() {
     setEditingId(user.id);
     setShowForm(true);
     setFormErrors({});
+    setAvatarPreview(user.avatar || null);
+    setCurrentAvatar(user.avatar || null);
   };
 
   const handleDeactivate = async (userId: number, name: string) => {
@@ -147,6 +181,8 @@ export default function Users() {
     setFormData(EMPTY_FORM);
     setFormErrors({});
     setShowPassword(false);
+    setAvatarPreview(null);
+    setCurrentAvatar(null);
   };
 
   const countByRole = (role: Role) => users?.filter((u: any) => u.role === role).length ?? 0;
@@ -211,6 +247,72 @@ export default function Users() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Avatar upload - only shown when editing */}
+              {editingId && (
+                <div className="flex items-center gap-5 p-4 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden border-2 border-slate-200 dark:border-slate-600">
+                      {avatarPreview ? (
+                        <img src={avatarPreview} alt="Foto de perfil" className="w-full h-full object-cover" />
+                      ) : (
+                        <User size={32} className="text-slate-400" />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition-colors"
+                      title="Alterar foto"
+                    >
+                      <Camera size={13} />
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Foto de Perfil</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">JPG, PNG ou GIF · Máx. 2MB</p>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs h-7 px-3"
+                      >
+                        Escolher Ficheiro
+                      </Button>
+                      {avatarPreview && avatarPreview !== currentAvatar && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleSaveAvatar}
+                            disabled={savingAvatar}
+                            className="text-xs h-7 px-3 bg-blue-600 hover:bg-blue-700"
+                          >
+                            {savingAvatar ? "A guardar..." : "Guardar Foto"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setAvatarPreview(currentAvatar)}
+                            className="text-xs h-7 px-3"
+                          >
+                            Cancelar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Nome completo *" error={formErrors.name}>
                   <Input value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="Ana Silva" />
@@ -326,10 +428,14 @@ export default function Users() {
               {filteredUsers.map((user: any) => (
                 <div key={user.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors">
                   {/* Avatar */}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${ROLE_META[user.role as Role]?.bg ?? "bg-slate-100"}`}>
-                    <span className={`text-sm font-bold ${ROLE_META[user.role as Role]?.color ?? "text-slate-600"}`}>
-                      {(user.name || "?").charAt(0).toUpperCase()}
-                    </span>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${ROLE_META[user.role as Role]?.bg ?? "bg-slate-100"}`}>
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className={`text-sm font-bold ${ROLE_META[user.role as Role]?.color ?? "text-slate-600"}`}>
+                        {(user.name || "?").charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">

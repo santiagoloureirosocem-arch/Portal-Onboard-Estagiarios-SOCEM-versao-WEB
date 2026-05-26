@@ -112,6 +112,14 @@ export const appRouter = router({
       return { success: true };
     }),
 
+    updateUserAvatar: adminProcedure.input(z.object({
+      id: z.number(),
+      avatar: z.string(),
+    })).mutation(async ({ input }) => {
+      await db.updateUser(input.id, { avatar: input.avatar } as any);
+      return { success: true };
+    }),
+
     deactivate: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await db.deactivateUser(input.id);
       return { success: true };
