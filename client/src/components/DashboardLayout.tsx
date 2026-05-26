@@ -347,7 +347,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
         />
       </div>
 
-      <SidebarInset>
+      <SidebarInset className="overflow-hidden min-h-0">
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
@@ -362,7 +362,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 flex flex-col overflow-hidden">{children}</main>
+        <main className="flex-1 p-4 flex flex-col overflow-hidden min-h-0">{children}</main>
       </SidebarInset>
     </>
   );
