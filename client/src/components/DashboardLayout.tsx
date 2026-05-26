@@ -362,7 +362,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-4 flex flex-col overflow-hidden">{children}</main>
       </SidebarInset>
     </>
   );

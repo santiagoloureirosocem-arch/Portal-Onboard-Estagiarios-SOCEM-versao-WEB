@@ -182,7 +182,7 @@ export default function Mensagens() {
 
   return (
     <DashboardLayout>
-      <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-slate-50 dark:bg-slate-950 -m-4 md:-m-6">
+      <div className="flex-1 flex overflow-hidden bg-slate-50 dark:bg-slate-950 -m-4 md:-m-6">
 
         {/* ── Sidebar ─────────────────────────────────────────── */}
         <div className={`w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col ${selectedUserId ? "hidden md:flex" : "flex"}`}>
