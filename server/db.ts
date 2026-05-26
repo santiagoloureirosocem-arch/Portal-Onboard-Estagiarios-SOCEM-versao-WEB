@@ -40,8 +40,8 @@ async function initTables(db: ReturnType<typeof drizzle>) {
       )
     `);
     // Migração: adicionar colunas em falta se a tabela já existir
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS darkMode BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT`).catch(() => {});
+    try { await db.execute(sql`ALTER TABLE users ADD COLUMN darkMode BOOLEAN NOT NULL DEFAULT FALSE`); } catch {}
+    try { await db.execute(sql`ALTER TABLE users ADD COLUMN avatar TEXT`); } catch {}
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS onboarding_plans (
         id INT AUTO_INCREMENT PRIMARY KEY,

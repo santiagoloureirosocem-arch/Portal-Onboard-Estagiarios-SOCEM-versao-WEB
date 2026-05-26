@@ -76,7 +76,11 @@ async function finishLogin(
   role: "admin" | "tutor" | "estagiario",
   email: string
 ) {
-  await db.upsertUser({ openId, name, email, loginMethod: "local", role, lastSignedIn: new Date() });
+  try {
+    await db.upsertUser({ openId, name, email, loginMethod: "local", role, lastSignedIn: new Date() });
+  } catch (err) {
+    console.warn("[Login] upsertUser failed (non-fatal):", err);
+  }
 
   const sessionToken = await sdk.createSessionToken(openId, {
     name,
