@@ -67,12 +67,24 @@ export default function Users() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Imagem demasiado grande (máx. 2MB)");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Imagem demasiado grande (máx. 10MB)");
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 256;
+        const scale = Math.min(MAX / img.width, MAX / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setAvatarPreview(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = ev.target!.result as string;
+    };
     reader.readAsDataURL(file);
   };
 
