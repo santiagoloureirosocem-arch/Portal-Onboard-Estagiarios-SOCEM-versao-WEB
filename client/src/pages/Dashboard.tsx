@@ -146,8 +146,11 @@ function StaffDashboard() {
               {recentUsers.map((u: any) => (
                 <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-transparent">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
-                      <span className="text-white text-xs font-bold">{(u.name || "?")[0].toUpperCase()}</span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0 overflow-hidden">
+                      {u.avatar
+                        ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                        : <span className="text-white text-xs font-bold">{(u.name || "?")[0].toUpperCase()}</span>
+                      }
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{u.name}</p>
