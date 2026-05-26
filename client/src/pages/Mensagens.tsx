@@ -61,8 +61,13 @@ function avatarColor(id: number) {
   return colors[(id ?? 0) % colors.length];
 }
 
-function UserAvatar({ name, id, size = "md" }: { name: string; id: number; size?: "sm"|"md"|"lg" }) {
+function UserAvatar({ name, id, size = "md", avatar }: { name: string; id: number; size?: "sm"|"md"|"lg"; avatar?: string | null }) {
   const sz = size === "sm" ? "w-8 h-8 text-xs" : size === "lg" ? "w-12 h-12 text-base" : "w-10 h-10 text-sm";
+  if (avatar) {
+    return (
+      <img src={avatar} alt={name} className={`${sz} rounded-full object-cover flex-shrink-0`} />
+    );
+  }
   return (
     <div className={`${sz} ${avatarColor(id)} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
       {initials(name)}
@@ -223,7 +228,7 @@ export default function Mensagens() {
                   className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-left
                     ${selectedUserId === contact.id ? "bg-red-50 dark:bg-red-950/20 border-r-2 border-red-500" : ""}`}
                 >
-                  <UserAvatar name={contact.name ?? contact.openId} id={contact.id} />
+                  <UserAvatar name={contact.name ?? contact.openId} id={contact.id} avatar={contact.avatar} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">{contact.name ?? contact.openId}</span>
@@ -263,7 +268,7 @@ export default function Mensagens() {
                 <button onClick={() => setSelectedUserId(null)} className="md:hidden p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
                   <ArrowLeft size={18} />
                 </button>
-                <UserAvatar name={selectedContact?.name ?? selectedContact?.openId ?? ""} id={selectedContact?.id ?? 0} />
+                <UserAvatar name={selectedContact?.name ?? selectedContact?.openId ?? ""} id={selectedContact?.id ?? 0} avatar={selectedContact?.avatar} />
                 <div>
                   <p className="font-semibold text-sm text-slate-900 dark:text-white">{selectedContact?.name ?? selectedContact?.openId}</p>
                   <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${roleBadgeColor(selectedContact?.role ?? "")}`}>
@@ -315,7 +320,7 @@ export default function Mensagens() {
                       <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isFirst ? "mt-3" : "mt-0.5"}`}>
                         {!isMine && isFirst && (
                           <div className="mr-2 mt-auto mb-0.5">
-                            <UserAvatar name={msg.senderName} id={msg.senderId} size="sm" />
+                            <UserAvatar name={msg.senderName} id={msg.senderId} size="sm" avatar={selectedContact?.avatar} />
                           </div>
                         )}
                         {!isMine && !isFirst && <div className="w-8 mr-2 flex-shrink-0" />}
@@ -435,7 +440,7 @@ export default function Mensagens() {
               <button onClick={() => setShowInfo(false)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"><X size={16} /></button>
             </div>
             <div className="p-6 flex flex-col items-center text-center border-b border-slate-100 dark:border-slate-800">
-              <UserAvatar name={selectedContact.name ?? selectedContact.openId} id={selectedContact.id} size="lg" />
+              <UserAvatar name={selectedContact.name ?? selectedContact.openId} id={selectedContact.id} size="lg" avatar={selectedContact.avatar} />
               <h3 className="mt-3 font-bold text-slate-900 dark:text-white">{selectedContact.name ?? selectedContact.openId}</h3>
               <span className={`mt-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${roleBadgeColor(selectedContact.role ?? "")}`}>
                 {roleLabel(selectedContact.role ?? "")}
