@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import {
   Send, Paperclip, File, Download, Search,
   X, Check, CheckCheck, Image as ImageIcon, FileText,
-  Info, ArrowLeft, Phone, Video, MoreVertical, Smile
+  Info, ArrowLeft
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -276,12 +276,6 @@ export default function Mensagens() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Chamada de voz">
-                    <Phone size={17} />
-                  </button>
-                  <button className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Vídeo chamada">
-                    <Video size={17} />
-                  </button>
                   <button
                     onClick={() => setShowInfo(v => !v)}
                     className={`p-2 rounded-xl transition-colors ${showInfo ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
@@ -292,7 +286,8 @@ export default function Mensagens() {
               </div>
 
               {/* ── Messages ── */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-0.5">
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <div className="flex flex-col justify-end min-h-full space-y-0.5">
                 {messagesQuery.isLoading && (
                   <div className="flex items-center justify-center py-10 gap-2 text-slate-400 text-sm">
                     <div className="w-4 h-4 border-2 border-slate-200 border-t-red-500 rounded-full animate-spin" />
@@ -399,6 +394,7 @@ export default function Mensagens() {
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
+                </div>
               </div>
 
               {/* ── Input ── */}
