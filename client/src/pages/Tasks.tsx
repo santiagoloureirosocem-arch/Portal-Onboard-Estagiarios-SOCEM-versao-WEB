@@ -9,11 +9,29 @@ import { useAuth } from '@/_core/hooks/useAuth';
 import {
   CheckCircle2, Clock, Circle, ChevronDown, ChevronRight,
   Eye, FileText, Plus, X, CalendarIcon, Trash2,
-  MessageSquare, Paperclip, Send, Upload, Image as ImageIcon, File, ChevronRight as ChevronRightIcon
+  MessageSquare, Paperclip, Send, Upload, Image as ImageIcon, File,
+  ChevronRight as ChevronRightIcon, Kanban, List,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed';
+type ViewMode = 'list' | 'kanban';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendente',
@@ -31,6 +49,13 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   completed: <CheckCircle2 size={16} className="text-green-500" />,
 };
 
+// Column config for Kanban
+const KANBAN_COLUMNS: { id: string; label: string; color: string; headerBg: string }[] = [
+  { id: 'pending',     label: 'Pendente',     color: 'border-yellow-400', headerBg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+  { id: 'in_progress', label: 'Em Progresso', color: 'border-blue-400',   headerBg: 'bg-blue-50 dark:bg-blue-950/20'   },
+  { id: 'completed',   label: 'Concluída',    color: 'border-green-400',  headerBg: 'bg-green-50 dark:bg-green-950/20' },
+];
+
 // ── File icon helper ──────────────────────────────────────────────────────────
 function FileIcon({ name }: { name: string }) {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
@@ -39,14 +64,13 @@ function FileIcon({ name }: { name: string }) {
   return <File size={14} className="text-muted-foreground" />;
 }
 
-// ── Task panel (comments + attachments) — connected to DB ────────────────────
+// ── Task panel (comments + attachments) ──────────────────────────────────────
 function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void; canEdit: boolean }) {
   const [comment, setComment] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
-  // DB-backed queries
   const { data: comments = [], refetch: refetchComments } = trpc.taskComments.getByTaskId.useQuery({ taskId: task.id });
   const { data: attachments = [], refetch: refetchAttachments } = trpc.taskAttachments.getByTaskId.useQuery({ taskId: task.id });
 
@@ -234,6 +258,7 @@ function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void;
   );
 }
 
+// ── Add Task Form ─────────────────────────────────────────────────────────────
 function AddTaskForm({ planId, nextOrder, onSuccess, onCancel }: {
   planId: number; nextOrder: number; onSuccess: () => void; onCancel: () => void;
 }) {
@@ -283,6 +308,291 @@ function AddTaskForm({ planId, nextOrder, onSuccess, onCancel }: {
   );
 }
 
+// ── Sortable Kanban Card ──────────────────────────────────────────────────────
+function KanbanCard({
+  task, canEdit, onOpen, onStatusChange, onDelete,
+}: {
+  task: any; canEdit: boolean;
+  onOpen: (task: any) => void;
+  onStatusChange: (task: any) => void;
+  onDelete: (taskId: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: `${task.id}`, data: { task } });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="bg-background border border-border rounded-xl p-3 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing group transition-shadow"
+      onClick={() => onOpen(task)}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className={`text-sm font-medium leading-snug flex-1 ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+          {task.title}
+        </p>
+        {canEdit && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(task.id); }}
+            className="p-1 rounded hover:bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+            title="Eliminar"
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
+      </div>
+      {task.description && (
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
+      )}
+      <div className="flex items-center justify-between mt-2.5">
+        {task.dueDate ? (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <CalendarIcon size={10} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
+          </p>
+        ) : <span />}
+        <button
+          onClick={e => { e.stopPropagation(); onStatusChange(task); }}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          title="Avançar estado"
+        >
+          {STATUS_ICON[task.status]}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Kanban Column ─────────────────────────────────────────────────────────────
+function KanbanColumn({
+  column, tasks, canEdit, onOpen, onStatusChange, onDelete,
+}: {
+  column: typeof KANBAN_COLUMNS[number];
+  tasks: any[];
+  canEdit: boolean;
+  onOpen: (task: any) => void;
+  onStatusChange: (task: any) => void;
+  onDelete: (taskId: number) => void;
+}) {
+  const ids = tasks.map((t: any) => String(t.id));
+
+  return (
+    <div className={`flex flex-col rounded-2xl border-t-4 ${column.color} bg-muted/30 min-h-[300px]`}>
+      <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${column.headerBg}`}>
+        <div className="flex items-center gap-2">
+          {STATUS_ICON[column.id]}
+          <span className="text-sm font-semibold text-foreground">{column.label}</span>
+        </div>
+        <span className="text-xs font-bold bg-background border border-border text-muted-foreground px-2 py-0.5 rounded-full">
+          {tasks.length}
+        </span>
+      </div>
+      <div className="flex-1 p-3 space-y-2">
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          {tasks.map((task: any) => (
+            <KanbanCard
+              key={task.id}
+              task={task}
+              canEdit={canEdit}
+              onOpen={onOpen}
+              onStatusChange={onStatusChange}
+              onDelete={onDelete}
+            />
+          ))}
+        </SortableContext>
+        {tasks.length === 0 && (
+          <div className="flex items-center justify-center h-24 text-xs text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
+            Sem tarefas
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Kanban Board for a single plan ────────────────────────────────────────────
+function KanbanBoard({ plan, canEdit }: { plan: any; canEdit: boolean }) {
+  const [, setLocation] = useLocation();
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [activeTask, setActiveTask] = useState<any>(null);
+
+  const { data: planDetail, isLoading, refetch } = trpc.plans.getById.useQuery({ id: plan.id });
+  const updateTaskMutation = trpc.tasks.update.useMutation();
+  const deleteTaskMutation = trpc.tasks.delete.useMutation();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const allTasks: any[] = planDetail?.tasks || [];
+  const totalCount = allTasks.length;
+  const completedCount = allTasks.filter((t: any) => t.status === 'completed').length;
+  const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const tasksByStatus = {
+    pending:     allTasks.filter((t: any) => t.status === 'pending'),
+    in_progress: allTasks.filter((t: any) => t.status === 'in_progress'),
+    completed:   allTasks.filter((t: any) => t.status === 'completed'),
+  };
+
+  const handleStatusChange = async (task: any) => {
+    const cycle: Record<string, string> = { pending: 'in_progress', in_progress: 'completed', completed: 'pending' };
+    const nextStatus = canEdit ? cycle[task.status] : (task.status === 'completed' ? 'pending' : 'completed');
+    try {
+      await updateTaskMutation.mutateAsync({ id: task.id, status: nextStatus as any });
+      refetch();
+    } catch {
+      toast.error('Erro ao atualizar tarefa');
+    }
+  };
+
+  const handleDelete = async (taskId: number) => {
+    if (!confirm('Eliminar esta tarefa?')) return;
+    try {
+      await deleteTaskMutation.mutateAsync({ id: taskId });
+      toast.success('Tarefa eliminada');
+      refetch();
+    } catch {
+      toast.error('Erro ao eliminar tarefa');
+    }
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const task = allTasks.find((t: any) => String(t.id) === event.active.id);
+    setActiveTask(task ?? null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    // Find what column the card was dropped into — the over.id can be a task id or a column id
+    const draggedTask = allTasks.find((t: any) => String(t.id) === active.id);
+    if (!draggedTask) return;
+
+    // Determine target column
+    let targetStatus: string | null = null;
+
+    // If dropped directly onto a column id
+    if (['pending', 'in_progress', 'completed'].includes(String(over.id))) {
+      targetStatus = String(over.id);
+    } else {
+      // Dropped onto another card — use that card's status
+      const overTask = allTasks.find((t: any) => String(t.id) === over.id);
+      if (overTask) targetStatus = overTask.status;
+    }
+
+    if (!targetStatus || targetStatus === draggedTask.status) return;
+
+    try {
+      await updateTaskMutation.mutateAsync({ id: draggedTask.id, status: targetStatus as any });
+      refetch();
+      toast.success(`Movida para "${STATUS_LABELS[targetStatus]}"`);
+    } catch {
+      toast.error('Erro ao mover tarefa');
+    }
+  };
+
+  if (isLoading) {
+    return <Card className="p-4"><div className="animate-pulse h-6 bg-muted rounded w-1/3" /></Card>;
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      {/* Plan header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center gap-3 min-w-0">
+          <FileText size={17} className="text-primary flex-shrink-0" />
+          <div className="min-w-0">
+            <h3 className="font-semibold text-foreground truncate">{plan.title}</h3>
+            <p className="text-xs text-muted-foreground">{totalCount} tarefa{totalCount !== 1 ? 's' : ''} · {progress}% concluído</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="text-xs text-muted-foreground w-8 text-right">{progress}%</span>
+          </div>
+          {canEdit && (
+            <button
+              onClick={() => setShowAddForm(v => !v)}
+              className="p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+              title="Adicionar tarefa"
+            >
+              <Plus size={15} />
+            </button>
+          )}
+          <button
+            onClick={() => setLocation(`/plans/${plan.id}`)}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+            title="Ver plano"
+          >
+            <Eye size={15} className="text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+
+      {showAddForm && (
+        <AddTaskForm
+          planId={plan.id}
+          nextOrder={totalCount + 1}
+          onSuccess={() => { setShowAddForm(false); refetch(); }}
+          onCancel={() => setShowAddForm(false)}
+        />
+      )}
+
+      {/* Kanban columns */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+          {KANBAN_COLUMNS.map(col => (
+            <KanbanColumn
+              key={col.id}
+              column={col}
+              tasks={tasksByStatus[col.id as keyof typeof tasksByStatus]}
+              canEdit={canEdit}
+              onOpen={setSelectedTask}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+
+        <DragOverlay>
+          {activeTask ? (
+            <div className="bg-background border border-primary rounded-xl p-3 shadow-2xl rotate-2 opacity-95">
+              <p className="text-sm font-medium text-foreground">{activeTask.title}</p>
+              {activeTask.description && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{activeTask.description}</p>
+              )}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+
+      {selectedTask && (
+        <TaskPanel task={selectedTask} onClose={() => setSelectedTask(null)} canEdit={canEdit} />
+      )}
+    </Card>
+  );
+}
+
+// ── List view plan group (original) ──────────────────────────────────────────
 function PlanTaskGroup({ plan, filterStatus, canEdit }: {
   plan: any; filterStatus: TaskStatus; canEdit: boolean;
 }) {
@@ -388,23 +698,13 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
                 key={task.id}
                 className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/30 group cursor-pointer ${idx > 0 ? 'border-t border-border/50' : ''}`}
                 onClick={() => setSelectedTask(task)}
-                title="Abrir detalhes da tarefa"
               >
-                {/* Status toggle — click stops propagation so it doesn't open panel */}
                 {canEdit ? (
-                  <button
-                    onClick={(e) => handleStatusChange(task, e)}
-                    className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform"
-                    title={`${STATUS_LABELS[task.status]} — clique para avançar`}
-                  >
+                  <button onClick={(e) => handleStatusChange(task, e)} className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform">
                     {STATUS_ICON[task.status as keyof typeof STATUS_ICON] || <Circle size={16} />}
                   </button>
                 ) : (
-                  <button
-                    onClick={(e) => handleStatusChange(task, e)}
-                    className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform"
-                    title={task.status === 'completed' ? 'Marcar como pendente' : 'Marcar como concluída'}
-                  >
+                  <button onClick={(e) => handleStatusChange(task, e)} className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform">
                     {task.status === 'completed'
                       ? <CheckCircle2 size={18} className="text-green-500" />
                       : <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300 dark:border-slate-600 hover:border-green-400 transition-colors" />
@@ -428,11 +728,7 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
                   </span>
                   <MessageSquare size={13} className="text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity" />
                   {canEdit && (
-                    <button
-                      onClick={(e) => handleDelete(task.id, e)}
-                      className="p-1 rounded hover:bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-all"
-                      title="Eliminar tarefa"
-                    >
+                    <button onClick={(e) => handleDelete(task.id, e)} className="p-1 rounded hover:bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 transition-all">
                       <Trash2 size={13} />
                     </button>
                   )}
@@ -449,21 +745,19 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
       )}
 
       {selectedTask && (
-        <TaskPanel
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          canEdit={canEdit}
-        />
+        <TaskPanel task={selectedTask} onClose={() => setSelectedTask(null)} canEdit={canEdit} />
       )}
     </Card>
   );
 }
 
+// ── Main Tasks page ───────────────────────────────────────────────────────────
 export default function Tasks() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'tutor';
   const [filterStatus, setFilterStatus] = useState<TaskStatus>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const { data: plans, isLoading } = trpc.plans.list.useQuery();
 
   const filterButtons: { label: string; value: TaskStatus; icon: React.ReactNode }[] = [
@@ -485,23 +779,59 @@ export default function Tasks() {
               {canEdit ? 'Acompanhe e gira as tarefas de cada plano' : 'Marca as tuas tarefas à medida que as concluíres'}
             </p>
           </div>
-          {canEdit && (
-            <Button onClick={() => setLocation('/plans')} variant="outline" className="gap-2 self-start sm:self-auto">
-              <FileText size={16} /> Gerir Planos
-            </Button>
-          )}
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* View toggle */}
+            <div className="flex items-center bg-muted rounded-lg p-1 gap-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Vista Lista"
+              >
+                <List size={15} />
+                <span className="hidden sm:inline">Lista</span>
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  viewMode === 'kanban' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Vista Kanban"
+              >
+                <Kanban size={15} />
+                <span className="hidden sm:inline">Kanban</span>
+              </button>
+            </div>
+            {canEdit && (
+              <Button onClick={() => setLocation('/plans')} variant="outline" className="gap-2">
+                <FileText size={16} /> Gerir Planos
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {visibleFilters.map(btn => (
-            <button key={btn.value} onClick={() => setFilterStatus(btn.value)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                filterStatus === btn.value ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-              }`}>
-              {btn.icon}{btn.label}
-            </button>
-          ))}
-        </div>
+        {/* Status filter — only shown in list mode */}
+        {viewMode === 'list' && (
+          <div className="flex flex-wrap gap-2">
+            {visibleFilters.map(btn => (
+              <button key={btn.value} onClick={() => setFilterStatus(btn.value)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterStatus === btn.value ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                }`}>
+                {btn.icon}{btn.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Kanban tip banner */}
+        {viewMode === 'kanban' && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg px-4 py-2">
+            <Kanban size={13} />
+            Arrasta os cartões entre colunas para mudar o estado da tarefa.
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">
@@ -516,9 +846,13 @@ export default function Tasks() {
           </div>
         ) : plans && plans.length > 0 ? (
           <div className="space-y-4">
-            {plans.map((plan: any) => (
-              <PlanTaskGroup key={plan.id} plan={plan} filterStatus={filterStatus} canEdit={canEdit} />
-            ))}
+            {plans.map((plan: any) =>
+              viewMode === 'kanban' ? (
+                <KanbanBoard key={plan.id} plan={plan} canEdit={canEdit} />
+              ) : (
+                <PlanTaskGroup key={plan.id} plan={plan} filterStatus={filterStatus} canEdit={canEdit} />
+              )
+            )}
           </div>
         ) : (
           <Card className="p-12 text-center">

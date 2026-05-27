@@ -148,6 +148,86 @@ async function exportToPDF(data: ExportData) {
       if (s.pct > 0) doc.roundedRect(barX, y, (barW * s.pct) / 100, 5, 1, 1, "F");
       y += 9;
     });
+
+    // ── Detailed task lists per status ──
+    const taskGroups = [
+      {
+        label: "✓ Tarefas Concluídas",
+        tasks: data.tasks.filter((t: any) => t.status === "completed"),
+        headerColor: [34, 197, 94] as [number, number, number],
+        rowColor: [240, 253, 244] as [number, number, number],
+        textColor: [21, 128, 61] as [number, number, number],
+      },
+      {
+        label: "→ Tarefas Em Progresso",
+        tasks: data.tasks.filter((t: any) => t.status === "in_progress"),
+        headerColor: [251, 146, 60] as [number, number, number],
+        rowColor: [255, 247, 237] as [number, number, number],
+        textColor: [154, 52, 18] as [number, number, number],
+      },
+      {
+        label: "○ Tarefas Pendentes",
+        tasks: data.tasks.filter((t: any) => t.status === "pending"),
+        headerColor: [148, 163, 184] as [number, number, number],
+        rowColor: [248, 250, 252] as [number, number, number],
+        textColor: [71, 85, 105] as [number, number, number],
+      },
+    ];
+
+    for (const group of taskGroups) {
+      if (group.tasks.length === 0) continue;
+      y += 4;
+      if (y > pageH - 40) { doc.addPage(); y = 20; }
+
+      // Group heading
+      doc.setFillColor(group.headerColor[0], group.headerColor[1], group.headerColor[2]);
+      doc.rect(margin, y, pageW - 2 * margin, 7, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${group.label} (${group.tasks.length})`, margin + 2, y + 5);
+      y += 7;
+
+      // Column headers
+      const tCols = [
+        { label: "Título", w: 85 },
+        { label: "Descrição", w: 65 },
+        { label: "Prazo", w: 20 },
+      ];
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, y, pageW - 2 * margin, 6, "F");
+      doc.setDrawColor(220, 220, 220);
+      doc.rect(margin, y, pageW - 2 * margin, 6, "S");
+      doc.setTextColor(80, 80, 80);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      let cx = margin;
+      tCols.forEach(c => { doc.text(c.label, cx + 2, y + 4.2); cx += c.w; });
+      y += 6;
+
+      // Rows
+      group.tasks.forEach((task: any, idx: number) => {
+        const rowH = 6.5;
+        if (y > pageH - 20) { doc.addPage(); y = 20; }
+        const bg = idx % 2 === 0 ? [255, 255, 255] : group.rowColor;
+        doc.setFillColor(bg[0], bg[1], bg[2]);
+        doc.rect(margin, y, pageW - 2 * margin, rowH, "F");
+        doc.setDrawColor(235, 235, 235);
+        doc.rect(margin, y, pageW - 2 * margin, rowH, "S");
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(group.textColor[0], group.textColor[1], group.textColor[2]);
+        const title = doc.splitTextToSize(task.title ?? "", tCols[0].w - 4)[0] ?? "";
+        doc.text(title, margin + 2, y + 4.5);
+        doc.setTextColor(80, 80, 80);
+        const desc = doc.splitTextToSize(task.description ?? "—", tCols[1].w - 4)[0] ?? "—";
+        doc.text(desc, margin + tCols[0].w + 2, y + 4.5);
+        const due = task.dueDate ? new Date(task.dueDate).toLocaleDateString("pt-PT") : "—";
+        doc.text(due, margin + tCols[0].w + tCols[1].w + 2, y + 4.5);
+        y += rowH;
+      });
+      y += 4;
+    }
   }
 
   // ── Footer ──
