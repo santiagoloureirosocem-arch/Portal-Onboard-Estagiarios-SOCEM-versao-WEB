@@ -154,7 +154,7 @@ type DashboardLayoutContentProps = {
 
 function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
-  const [presence, setPresence] = useState<"online" | "ausente" | "offline">((user as any)?.presence ?? "online");
+  const [presence, setPresence] = useState<"online" | "ausente" | "offline">(() => (user as any)?.presence ?? "online");
   const updatePresenceMutation = trpc.auth.updatePresence.useMutation();
 
   const handlePresenceChange = async (val: "online" | "ausente" | "offline") => {

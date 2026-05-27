@@ -14,22 +14,28 @@
       "createdAt": "2026-05-14T14:27:36.731Z",
       "updatedAt": "2026-05-14T15:30:59.482Z",
       "lastSignedIn": "2026-05-14T15:30:59.482Z",
-      "passwordHash": null
+      "passwordHash": null,
+      "presence": "online",
+      "avatar": null,
+      "darkMode": false
     },
     {
       "id": 2,
       "openId": "local-dyn-santiago.loureiro",
-      "name": "Santiago Mendonça Loureiro ",
+      "name": "Santiago Mendon\u00e7a Loureiro ",
       "email": "santiago.loureiro.socem@gmail.com",
       "loginMethod": "local",
       "role": "estagiario",
-      "department": "informática",
-      "position": "Estagiário de informática",
+      "department": "inform\u00e1tica",
+      "position": "Estagi\u00e1rio de inform\u00e1tica",
       "isActive": true,
       "createdAt": "2026-05-14T14:30:23.432Z",
       "updatedAt": "2026-05-14T14:32:06.009Z",
       "lastSignedIn": "2026-05-14T14:32:06.009Z",
-      "passwordHash": "1234"
+      "passwordHash": "1234",
+      "presence": "online",
+      "avatar": null,
+      "darkMode": false
     },
     {
       "id": 3,
@@ -44,12 +50,15 @@
       "createdAt": "2026-05-14T14:30:26.860Z",
       "updatedAt": "2026-05-14T15:21:59.590Z",
       "lastSignedIn": "2026-05-14T15:21:59.590Z",
-      "passwordHash": null
+      "passwordHash": null,
+      "presence": "online",
+      "avatar": null,
+      "darkMode": false
     },
     {
       "id": 4,
       "openId": "local-estagiario",
-      "name": "Estagiário Demo",
+      "name": "Estagi\u00e1rio Demo",
       "email": "estagiario@local.dev",
       "loginMethod": "local",
       "role": "estagiario",
@@ -59,7 +68,10 @@
       "createdAt": "2026-05-14T14:30:30.873Z",
       "updatedAt": "2026-05-14T14:30:32.363Z",
       "lastSignedIn": "2026-05-14T14:30:32.363Z",
-      "passwordHash": null
+      "passwordHash": null,
+      "presence": "online",
+      "avatar": null,
+      "darkMode": false
     }
   ],
   "plans": [

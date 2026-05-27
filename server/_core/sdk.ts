@@ -340,6 +340,7 @@ function buildCronUser(
     lastSignedIn: now,
     taskUid: userInfo.taskUid ?? undefined,
     isCron: true,
+    presence: 'online' as const,
   } as AuthenticatedUser;
 }
 

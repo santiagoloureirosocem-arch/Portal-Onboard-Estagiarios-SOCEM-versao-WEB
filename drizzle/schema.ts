@@ -25,7 +25,7 @@ export const users = mysqlTable("users", {
   isActive: boolean("isActive").default(true).notNull(),
   darkMode: boolean("darkMode").default(false).notNull(),
   avatar: text("avatar"),
-  presence: mysqlEnum("presence", ["online", "ausente", "offline"]).default("online").notNull(),
+  presence: mysqlEnum("presence", ["online", "ausente", "offline"]).default("online"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
