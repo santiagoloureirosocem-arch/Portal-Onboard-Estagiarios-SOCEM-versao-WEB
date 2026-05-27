@@ -200,6 +200,9 @@ export default function Calendar() {
   const datesWithTasks = new Set(
     allTasks.filter(t => t.dueDate).map(t => toDateKey(new Date(t.dueDate!)))
   );
+  const datesWithMilestones = new Set(
+    allTasks.filter(t => t.dueDate && t.title?.startsWith('📅 Fim do plano:')).map(t => toDateKey(new Date(t.dueDate!)))
+  );
 
   // Tasks for selected date
   const selectedKey = toDateKey(selectedDate);
@@ -323,7 +326,7 @@ export default function Calendar() {
                   >
                     {day}
                     {hasTasks && (
-                      <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${todayCell ? 'bg-white/80' : 'bg-primary'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${todayCell ? 'bg-white/80' : datesWithMilestones.has(key) ? 'bg-purple-500' : 'bg-primary'}`} />
                     )}
                   </button>
                 );
@@ -353,19 +356,23 @@ export default function Calendar() {
                 <p className="text-sm text-muted-foreground">Nenhuma tarefa neste dia.</p>
               ) : (
                 <div className="space-y-2">
-                  {selectedDayTasks.map(t => (
-                    <div key={t.id} className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/50 border border-border/50">
-                      {STATUS_ICON[t.status] || <Circle size={14} />}
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-sm font-medium ${t.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                          {t.title}
-                        </p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block ${STATUS_COLORS[t.status]}`}>
-                          {STATUS_LABELS[t.status]}
-                        </span>
+                  {selectedDayTasks.map(t => {
+                    const isMilestone = t.title?.startsWith('📅 Fim do plano:');
+                    return (
+                      <div key={t.id} className={`flex items-start gap-2 p-2.5 rounded-lg border ${isMilestone ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800' : 'bg-muted/50 border-border/50'}`}>
+                        {isMilestone ? <CalendarIcon size={14} className="text-purple-500 shrink-0 mt-0.5" /> : (STATUS_ICON[t.status] || <Circle size={14} />)}
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-medium ${isMilestone ? 'text-purple-700 dark:text-purple-300' : t.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                            {isMilestone ? t.title.replace('📅 Fim do plano: ', '') : t.title}
+                          </p>
+                          {isMilestone
+                            ? <span className="text-xs px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">Marco de Conclusão</span>
+                            : <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block ${STATUS_COLORS[t.status]}`}>{STATUS_LABELS[t.status]}</span>
+                          }
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Card>

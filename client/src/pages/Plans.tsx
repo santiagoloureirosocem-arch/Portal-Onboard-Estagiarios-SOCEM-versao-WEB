@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit2, Eye, Trash2, User } from 'lucide-react';
+import { Plus, Edit2, Eye, Trash2, User, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 
@@ -14,6 +14,7 @@ interface PlanFormData {
   description: string;
   status: 'draft' | 'active' | 'completed' | 'archived';
   assignedToUserId: number | null;
+  endDate: string;
 }
 
 export default function Plans() {
@@ -32,7 +33,7 @@ export default function Plans() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [formData, setFormData] = useState<PlanFormData>({
-    title: '', description: '', status: 'draft', assignedToUserId: null,
+    title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '',
   });
 
   // Only show estagiários in the user selector
@@ -54,10 +55,11 @@ export default function Plans() {
           title: formData.title,
           description: formData.description || undefined,
           assignedToUserId: formData.assignedToUserId || undefined,
+          endDate: formData.endDate ? new Date(formData.endDate) : undefined,
         });
         toast.success(formData.assignedToUserId ? 'Plano criado e atribuído com sucesso' : 'Plano criado com sucesso');
       }
-      setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null });
+      setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '' });
       setShowForm(false);
       setEditingId(null);
       refetch();
@@ -121,7 +123,7 @@ export default function Plans() {
               </Button>
               <Button onClick={() => {
                 setShowForm(!showForm);
-                if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null }); }
+                if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '' }); }
               }} className="gap-2">
                 <Plus size={20} /> Novo Plano
               </Button>
@@ -139,6 +141,24 @@ export default function Plans() {
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground resize-none"
                 rows={4}
               />
+              {/* End date — only when creating */}
+              {!editingId && (
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <span>📅</span>
+                    Data de conclusão do plano <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleInputChange}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <p className="text-xs text-muted-foreground">Se definida, aparecerá como marco no Calendário.</p>
+                </div>
+              )}
               {editingId && (
                 <select name="status" value={formData.status} onChange={handleInputChange}
                   className="px-4 py-2 border border-border rounded-lg bg-background text-foreground w-full">
@@ -175,7 +195,7 @@ export default function Plans() {
                 <Button type="submit" className="flex-1" disabled={createPlanMutation.isPending || updatePlanMutation.isPending}>
                   {editingId ? 'Atualizar' : 'Criar'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null }); }}>
+                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '' }); }}>
                   Cancelar
                 </Button>
               </div>

@@ -191,9 +191,20 @@ export const appRouter = router({
       title: z.string().min(1),
       description: z.string().optional(),
       assignedToUserId: z.number().optional(),
+      endDate: z.date().optional(),
     })).mutation(async ({ input, ctx }) => {
-      const { assignedToUserId, ...planData } = input;
+      const { assignedToUserId, endDate, ...planData } = input;
       const plan = await db.createOnboardingPlan({ ...planData, createdBy: ctx.user.id });
+      // If an end date was provided, create a milestone task so it appears in the calendar
+      if (endDate) {
+        await db.createOnboardingTask({
+          planId: plan.id,
+          title: `📅 Fim do plano: ${planData.title}`,
+          description: 'Marco de conclusão do plano',
+          order: 9999,
+          dueDate: endDate,
+        });
+      }
       // If a user was specified, immediately create an assignment
       if (assignedToUserId) {
         await db.assignPlanToUser({
@@ -201,6 +212,7 @@ export const appRouter = router({
           userId: assignedToUserId,
           assignedBy: ctx.user.id,
           startDate: new Date(),
+          expectedEndDate: endDate,
         });
         const assignedUser = await db.getUserById(assignedToUserId);
         db.addActivityLog({
@@ -274,6 +286,7 @@ export const appRouter = router({
       status: z.enum(["pending", "in_progress", "completed"]).optional(),
       assignedTo: z.number().optional(),
       dueDate: z.date().optional(),
+      order: z.number().optional(),
     })).mutation(async ({ input, ctx }) => {
       // Estagiários can only toggle status to "completed"
       if (ctx.user.role === "estagiario") {

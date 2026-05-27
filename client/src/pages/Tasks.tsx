@@ -28,6 +28,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
+  arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -477,25 +478,46 @@ function KanbanBoard({ plan, canEdit }: { plan: any; canEdit: boolean }) {
     const draggedTask = allTasks.find((t: any) => String(t.id) === active.id);
     if (!draggedTask) return;
 
-    // over.id is always the droppable column id because each column registers useDroppable
-    // For cards inside a column the closest droppable ancestor (the column) wins
-    let targetStatus: string | null = null;
-    if (['pending', 'in_progress', 'completed'].includes(String(over.id))) {
-      targetStatus = String(over.id);
-    } else {
-      // Fallback: over is a card — use that card's column
-      const overTask = allTasks.find((t: any) => String(t.id) === over.id);
-      if (overTask) targetStatus = overTask.status;
+    // Determine if dropped on a column or on another card
+    const isColumnTarget = ['pending', 'in_progress', 'completed'].includes(String(over.id));
+    const overTask = isColumnTarget ? null : allTasks.find((t: any) => String(t.id) === over.id);
+    const targetStatus = isColumnTarget ? String(over.id) : (overTask?.status ?? null);
+
+    if (!targetStatus) return;
+
+    // ── Case 1: moved to a different column ──────────────────────────────────
+    if (targetStatus !== draggedTask.status) {
+      try {
+        await updateTaskMutation.mutateAsync({ id: draggedTask.id, status: targetStatus as any });
+        refetch();
+        toast.success(`Movida para "${STATUS_LABELS[targetStatus]}"`);
+      } catch {
+        toast.error('Erro ao mover tarefa');
+      }
+      return;
     }
 
-    if (!targetStatus || targetStatus === draggedTask.status) return;
-
-    try {
-      await updateTaskMutation.mutateAsync({ id: draggedTask.id, status: targetStatus as any });
-      refetch();
-      toast.success(`Movida para "${STATUS_LABELS[targetStatus]}"`);
-    } catch {
-      toast.error('Erro ao mover tarefa');
+    // ── Case 2: reorder within the same column ───────────────────────────────
+    if (overTask && overTask.id !== draggedTask.id) {
+      const colTasks = allTasks
+        .filter((t: any) => t.status === draggedTask.status)
+        .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+      const oldIdx = colTasks.findIndex((t: any) => t.id === draggedTask.id);
+      const newIdx = colTasks.findIndex((t: any) => t.id === overTask.id);
+      if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return;
+      const reordered = arrayMove(colTasks, oldIdx, newIdx);
+      try {
+        await Promise.all(
+          reordered.map((task: any, idx: number) =>
+            task.order !== idx
+              ? updateTaskMutation.mutateAsync({ id: task.id, order: idx })
+              : Promise.resolve()
+          )
+        );
+        refetch();
+      } catch {
+        toast.error('Erro ao reordenar tarefas');
+      }
     }
   };
 
