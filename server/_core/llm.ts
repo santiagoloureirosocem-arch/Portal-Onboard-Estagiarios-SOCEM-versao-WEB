@@ -27,7 +27,7 @@ export type MessageContent = string | TextContent | ImageContent | FileContent;
 
 export type Message = {
   role: Role;
-  content: MessageContent | MessageContent[];
+  content: MessageContent | MessageContent[] | null;
   name?: string;
   tool_call_id?: string;
   tool_calls?: ToolCall[];
@@ -112,12 +112,13 @@ export type ResponseFormat =
   | { type: "json_schema"; json_schema: JsonSchema };
 
 const ensureArray = (
-  value: MessageContent | MessageContent[]
-): MessageContent[] => (Array.isArray(value) ? value : [value]);
+  value: MessageContent | MessageContent[] | null
+): MessageContent[] => (value == null ? [] : Array.isArray(value) ? value : [value]);
 
 const normalizeContentPart = (
-  part: MessageContent
+  part: MessageContent | null
 ): TextContent | ImageContent | FileContent => {
+  if (part == null) return { type: "text", text: "" };
   if (typeof part === "string") {
     return { type: "text", text: part };
   }
@@ -153,32 +154,28 @@ const normalizeMessage = (message: Message) => {
     };
   }
 
-  const contentParts = ensureArray(message.content).map(normalizeContentPart);
-
-  const base = {
-    role,
-    name,
-  };
-
   if (tool_calls && tool_calls.length > 0) {
     return {
-      ...base,
-      content: contentParts.length === 1 && contentParts[0].type === "text"
-        ? contentParts[0].text
-        : contentParts,
+      role,
+      name,
+      content: null,
       tool_calls,
     };
   }
 
+  const contentParts = ensureArray(message.content).map(normalizeContentPart);
+
   if (contentParts.length === 1 && contentParts[0].type === "text") {
     return {
-      ...base,
+      role,
+      name,
       content: contentParts[0].text,
     };
   }
 
   return {
-    ...base,
+    role,
+    name,
     content: contentParts,
   };
 };

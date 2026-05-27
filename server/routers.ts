@@ -724,7 +724,7 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
             // Add assistant message with tool calls
             llmMessages.push({
               role: "assistant",
-              content: choice?.content ?? "",
+              content: null,
               tool_calls: toolCalls.map(tc => ({
                 id: tc.id,
                 type: "function" as const,
