@@ -10,7 +10,7 @@ import {
   CheckCircle2, Clock, Circle, ChevronDown, ChevronRight,
   Eye, FileText, Plus, X, CalendarIcon, Trash2,
   MessageSquare, Paperclip, Send, Upload, Image as ImageIcon, File,
-  ChevronRight as ChevronRightIcon, Kanban, List,
+  ChevronRight as ChevronRightIcon, LayoutDashboard, List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -20,6 +20,7 @@ import {
   useSensor,
   useSensors,
   closestCenter,
+  useDroppable,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
@@ -31,7 +32,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed';
-type ViewMode = 'list' | 'kanban';
+type ViewMode = 'list' | 'estado';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pendente',
@@ -358,13 +359,9 @@ function KanbanCard({
             <CalendarIcon size={10} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
           </p>
         ) : <span />}
-        <button
-          onClick={e => { e.stopPropagation(); onStatusChange(task); }}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          title="Avançar estado"
-        >
+        <div className="flex items-center gap-1">
           {STATUS_ICON[task.status]}
-        </button>
+        </div>
       </div>
     </div>
   );
@@ -382,9 +379,11 @@ function KanbanColumn({
   onDelete: (taskId: number) => void;
 }) {
   const ids = tasks.map((t: any) => String(t.id));
+  // Make the whole column a drop target so dragging into empty columns works
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
-    <div className={`flex flex-col rounded-2xl border-t-4 ${column.color} bg-muted/30 min-h-[300px]`}>
+    <div className={`flex flex-col rounded-2xl border-t-4 ${column.color} bg-muted/30 min-h-[300px] transition-colors ${isOver ? 'bg-primary/5 ring-2 ring-primary/30' : ''}`}>
       <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${column.headerBg}`}>
         <div className="flex items-center gap-2">
           {STATUS_ICON[column.id]}
@@ -394,7 +393,7 @@ function KanbanColumn({
           {tasks.length}
         </span>
       </div>
-      <div className="flex-1 p-3 space-y-2">
+      <div ref={setNodeRef} className="flex-1 p-3 space-y-2">
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           {tasks.map((task: any) => (
             <KanbanCard
@@ -409,7 +408,7 @@ function KanbanColumn({
         </SortableContext>
         {tasks.length === 0 && (
           <div className="flex items-center justify-center h-24 text-xs text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
-            Sem tarefas
+            Arrasta aqui
           </div>
         )}
       </div>
@@ -475,18 +474,16 @@ function KanbanBoard({ plan, canEdit }: { plan: any; canEdit: boolean }) {
     const { active, over } = event;
     if (!over) return;
 
-    // Find what column the card was dropped into — the over.id can be a task id or a column id
     const draggedTask = allTasks.find((t: any) => String(t.id) === active.id);
     if (!draggedTask) return;
 
-    // Determine target column
+    // over.id is always the droppable column id because each column registers useDroppable
+    // For cards inside a column the closest droppable ancestor (the column) wins
     let targetStatus: string | null = null;
-
-    // If dropped directly onto a column id
     if (['pending', 'in_progress', 'completed'].includes(String(over.id))) {
       targetStatus = String(over.id);
     } else {
-      // Dropped onto another card — use that card's status
+      // Fallback: over is a card — use that card's column
       const overTask = allTasks.find((t: any) => String(t.id) === over.id);
       if (overTask) targetStatus = overTask.status;
     }
@@ -699,18 +696,13 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
                 className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/30 group cursor-pointer ${idx > 0 ? 'border-t border-border/50' : ''}`}
                 onClick={() => setSelectedTask(task)}
               >
-                {canEdit ? (
-                  <button onClick={(e) => handleStatusChange(task, e)} className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform">
-                    {STATUS_ICON[task.status as keyof typeof STATUS_ICON] || <Circle size={16} />}
-                  </button>
-                ) : (
-                  <button onClick={(e) => handleStatusChange(task, e)} className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform">
-                    {task.status === 'completed'
-                      ? <CheckCircle2 size={18} className="text-green-500" />
-                      : <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-300 dark:border-slate-600 hover:border-green-400 transition-colors" />
-                    }
-                  </button>
-                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); toast.info('Para mudar o estado, usa a vista "Estado Tarefa".'); }}
+                  className="mt-0.5 flex-shrink-0 cursor-default"
+                  title="Muda o estado na vista Estado Tarefa"
+                >
+                  {STATUS_ICON[task.status as keyof typeof STATUS_ICON] || <Circle size={16} />}
+                </button>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                     {task.title}
@@ -793,14 +785,14 @@ export default function Tasks() {
                 <span className="hidden sm:inline">Lista</span>
               </button>
               <button
-                onClick={() => setViewMode('kanban')}
+                onClick={() => setViewMode('estado')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'kanban' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  viewMode === 'estado' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                 }`}
-                title="Vista Kanban"
+                title="Estado Tarefa"
               >
-                <Kanban size={15} />
-                <span className="hidden sm:inline">Kanban</span>
+                <LayoutDashboard size={15} />
+                <span className="hidden sm:inline">Estado Tarefa</span>
               </button>
             </div>
             {canEdit && (
@@ -826,10 +818,10 @@ export default function Tasks() {
         )}
 
         {/* Kanban tip banner */}
-        {viewMode === 'kanban' && (
+        {viewMode === 'estado' && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg px-4 py-2">
-            <Kanban size={13} />
-            Arrasta os cartões entre colunas para mudar o estado da tarefa.
+            <LayoutDashboard size={13} />
+            Arrasta os cartões entre colunas para mudar o estado da tarefa. Ao largar numa coluna o estado é atualizado automaticamente.
           </div>
         )}
 
@@ -847,7 +839,7 @@ export default function Tasks() {
         ) : plans && plans.length > 0 ? (
           <div className="space-y-4">
             {plans.map((plan: any) =>
-              viewMode === 'kanban' ? (
+              viewMode === 'estado' ? (
                 <KanbanBoard key={plan.id} plan={plan} canEdit={canEdit} />
               ) : (
                 <PlanTaskGroup key={plan.id} plan={plan} filterStatus={filterStatus} canEdit={canEdit} />
