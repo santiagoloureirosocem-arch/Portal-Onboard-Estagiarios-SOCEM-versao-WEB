@@ -70,18 +70,25 @@ function avatarGradient(id: number) {
   return gradients[(id ?? 0) % gradients.length];
 }
 
-function UserAvatar({ name, id, size = "md", avatar, online = false }: {
-  name: string; id: number; size?: "xs"|"sm"|"md"|"lg"; avatar?: string | null; online?: boolean;
+const PRESENCE_DOT: Record<string, string> = {
+  online: "bg-green-500",
+  ausente: "bg-yellow-400",
+  offline: "bg-slate-400",
+};
+
+function UserAvatar({ name, id, size = "md", avatar, online = false, presence }: {
+  name: string; id: number; size?: "xs"|"sm"|"md"|"lg"; avatar?: string | null; online?: boolean; presence?: string | null;
 }) {
   const sz = size === "xs" ? "w-6 h-6 text-[10px]" : size === "sm" ? "w-8 h-8 text-xs" : size === "lg" ? "w-12 h-12 text-base" : "w-10 h-10 text-sm";
   const dotSz = size === "lg" ? "w-3.5 h-3.5 border-2" : "w-2.5 h-2.5 border-2";
+  const dotColor = presence ? (PRESENCE_DOT[presence] ?? "bg-slate-400") : "bg-green-500";
   return (
     <div className="relative flex-shrink-0">
       {avatar
         ? <img src={avatar} alt={name} className={`${sz} rounded-full object-cover ring-2 ring-white dark:ring-slate-900`} />
         : <div className={`${sz} rounded-full bg-gradient-to-br ${avatarGradient(id)} flex items-center justify-center text-white font-bold ring-2 ring-white dark:ring-slate-900`}>{initials(name)}</div>
       }
-      {online && <span className={`absolute bottom-0 right-0 ${dotSz} bg-emerald-400 rounded-full border-white dark:border-slate-900`} />}
+      {(online || presence) && <span className={`absolute bottom-0 right-0 ${dotSz} ${dotColor} rounded-full border-white dark:border-slate-900`} />}
     </div>
   );
 }
@@ -222,7 +229,7 @@ export default function Mensagens() {
                       : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
                     }`}
                 >
-                  <UserAvatar name={contact.name ?? contact.openId} id={contact.id} avatar={contact.avatar} online />
+                  <UserAvatar name={contact.name ?? contact.openId} id={contact.id} avatar={contact.avatar} presence={(contact as any).presence} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className={`text-sm font-semibold truncate ${isActive ? "text-red-700 dark:text-red-400" : "text-slate-800 dark:text-slate-100"}`}>
@@ -266,7 +273,7 @@ export default function Mensagens() {
                   <button onClick={() => setSelectedUserId(null)} className="md:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
                     <ArrowLeft size={18} />
                   </button>
-                  <UserAvatar name={selectedContact?.name ?? selectedContact?.openId ?? ""} id={selectedContact?.id ?? 0} avatar={selectedContact?.avatar} online />
+                  <UserAvatar name={selectedContact?.name ?? selectedContact?.openId ?? ""} id={selectedContact?.id ?? 0} avatar={selectedContact?.avatar} presence={(selectedContact as any)?.presence} />
                   <div>
                     <p className="font-bold text-slate-900 dark:text-white leading-tight">{selectedContact?.name ?? selectedContact?.openId}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -449,7 +456,7 @@ export default function Mensagens() {
                   <button onClick={() => setShowInfo(false)} className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors"><X size={15} /></button>
                 </div>
                 <div className="p-5 flex flex-col items-center text-center border-b border-slate-100 dark:border-slate-800">
-                  <UserAvatar name={selectedContact.name ?? selectedContact.openId} id={selectedContact.id} size="lg" avatar={selectedContact.avatar} online />
+                  <UserAvatar name={selectedContact.name ?? selectedContact.openId} id={selectedContact.id} size="lg" avatar={selectedContact.avatar} presence={(selectedContact as any).presence} />
                   <h3 className="mt-3 font-bold text-slate-900 dark:text-white text-sm">{selectedContact.name ?? selectedContact.openId}</h3>
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className={`w-1.5 h-1.5 rounded-full ${roleDot(selectedContact.role ?? "")}`} />

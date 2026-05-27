@@ -454,7 +454,7 @@ export async function getPlanAssignmentsByPlanId(planId: number) {
       .filter(a => a.planId === planId)
       .map(a => {
         const user = Array.from(memUsers.values()).find(u => u.id === a.userId);
-        return { ...a, userName: user?.name ?? null, userAvatar: user?.avatar ?? null };
+        return { ...a, userName: user?.name ?? null, userAvatar: user?.avatar ?? null, userPresence: (user as any)?.presence ?? 'online' };
       });
   }
   const results = await db
@@ -471,6 +471,7 @@ export async function getPlanAssignmentsByPlanId(planId: number) {
       updatedAt: planAssignments.updatedAt,
       userName: users.name,
       userAvatar: users.avatar,
+      userPresence: users.presence,
     })
     .from(planAssignments)
     .leftJoin(users, eq(planAssignments.userId, users.id))

@@ -316,12 +316,18 @@ export default function PlanDetail() {
             <div className="flex flex-wrap gap-2">
               {assignments.map((a: any) => (
                 <div key={a.id} className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full border border-border">
-                  {a.userAvatar
-                    ? <img src={a.userAvatar} alt={a.userName ?? ''} className="w-5 h-5 rounded-full object-cover" />
-                    : <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                        {(a.userName ?? 'U')[0].toUpperCase()}
-                      </div>
-                  }
+                  <div className="relative">
+                    {a.userAvatar
+                      ? <img src={a.userAvatar} alt={a.userName ?? ''} className="w-5 h-5 rounded-full object-cover" />
+                      : <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                          {(a.userName ?? 'U')[0].toUpperCase()}
+                        </div>
+                    }
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-background ${
+                      a.userPresence === "online" ? "bg-green-500" :
+                      a.userPresence === "ausente" ? "bg-yellow-400" : "bg-slate-400"
+                    }`} />
+                  </div>
                   <span className="text-xs font-medium text-foreground">{a.userName ?? `#${a.userId}`}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${a.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
                     {a.status === 'active' ? 'Ativo' : 'Concluído'}

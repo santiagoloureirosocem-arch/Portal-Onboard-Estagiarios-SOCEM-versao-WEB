@@ -146,11 +146,17 @@ function StaffDashboard() {
               {recentUsers.map((u: any) => (
                 <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-transparent">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0 overflow-hidden">
-                      {u.avatar
-                        ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
-                        : <span className="text-white text-xs font-bold">{(u.name || "?")[0].toUpperCase()}</span>
-                      }
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center overflow-hidden">
+                        {u.avatar
+                          ? <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                          : <span className="text-white text-xs font-bold">{(u.name || "?")[0].toUpperCase()}</span>
+                        }
+                      </div>
+                      <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-800 ${
+                        u.presence === "online" ? "bg-green-500" :
+                        u.presence === "ausente" ? "bg-yellow-400" : "bg-slate-400"
+                      }`} />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{u.name}</p>
