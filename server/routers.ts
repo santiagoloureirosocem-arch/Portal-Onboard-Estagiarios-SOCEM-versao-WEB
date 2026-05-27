@@ -5,7 +5,7 @@ import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
-import { invokeLLM, type Message } from "./_core/llm";
+import { invokeLLM, type Message, type Tool } from "./_core/llm";
 
 
 // ── Default avatar for new users ─────────────────────────────────────────────
@@ -552,11 +552,149 @@ O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo 
 - Pode colapsar a sidebar clicando no ícone do menu
 - Use o menu do perfil (canto inferior da sidebar) para gerir estado de presença ou terminar sessão
 
-Responde SEMPRE em português de Portugal (pt-PT). Sê útil, preciso e amigável. Se não souberes a resposta, diz que não tens essa informação e sugere contactar o administrador do sistema.`;
+Responde SEMPRE em português de Portugal (pt-PT). Sê útil, preciso e amigável.
+
+Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre que precisares de informação atual sobre utilizadores, planos, tarefas ou métricas:
+- get_users: lista todos os utilizadores ativos
+- get_plans: lista planos de integração (filtro opcional por status)
+- get_plan_tasks: obtém tarefas de um plano específico
+- get_metrics: métricas do dashboard (contagens globais)
+- get_user_by_name: procura um utilizador pelo nome
+- get_plan_assignments: quem está atribuído a um plano específico`;
 
         const { messages } = input;
 
-        // Build the messages array: system prompt + user messages
+        // Define tools for the LLM
+        const tools: Tool[] = [
+          {
+            type: "function",
+            function: {
+              name: "get_users",
+              description: "Lista todos os utilizadores ativos do sistema com os seus papéis (admin, tutor, estagiario)",
+              parameters: { type: "object", properties: {}, required: [] },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_plans",
+              description: "Lista os planos de integração. Opcionalmente filtra por status (draft, active, completed, archived)",
+              parameters: {
+                type: "object",
+                properties: {
+                  status: { type: "string", enum: ["draft", "active", "completed", "archived"], description: "Filtrar por status do plano" },
+                },
+                required: [],
+              },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_plan_tasks",
+              description: "Obtém todas as tarefas de um plano de integração específico",
+              parameters: {
+                type: "object",
+                properties: {
+                  planId: { type: "number", description: "ID do plano" },
+                },
+                required: ["planId"],
+              },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_metrics",
+              description: "Obtém métricas globais do dashboard: número de estagiários ativos, planos em curso, tarefas pendentes e taxa de conclusão",
+              parameters: { type: "object", properties: {}, required: [] },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_user_by_name",
+              description: "Procura um utilizador pelo nome (parcial ou completo)",
+              parameters: {
+                type: "object",
+                properties: {
+                  name: { type: "string", description: "Nome do utilizador a procurar" },
+                },
+                required: ["name"],
+              },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_plan_assignments",
+              description: "Obtém lista de utilizadores atribuídos a um plano específico",
+              parameters: {
+                type: "object",
+                properties: {
+                  planId: { type: "number", description: "ID do plano" },
+                },
+                required: ["planId"],
+              },
+            },
+          },
+        ];
+
+        // Tool handler: executes the tool and returns a string result
+        async function handleToolCall(name: string, args: Record<string, unknown>): Promise<string> {
+          try {
+            switch (name) {
+              case "get_users": {
+                const users = await db.getAllUsers();
+                return JSON.stringify(users.map((u: any) => ({
+                  id: u.id, name: u.name, email: u.email,
+                  role: u.role, department: u.department, position: u.position,
+                  presence: u.presence,
+                })));
+              }
+              case "get_plans": {
+                const allPlans = await db.getAllOnboardingPlans();
+                const filtered = args.status
+                  ? allPlans.filter((p: any) => p.status === args.status)
+                  : allPlans;
+                return JSON.stringify(filtered.map((p: any) => ({
+                  id: p.id, title: p.title, description: p.description,
+                  status: p.status, startDate: p.startDate, endDate: p.endDate,
+                  createdBy: p.createdBy,
+                })));
+              }
+              case "get_plan_tasks": {
+                const tasks = await db.getTasksByPlanId(args.planId as number);
+                return JSON.stringify(tasks);
+              }
+              case "get_metrics": {
+                const metrics = await db.getDashboardMetrics();
+                return JSON.stringify(metrics);
+              }
+              case "get_user_by_name": {
+                const allUsers = await db.getAllUsers();
+                const query = (args.name as string).toLowerCase();
+                const found = allUsers.filter((u: any) =>
+                  u.name?.toLowerCase().includes(query)
+                );
+                return JSON.stringify(found.map((u: any) => ({
+                  id: u.id, name: u.name, email: u.email,
+                  role: u.role, department: u.department, position: u.position,
+                })));
+              }
+              case "get_plan_assignments": {
+                const assignments = await db.getPlanAssignmentsByPlanId(args.planId as number);
+                return JSON.stringify(assignments);
+              }
+              default:
+                return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });
+            }
+          } catch (error) {
+            return JSON.stringify({ error: error instanceof Error ? error.message : "Erro ao executar ferramenta" });
+          }
+        }
+
+        // Build initial messages
         const llmMessages: Message[] = [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages.map(m => ({
@@ -566,20 +704,58 @@ Responde SEMPRE em português de Portugal (pt-PT). Sê útil, preciso e amigáve
         ];
 
         try {
-          const result = await invokeLLM({ messages: llmMessages });
-          const responseContent = result.choices[0]?.message?.content;
-          const text = typeof responseContent === "string"
-            ? responseContent
-            : Array.isArray(responseContent)
-              ? responseContent.map(c => (typeof c === "string" ? c : c.type === "text" ? c.text : "")).join("")
-              : "Desculpa, ocorreu um erro ao gerar a resposta.";
+          // Tool call loop (max 10 iterations)
+          let finalContent = "";
+          for (let iteration = 0; iteration < 10; iteration++) {
+            const result = await invokeLLM({ messages: llmMessages, tools });
+            const choice = result.choices[0]?.message;
+            const toolCalls = choice?.tool_calls;
 
-          return { content: text };
+            if (!toolCalls || toolCalls.length === 0) {
+              // No tool calls — this is the final response
+              finalContent = typeof choice?.content === "string"
+                ? choice.content
+                : Array.isArray(choice?.content)
+                  ? choice.content.map(c => (typeof c === "string" ? c : c.type === "text" ? c.text : "")).join("")
+                  : "Desculpa, ocorreu um erro ao gerar a resposta.";
+              break;
+            }
+
+            // Add assistant message with tool calls
+            llmMessages.push({
+              role: "assistant",
+              content: choice?.content ?? "",
+              tool_calls: toolCalls.map(tc => ({
+                id: tc.id,
+                type: "function" as const,
+                function: { name: tc.function.name, arguments: tc.function.arguments },
+              })),
+            } as Message);
+
+            // Execute each tool call
+            for (const tc of toolCalls) {
+              let parsedArgs: Record<string, unknown> = {};
+              try {
+                parsedArgs = JSON.parse(tc.function.arguments);
+              } catch {}
+              const toolResult = await handleToolCall(tc.function.name, parsedArgs);
+              llmMessages.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: toolResult,
+              } as Message);
+            }
+          }
+
+          if (!finalContent) {
+            finalContent = "Desculpa, ocorreu um erro ao gerar a resposta.";
+          }
+
+          return { content: finalContent };
         } catch (error: unknown) {
           const errMsg = error instanceof Error ? error.message : "Erro desconhecido";
           console.error("[AI Chat Error]", errMsg);
 
-          // Detect specific configuration errors and give helpful messages
           if (errMsg.includes("OPENAI_API_KEY is not configured") || errMsg.includes("API key")) {
             return { content: "O **Assistente IA** ainda não está configurado. O administrador do sistema precisa de definir a variável de ambiente `BUILT_IN_FORGE_API_KEY` no ficheiro `.env` para ativar esta funcionalidade.\n\nPodes contactar o administrador para resolver isto. Enquanto isso, consulta a página de **Ajuda** (/help) para ver o guia completo da aplicação." };
           }
