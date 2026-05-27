@@ -177,7 +177,7 @@ export default function Settings() {
             </div>
             <div className="flex-1">
               <p className="text-sm text-foreground font-medium">Escolhe uma foto</p>
-              <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WEBP. Máximo 2MB.</p>
+              <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WEBP.</p>
               <div className="flex gap-2 mt-3">
                 <Button
                   size="sm"
