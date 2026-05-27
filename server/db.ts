@@ -49,12 +49,16 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
         description TEXT,
+        startDate DATETIME,
+        endDate DATETIME,
         status ENUM('draft','active','completed','archived') NOT NULL DEFAULT 'draft',
         createdBy INT NOT NULL,
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
+    try { await db.execute(sql`ALTER TABLE onboarding_plans ADD COLUMN startDate DATETIME`); } catch {}
+    try { await db.execute(sql`ALTER TABLE onboarding_plans ADD COLUMN endDate DATETIME`); } catch {}
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS onboarding_tasks (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -62,6 +66,7 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         title VARCHAR(255) NOT NULL,
         description TEXT,
         \`order\` INT NOT NULL,
+        startDate DATETIME,
         dueDate DATETIME,
         status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
         assignedTo INT,
@@ -69,6 +74,7 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
+    try { await db.execute(sql`ALTER TABLE onboarding_tasks ADD COLUMN startDate DATETIME`); } catch {}
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS plan_assignments (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -348,13 +354,16 @@ export async function deactivateUser(id: number) {
 }
 
 // Onboarding Plans
-export async function createOnboardingPlan(data: { title: string; description?: string; createdBy: number }) {
+export async function createOnboardingPlan(data: { title: string; description?: string; createdBy: number; startDate?: Date; endDate?: Date }) {
   const db = await getDb();
   if (!db) {
     const plan = { id: _nextId++, ...data, status: 'draft' as const, createdAt: new Date(), updatedAt: new Date() };
     memPlans.push(plan); saveLocalDb(); return plan;
   }
-  const result = await db.insert(onboardingPlans).values({ title: data.title, description: data.description, createdBy: data.createdBy });
+  const values: Record<string, unknown> = { title: data.title, description: data.description, createdBy: data.createdBy };
+  if (data.startDate) values.startDate = data.startDate;
+  if (data.endDate) values.endDate = data.endDate;
+  const result = await db.insert(onboardingPlans).values(values as any);
   const insertId = (result as any).insertId ?? (result as any)[0]?.insertId;
   return { id: insertId, ...data, status: 'draft' as const };
 }
@@ -386,7 +395,7 @@ export async function getPlansAssignedToUser(userId: number) {
   return plans.filter(p => planIds.includes(p.id));
 }
 
-export async function updateOnboardingPlan(id: number, data: Partial<{ title: string; description: string; status: 'draft' | 'active' | 'completed' | 'archived' }>) {
+export async function updateOnboardingPlan(id: number, data: Partial<{ title: string; description: string; status: 'draft' | 'active' | 'completed' | 'archived'; startDate: Date; endDate: Date }>) {
   const db = await getDb();
   if (!db) {
     const idx = memPlans.findIndex(p => p.id === id);
@@ -398,7 +407,7 @@ export async function updateOnboardingPlan(id: number, data: Partial<{ title: st
 }
 
 // Onboarding Tasks
-export async function createOnboardingTask(data: { planId: number; title: string; description?: string; order: number; dueDate?: Date; assignedTo?: number }) {
+export async function createOnboardingTask(data: { planId: number; title: string; description?: string; order: number; startDate?: Date; dueDate?: Date; assignedTo?: number }) {
   const db = await getDb();
   if (!db) {
     const task = { id: _nextId++, ...data, status: 'pending' as const, createdAt: new Date(), updatedAt: new Date() };
@@ -420,7 +429,7 @@ export async function getTaskById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateOnboardingTask(id: number, data: Partial<{ title: string; description: string; status: 'pending' | 'in_progress' | 'completed'; assignedTo: number; dueDate: Date }>) {
+export async function updateOnboardingTask(id: number, data: Partial<{ title: string; description: string; status: 'pending' | 'in_progress' | 'completed'; assignedTo: number; startDate: Date; dueDate: Date }>) {
   const db = await getDb();
   if (!db) {
     const idx = memTasks.findIndex(t => t.id === id);

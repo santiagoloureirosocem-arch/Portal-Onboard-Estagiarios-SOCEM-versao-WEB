@@ -41,6 +41,8 @@ export const onboardingPlans = mysqlTable("onboarding_plans", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  startDate: datetime("startDate"),
+  endDate: datetime("endDate"),
   status: mysqlEnum("status", ["draft", "active", "completed", "archived"]).default("draft").notNull(),
   createdBy: int("createdBy").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -59,6 +61,7 @@ export const onboardingTasks = mysqlTable("onboarding_tasks", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   order: int("order").notNull(),
+  startDate: datetime("startDate"),
   dueDate: datetime("dueDate"),
   status: mysqlEnum("status", ["pending", "in_progress", "completed"]).default("pending").notNull(),
   assignedTo: int("assignedTo"), // User ID of person responsible
