@@ -6,9 +6,37 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Users, FileText, CheckCircle2, TrendingUp,
-  Eye, ClipboardList, BookOpen, ArrowRight,
-  Clock, AlertCircle, Calendar,
+  ArrowRight, AlertCircle, Calendar, Clock,
+  Flame, Star, Target, ChevronRight, Sun,
+  BookOpen, Zap, CheckSquare,
 } from "lucide-react";
+import { format, isToday, isTomorrow, isPast, parseISO, differenceInDays } from "date-fns";
+import { pt } from "date-fns/locale";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function getUrgencyInfo(dueDateStr?: string | null): {
+  label: string; color: string; bg: string; urgent: boolean;
+} {
+  if (!dueDateStr) return { label: "", color: "", bg: "", urgent: false };
+  const due = typeof dueDateStr === "string" ? parseISO(dueDateStr) : new Date(dueDateStr);
+  const diff = differenceInDays(due, new Date());
+
+  if (isPast(due)) return { label: "Em atraso!", color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800", urgent: true };
+  if (isToday(due)) return { label: "Hoje", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800", urgent: true };
+  if (isTomorrow(due)) return { label: "Amanhã", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800", urgent: true };
+  if (diff <= 3) return { label: `${diff} dias`, color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800", urgent: false };
+  return { label: format(due, "d MMM", { locale: pt }), color: "text-slate-500 dark:text-slate-400", bg: "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700", urgent: false };
+}
+
+// ─── Shared Sub-components ────────────────────────────────────────────────────
 
 function StatCard({ label, value, icon: Icon, color, sub }: {
   label: string; value: string | number; icon: any; color: string; sub?: string;
@@ -18,8 +46,9 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
     green:  { bg: "from-green-50 to-green-100/60 dark:from-green-950/40 dark:to-green-900/20", icon: "text-green-500", badge: "bg-green-500/10 border-green-200 dark:border-green-800" },
     orange: { bg: "from-orange-50 to-orange-100/60 dark:from-orange-950/40 dark:to-orange-900/20", icon: "text-orange-500", badge: "bg-orange-500/10 border-orange-200 dark:border-orange-800" },
     purple: { bg: "from-purple-50 to-purple-100/60 dark:from-purple-950/40 dark:to-purple-900/20", icon: "text-purple-500", badge: "bg-purple-500/10 border-purple-200 dark:border-purple-800" },
+    red:    { bg: "from-red-50 to-red-100/60 dark:from-red-950/40 dark:to-red-900/20", icon: "text-red-500", badge: "bg-red-500/10 border-red-200 dark:border-red-800" },
   };
-  const c = colors[color];
+  const c = colors[color] ?? colors.blue;
   return (
     <Card className={`p-6 bg-gradient-to-br ${c.bg} border-0 ring-1 ring-slate-200/80 dark:ring-slate-700/50`}>
       <div className="flex items-start justify-between">
@@ -78,21 +107,19 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
   );
 }
 
+// ─── Staff Dashboard ──────────────────────────────────────────────────────────
+
 function StaffDashboard() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
   const { data: stats } = trpc.dashboard.metrics.useQuery();
   const { data: plans } = trpc.plans.list.useQuery();
   const { data: users } = trpc.users.list.useQuery();
 
-  const pendingUsers = (users || []).filter((u: any) => u.isActive);
   const recentPlans = (plans || []).slice(0, 4);
   const recentUsers = (users || []).slice(0, 5);
 
   return (
     <div className="space-y-7">
-
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Estagiários Ativos" value={stats?.activeInterns || 0} icon={Users} color="blue" />
         <StatCard label="Planos em Curso" value={stats?.activePlans || 0} icon={FileText} color="green" />
@@ -100,10 +127,7 @@ function StaffDashboard() {
         <StatCard label="Taxa de Conclusão" value={`${stats?.completionRate || 0}%`} icon={TrendingUp} color="purple" />
       </div>
 
-      {/* Two column section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Planos Recentes */}
         <Card className="p-6">
           <SectionHeader title="Planos Recentes" action="Ver todos" onAction={() => setLocation("/plans")} />
           {recentPlans.length > 0 ? (
@@ -138,7 +162,6 @@ function StaffDashboard() {
           )}
         </Card>
 
-        {/* Utilizadores Recentes */}
         <Card className="p-6">
           <SectionHeader title="Utilizadores" action="Ver todos" onAction={() => setLocation("/users")} />
           {recentUsers.length > 0 ? (
@@ -176,7 +199,6 @@ function StaffDashboard() {
         </Card>
       </div>
 
-      {/* Completion rate bar */}
       {stats && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-3">
@@ -202,42 +224,195 @@ function StaffDashboard() {
   );
 }
 
+// ─── Intern Dashboard ─────────────────────────────────────────────────────────
+
 function InternDashboard() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { data: progress } = trpc.dashboard.myProgress.useQuery();
   const { data: myPlans } = trpc.plans.list.useQuery();
+  const { data: allTasks } = trpc.tasks.listAll.useQuery();
+
+  // Compute today's tasks and upcoming tasks
+  const pendingTasks = (allTasks || []).filter((t: any) => t.status === "pending" || t.status === "in_progress");
+  const todayTasks = pendingTasks.filter((t: any) => t.dueDate && isToday(typeof t.dueDate === "string" ? parseISO(t.dueDate) : new Date(t.dueDate)));
+  const overdueTasks = pendingTasks.filter((t: any) => t.dueDate && isPast(typeof t.dueDate === "string" ? parseISO(t.dueDate) : new Date(t.dueDate)) && !isToday(typeof t.dueDate === "string" ? parseISO(t.dueDate) : new Date(t.dueDate)));
+
+  // Upcoming tasks sorted by due date (next 7 days), excluding today/overdue
+  const upcomingTasks = pendingTasks
+    .filter((t: any) => {
+      if (!t.dueDate) return false;
+      const due = typeof t.dueDate === "string" ? parseISO(t.dueDate) : new Date(t.dueDate);
+      return !isPast(due) && !isToday(due);
+    })
+    .sort((a: any, b: any) => {
+      const da = typeof a.dueDate === "string" ? parseISO(a.dueDate) : new Date(a.dueDate);
+      const db = typeof b.dueDate === "string" ? parseISO(b.dueDate) : new Date(b.dueDate);
+      return da.getTime() - db.getTime();
+    })
+    .slice(0, 5);
+
+  // Tasks with no due date
+  const noDueTasks = pendingTasks.filter((t: any) => !t.dueDate).slice(0, 3);
+
+  const completionRate = progress?.completionRate ?? 0;
+  const totalTasks = progress?.totalTasks ?? 0;
+  const completedTasks = progress?.completedTasks ?? 0;
+
+  // What-to-do-today items = overdue + today tasks
+  const todayItems = [...overdueTasks, ...todayTasks];
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
 
-      {/* Stats */}
+      {/* Welcome banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-6 text-white shadow-lg">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15)_0%,_transparent_60%)]" />
+        <div className="relative flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Sun size={16} className="opacity-80" />
+              <span className="text-sm font-medium opacity-80">{getGreeting()}</span>
+            </div>
+            <h1 className="text-2xl font-bold">{user?.name?.split(" ")[0] || "Estagiário"}</h1>
+            <p className="text-sm opacity-75 mt-1">
+              {format(new Date(), "EEEE, d 'de' MMMM", { locale: pt })}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-4xl font-black tabular-nums">{completionRate}%</div>
+            <div className="text-xs opacity-70 mt-0.5">Progresso global</div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="relative mt-5">
+          <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-all duration-1000"
+              style={{ width: `${completionRate}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-1.5 text-xs opacity-70">
+            <span>{completedTasks} concluídas</span>
+            <span>{totalTasks} total</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Planos Atribuídos" value={progress?.assignedPlans ?? 0} icon={BookOpen} color="blue" />
         <StatCard
           label="Tarefas Concluídas"
-          value={progress?.completedTasks ?? 0}
+          value={completedTasks}
           icon={CheckCircle2}
           color="green"
-          sub={`de ${progress?.totalTasks ?? 0} no total`}
+          sub={`de ${totalTasks} no total`}
         />
-        <StatCard label="Progresso Global" value={`${progress?.completionRate ?? 0}%`} icon={TrendingUp} color="purple" />
+        <StatCard
+          label="Em Atraso"
+          value={overdueTasks.length}
+          icon={AlertCircle}
+          color={overdueTasks.length > 0 ? "red" : "green"}
+          sub={overdueTasks.length > 0 ? "Requerem atenção" : "Tudo em dia!"}
+        />
       </div>
 
-      {/* Progress bar */}
-      {progress && progress.totalTasks > 0 && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Progresso do Estágio</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{progress.completedTasks} de {progress.totalTasks} tarefas concluídas</p>
+      {/* What to do today */}
+      {todayItems.length > 0 && (
+        <Card className="p-6 border-2 border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/10">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+              <Flame size={16} className="text-orange-500" />
             </div>
-            <span className="text-2xl font-bold text-slate-800 dark:text-slate-100 tabular-nums">{progress.completionRate}%</span>
+            <div>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">O que fazer hoje</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{todayItems.length} tarefa{todayItems.length !== 1 ? "s" : ""} a tratar</p>
+            </div>
           </div>
-          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-700"
-              style={{ width: `${progress.completionRate}%` }}
-            />
+          <div className="space-y-2">
+            {todayItems.map((task: any) => {
+              const urg = getUrgencyInfo(task.dueDate);
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => setLocation("/tasks")}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${urg.bg}`}
+                >
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${urg.urgent ? "bg-red-100 dark:bg-red-900/40" : "bg-orange-100 dark:bg-orange-900/40"}`}>
+                    <Target size={13} className={urg.color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{task.title}</p>
+                    {task.description && <p className="text-xs text-slate-400 truncate">{task.description}</p>}
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <Clock size={11} className={urg.color} />
+                    <span className={`text-xs font-bold ${urg.color}`}>{urg.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4 w-full border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+            onClick={() => setLocation("/tasks")}
+          >
+            <CheckSquare size={14} className="mr-1.5" />
+            Ver todas as tarefas
+          </Button>
+        </Card>
+      )}
+
+      {/* No-deadline nudge — only if no urgent tasks */}
+      {todayItems.length === 0 && noDueTasks.length > 0 && (
+        <Card className="p-5 border-dashed border-2 border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20">
+          <div className="flex items-center gap-3 mb-3">
+            <Zap size={16} className="text-slate-400" />
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tarefas sem prazo definido</p>
+          </div>
+          <div className="space-y-1.5">
+            {noDueTasks.map((task: any) => (
+              <div key={task.id} onClick={() => setLocation("/tasks")} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer group">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                <p className="text-sm text-slate-600 dark:text-slate-300 truncate flex-1">{task.title}</p>
+                <ChevronRight size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Próximas tarefas com deadlines */}
+      {upcomingTasks.length > 0 && (
+        <Card className="p-6">
+          <SectionHeader title="Próximas Tarefas" action="Ver todas" onAction={() => setLocation("/tasks")} />
+          <div className="space-y-2">
+            {upcomingTasks.map((task: any) => {
+              const urg = getUrgencyInfo(task.dueDate);
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => setLocation("/tasks")}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
+                    <CheckSquare size={14} className="text-slate-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{task.title}</p>
+                    {task.description && <p className="text-xs text-slate-400 truncate">{task.description}</p>}
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                    <Calendar size={11} className={urg.color} />
+                    <span className={`text-xs font-semibold ${urg.color}`}>{urg.label}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
@@ -280,6 +455,8 @@ function InternDashboard() {
     </div>
   );
 }
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { user } = useAuth();

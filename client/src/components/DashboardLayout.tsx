@@ -27,6 +27,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import GlobalSearch from "./GlobalSearch";
 
 // ── Modal de lembrete de logout ──────────────────────────────────────────────
 function LogoutReminderModal({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
@@ -378,20 +379,21 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
       </div>
 
       <SidebarInset className="overflow-hidden min-h-0">
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
+        {/* Top bar — visible on all screen sizes */}
+        <div className="flex border-b h-14 items-center bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40 gap-3">
+          {isMobile && (
+            <div className="flex items-center gap-2 shrink-0">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
-              </div>
+              <span className="tracking-tight text-foreground text-sm font-medium">
+                {activeMenuItem?.label ?? "Menu"}
+              </span>
             </div>
+          )}
+          <div className="flex-1 min-w-0 flex justify-center">
+            <GlobalSearch />
           </div>
-        )}
+          <div className="shrink-0 w-2" />
+        </div>
         <main className="flex-1 p-4 flex flex-col overflow-hidden min-h-0">{children}</main>
       </SidebarInset>
     </>
