@@ -212,6 +212,7 @@ function makeUser(data: InsertUser): User {
     updatedAt: now,
     lastSignedIn: now,
     passwordHash: data.passwordHash ?? null,
+    presence: (data as any).presence ?? 'online',
   };
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -238,6 +239,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       if (user.lastSignedIn !== undefined) patch.lastSignedIn = user.lastSignedIn;
       if (user.passwordHash !== undefined) patch.passwordHash = user.passwordHash ?? null;
       if (user.avatar !== undefined) patch.avatar = user.avatar ?? null;
+      if ((user as any).presence !== undefined) (patch as any).presence = (user as any).presence;
       memUsers.set(user.openId, { ...existing, ...patch });
     } else {
       memUsers.set(user.openId, makeUser(user));
@@ -265,6 +267,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.isActive !== undefined) { values.isActive = user.isActive; updateSet.isActive = user.isActive; }
     if (user.passwordHash !== undefined) { (values as any).passwordHash = user.passwordHash; (updateSet as any).passwordHash = user.passwordHash; }
     if (user.avatar !== undefined) { (values as any).avatar = user.avatar; (updateSet as any).avatar = user.avatar; }
+    if ((user as any).presence !== undefined) { (values as any).presence = (user as any).presence; (updateSet as any).presence = (user as any).presence; }
     if (!values.lastSignedIn) values.lastSignedIn = new Date();
     if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
     await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
@@ -272,6 +275,17 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
+}
+
+export async function updatePresence(id: number, presence: 'online' | 'ausente' | 'offline') {
+  const db = await getDb();
+  if (!db) {
+    for (const [key, u] of memUsers.entries()) {
+      if (u.id === id) { memUsers.set(key, { ...u, presence, updatedAt: new Date() }); saveLocalDb(); return; }
+    }
+    return;
+  }
+  await db.update(users).set({ presence } as any).where(eq(users.id, id));
 }
 
 export async function getUserByOpenId(openId: string) {

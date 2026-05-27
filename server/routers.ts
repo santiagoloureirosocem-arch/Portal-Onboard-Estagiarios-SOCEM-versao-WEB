@@ -50,6 +50,12 @@ export const appRouter = router({
         await db.updateUser(ctx.user.id, { avatar: input.avatar } as any);
         return { success: true };
       }),
+    updatePresence: protectedProcedure
+      .input(z.object({ presence: z.enum(["online", "ausente", "offline"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updatePresence(ctx.user.id, input.presence);
+        return { success: true };
+      }),
   }),
 
   users: router({

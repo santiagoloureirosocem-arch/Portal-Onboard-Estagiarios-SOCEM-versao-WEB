@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -153,6 +154,19 @@ type DashboardLayoutContentProps = {
 
 function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const [presence, setPresence] = useState<"online" | "ausente" | "offline">((user as any)?.presence ?? "online");
+  const updatePresenceMutation = trpc.auth.updatePresence.useMutation();
+
+  const handlePresenceChange = async (val: "online" | "ausente" | "offline") => {
+    setPresence(val);
+    await updatePresenceMutation.mutateAsync({ presence: val });
+  };
+
+  const PRESENCE_CONFIG = {
+    online:  { label: "Online",  dot: "bg-green-500" },
+    ausente: { label: "Ausente", dot: "bg-yellow-400" },
+    offline: { label: "Offline", dot: "bg-slate-400" },
+  };
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -298,12 +312,15 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    {user?.avatar && <AvatarImage src={user.avatar} alt={user.name ?? ""} className="object-cover" />}
-                    <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative shrink-0">
+                    <Avatar className="h-9 w-9 border">
+                      {user?.avatar && <AvatarImage src={user.avatar} alt={user.name ?? ""} className="object-cover" />}
+                      <AvatarFallback className="text-xs font-medium">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-background ${PRESENCE_CONFIG[presence].dot}`} />
+                  </div>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
                     <p className="text-sm font-medium truncate leading-none">{user?.name || "-"}</p>
                     <p className="text-xs text-muted-foreground truncate mt-1">
@@ -325,6 +342,22 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                     {{ admin: "Administrador", tutor: "Tutor", estagiario: "Estagiário", user: "Utilizador" }[user?.role ?? ""] ?? user?.role ?? "–"}
                   </p>
                 </div>
+                <div className="px-2 py-1.5 mb-1">
+                  <p className="text-xs text-muted-foreground mb-1.5 font-medium">Estado</p>
+                  <div className="flex flex-col gap-0.5">
+                    {(["online", "ausente", "offline"] as const).map(val => (
+                      <button
+                        key={val}
+                        onClick={() => handlePresenceChange(val)}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors w-full text-left ${presence === val ? "bg-accent font-medium" : "hover:bg-accent/50"}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${PRESENCE_CONFIG[val].dot}`} />
+                        {PRESENCE_CONFIG[val].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="border-t border-border/50 my-1" />
                 <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive rounded-lg gap-2 mt-0.5"

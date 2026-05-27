@@ -207,7 +207,6 @@ export default function Users() {
   const countByRole = (role: Role) => users?.filter((u: any) => u.role === role).length ?? 0;
 
   return (
-    <>
     <DashboardLayout title="Gestão de Utilizadores">
       <div className="space-y-6">
         {/* Header */}
@@ -446,14 +445,20 @@ export default function Users() {
               {filteredUsers.map((user: any) => (
                 <div key={user.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors">
                   {/* Avatar */}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${ROLE_META[user.role as Role]?.bg ?? "bg-slate-100"}`}>
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className={`text-sm font-bold ${ROLE_META[user.role as Role]?.color ?? "text-slate-600"}`}>
-                        {(user.name || "?").charAt(0).toUpperCase()}
-                      </span>
-                    )}
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden ${ROLE_META[user.role as Role]?.bg ?? "bg-slate-100"}`}>
+                      {user.avatar ? (
+                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className={`text-sm font-bold ${ROLE_META[user.role as Role]?.color ?? "text-slate-600"}`}>
+                          {(user.name || "?").charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-800 ${
+                      user.presence === "online" ? "bg-green-500" :
+                      user.presence === "ausente" ? "bg-yellow-400" : "bg-slate-400"
+                    }`} />
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -538,6 +543,5 @@ export default function Users() {
           </div>
         </div>
       )}
-    </>
   );
 }
