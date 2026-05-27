@@ -578,7 +578,17 @@ Responde SEMPRE em português de Portugal (pt-PT). Sê útil, preciso e amigáve
         } catch (error: unknown) {
           const errMsg = error instanceof Error ? error.message : "Erro desconhecido";
           console.error("[AI Chat Error]", errMsg);
-          return { content: "Desculpa, ocorreu um erro ao contactar o assistente. Tenta novamente mais tarde." };
+
+          // Detect specific configuration errors and give helpful messages
+          if (errMsg.includes("OPENAI_API_KEY is not configured") || errMsg.includes("API key")) {
+            return { content: "O **Assistente IA** ainda não está configurado. O administrador do sistema precisa de definir a variável de ambiente `BUILT_IN_FORGE_API_KEY` no ficheiro `.env` para ativar esta funcionalidade.\n\nPodes contactar o administrador para resolver isto. Enquanto isso, consulta a página de **Ajuda** (/help) para ver o guia completo da aplicação." };
+          }
+
+          if (errMsg.includes("401") || errMsg.includes("Unauthorized") || errMsg.includes("403") || errMsg.includes("Forbidden")) {
+            return { content: "A chave da API configurada parece ser inválida ou expirou. O administrador do sistema precisa de atualizar a variável `BUILT_IN_FORGE_API_KEY` no ficheiro `.env`." };
+          }
+
+          return { content: "Desculpa, ocorreu um erro ao contactar o assistente. Tenta novamente mais tarde. Se o problema persistir, contacta o administrador do sistema." };
         }
       }),
   }),
