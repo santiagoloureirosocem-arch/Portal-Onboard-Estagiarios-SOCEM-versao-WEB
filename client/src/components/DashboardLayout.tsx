@@ -22,12 +22,13 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity, AlertTriangle, MessageCircle } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity, AlertTriangle, MessageCircle, Bot } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 import GlobalSearch from "./GlobalSearch";
+import { AIChatFloating } from "./AIChatFloating";
 
 // ── Modal de lembrete de logout ──────────────────────────────────────────────
 function LogoutReminderModal({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
@@ -84,6 +85,7 @@ const menuItems: { icon: any; label: string; path: string; roles: MenuRole[] }[]
 
 const footerItems = [
   { icon: Settings, label: "Definições", path: "/settings" },
+  { icon: Bot, label: "Assistente IA", path: "/ai-assist" },
   { icon: HelpCircle, label: "Ajuda", path: "/help" },
 ];
 
@@ -378,6 +380,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
         />
       </div>
 
+      <AIChatFloating />
       <SidebarInset className="overflow-hidden min-h-0">
         {/* Top bar — visible on all screen sizes */}
         <div className="flex border-b h-14 items-center bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40 gap-3">

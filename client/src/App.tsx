@@ -23,6 +23,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import PortalSelector from "./pages/PortalSelector";
 import NovoColaborador from "./pages/NovoColaborador";
 import Mensagens from "./pages/Mensagens";
+import AIChat from "./pages/AIChat";
 
 function ProtectedRoute({ component: Component, minRole }: { component: any; minRole?: "tutor" | "admin" }) {
   const { user, loading } = useAuth();
@@ -70,6 +71,7 @@ function Router() {
       <Route path={"/tasks"} component={() => <ProtectedRoute component={Tasks} />} />
       <Route path={"/activity-log"} component={() => <ProtectedRoute component={ActivityLog} minRole="tutor" />} />
       <Route path={"/mensagens"} component={() => <ProtectedRoute component={Mensagens} />} />
+      <Route path={"/ai-assist"} component={() => <ProtectedRoute component={AIChat} />} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
