@@ -237,6 +237,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       if (user.isActive !== undefined) patch.isActive = user.isActive;
       if (user.lastSignedIn !== undefined) patch.lastSignedIn = user.lastSignedIn;
       if (user.passwordHash !== undefined) patch.passwordHash = user.passwordHash ?? null;
+      if (user.avatar !== undefined) patch.avatar = user.avatar ?? null;
       memUsers.set(user.openId, { ...existing, ...patch });
     } else {
       memUsers.set(user.openId, makeUser(user));
@@ -262,6 +263,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
     else if (user.openId === ENV.ownerOpenId) { values.role = 'admin'; updateSet.role = 'admin'; }
     if (user.isActive !== undefined) { values.isActive = user.isActive; updateSet.isActive = user.isActive; }
+    if (user.passwordHash !== undefined) { (values as any).passwordHash = user.passwordHash; (updateSet as any).passwordHash = user.passwordHash; }
+    if (user.avatar !== undefined) { (values as any).avatar = user.avatar; (updateSet as any).avatar = user.avatar; }
     if (!values.lastSignedIn) values.lastSignedIn = new Date();
     if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
     await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
