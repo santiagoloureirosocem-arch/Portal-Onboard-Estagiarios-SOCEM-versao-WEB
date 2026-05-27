@@ -207,6 +207,7 @@ export default function Users() {
   const countByRole = (role: Role) => users?.filter((u: any) => u.role === role).length ?? 0;
 
   return (
+    <>
     <DashboardLayout title="Gestão de Utilizadores">
       <div className="space-y-6">
         {/* Header */}
@@ -543,5 +544,6 @@ export default function Users() {
           </div>
         </div>
       )}
+    </>
   );
 }
