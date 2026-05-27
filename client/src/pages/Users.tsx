@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Plus, Edit2, UserX, Search, Eye, EyeOff,
-  Shield, Users as UsersIcon, GraduationCap, X, Check, Camera, User
+  Shield, Users as UsersIcon, GraduationCap, X, Check, Camera, User, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,6 +61,7 @@ export default function Users() {
   const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
   const [savingAvatar, setSavingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
 
   const isAdmin = me?.role === "admin";
 
@@ -177,14 +178,19 @@ export default function Users() {
     setCurrentAvatar(user.avatar || null);
   };
 
-  const handleDeactivate = async (userId: number, name: string) => {
-    if (!confirm(`Desativar o utilizador "${name}"?`)) return;
+  const handleDeactivate = (userId: number, name: string) => {
+    setConfirmDelete({ id: userId, name });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
     try {
-      await deactivateMutation.mutateAsync({ id: userId });
-      toast.success("Utilizador desativado");
+      await deactivateMutation.mutateAsync({ id: confirmDelete.id });
+      toast.success(`Utilizador "${confirmDelete.name}" eliminado permanentemente`);
+      setConfirmDelete(null);
       refetch();
     } catch {
-      toast.error("Erro ao desativar utilizador");
+      toast.error("Erro ao eliminar utilizador");
     }
   };
 
@@ -502,5 +508,34 @@ export default function Users() {
         </Card>
       </div>
     </DashboardLayout>
+
+      {/* Modal de confirmação de eliminação permanente */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <AlertTriangle className="text-red-500" size={28} />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Eliminar utilizador?</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Estás prestes a eliminar <span className="font-semibold text-slate-700 dark:text-slate-200">"{confirmDelete.name}"</span> permanentemente.<br />
+                <span className="text-red-500 font-medium">Esta ação não pode ser revertida.</span>
+              </p>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(null)}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleConfirmDelete}
+              >
+                Eliminar permanentemente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }

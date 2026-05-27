@@ -322,12 +322,11 @@ export async function deactivateUser(id: number) {
   const db = await getDb();
   if (!db) {
     for (const [key, u] of memUsers.entries()) {
-      if (u.id === id) { memUsers.set(key, { ...u, isActive: false, updatedAt: new Date() }); saveLocalDb(); return memUsers.get(key); }
+      if (u.id === id) { memUsers.delete(key); saveLocalDb(); return; }
     }
     return undefined;
   }
-  await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
-  return await getUserById(id);
+  await db.delete(users).where(eq(users.id, id));
 }
 
 // Onboarding Plans
@@ -437,7 +436,7 @@ export async function getPlanAssignmentsByPlanId(planId: number) {
       .filter(a => a.planId === planId)
       .map(a => {
         const user = Array.from(memUsers.values()).find(u => u.id === a.userId);
-        return { ...a, userName: user?.name ?? null };
+        return { ...a, userName: user?.name ?? null, userAvatar: user?.avatar ?? null };
       });
   }
   const results = await db
@@ -453,6 +452,7 @@ export async function getPlanAssignmentsByPlanId(planId: number) {
       createdAt: planAssignments.createdAt,
       updatedAt: planAssignments.updatedAt,
       userName: users.name,
+      userAvatar: users.avatar,
     })
     .from(planAssignments)
     .leftJoin(users, eq(planAssignments.userId, users.id))
