@@ -5,6 +5,7 @@ import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
+import { invokeLLM, type Message } from "./_core/llm";
 
 
 // ── Default avatar for new users ─────────────────────────────────────────────
@@ -481,6 +482,105 @@ export const appRouter = router({
     unreadCounts: protectedProcedure.query(async ({ ctx }) => {
       return await db.getUnreadCounts(ctx.user.id);
     }),
+  }),
+
+  ai: router({
+    chat: protectedProcedure
+      .input(z.object({
+        messages: z.array(z.object({
+          role: z.enum(["system", "user", "assistant"]),
+          content: z.string(),
+        })),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const SYSTEM_PROMPT = `Tu és um assistente de IA especializado no **Portal de Estagiários SOCEM**, uma aplicação web para gestão do onboarding de estagiários.
+
+## Visão Geral da Aplicação
+O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo de integração de novos estagiários. Permite criar planos de onboarding, atribuí-los a estagiários, acompanhar tarefas e gerar relatórios de progresso.
+
+## Funcionalidades por Página
+
+### Dashboard (/dashboard)
+- Visão geral com métricas: estagiários ativos, planos em curso, tarefas pendentes, taxa de conclusão
+- Para estagiários: mostra "O que fazer hoje", tarefas em atraso, próximas tarefas, planos atribuídos
+- Para admins/tutores: planos recentes, utilizadores, progresso geral
+
+### Utilizadores (/users) — apenas admin/tutor
+- Listar, criar, editar e desativar utilizadores
+- Funções: **admin** (acesso total), **tutor** (cria planos, gere tarefas), **estagiario** (vê apenas o seu plano)
+- Campos: nome, email, username, password, função, departamento, cargo
+
+### Planos (/plans)
+- Planos de integração com título, descrição, status (draft/active/completed/archived)
+- Cada plano contém tarefas com prazos
+- Estagiários veem apenas os planos que lhes foram atribuídos
+- Tutores e admins podem criar, editar e gerir planos
+
+### Tarefas (/tasks)
+- Tarefas com título, descrição, status (pending/in_progress/completed), datas, responsável
+- Estagiários podem apenas marcar tarefas como concluídas
+- Tutores/admins gerem todas as tarefas
+
+### Calendário (/calendar)
+- Visualização de prazos e datas importantes dos planos
+
+### Relatórios (/reports) — apenas admin/tutor
+- Taxa de conclusão global, estagiários concluídos, tempo médio de onboarding
+- Progresso por departamento, estatísticas mensais
+
+### Mensagens (/mensagens)
+- Sistema de mensagens diretas entre utilizadores
+- Suporte para envio de ficheiros
+
+### Perfil (/profile)
+- Visualização do perfil do utilizador e plano de integração atribuído
+
+### Definições (/settings)
+- Editar perfil, preferências, notificações, segurança (alterar password)
+
+### Ajuda (/help)
+- Guia completo de utilização da aplicação
+
+## Papéis de Utilizador
+- **Admin**: Acesso total a todas as funcionalidades. Pode gerir utilizadores, planos, tarefas, relatórios.
+- **Tutor**: Pode criar e gerir planos e tarefas, ver relatórios, mas não pode gerir utilizadores (apenas ver).
+- **Estagiário**: Apenas vê o seu dashboard personalizado, os planos que lhe foram atribuídos, e pode marcar tarefas como concluídas.
+
+## Dicas Úteis
+- Use Ctrl+K (ou ⌘K) para abrir a pesquisa global
+- A sidebar pode ser redimensionada arrastando a borda direita
+- Pode colapsar a sidebar clicando no ícone do menu
+- Use o menu do perfil (canto inferior da sidebar) para gerir estado de presença ou terminar sessão
+
+Responde SEMPRE em português de Portugal (pt-PT). Sê útil, preciso e amigável. Se não souberes a resposta, diz que não tens essa informação e sugere contactar o administrador do sistema.`;
+
+        const { messages } = input;
+
+        // Build the messages array: system prompt + user messages
+        const llmMessages: Message[] = [
+          { role: "system", content: SYSTEM_PROMPT },
+          ...messages.map(m => ({
+            role: m.role as Message["role"],
+            content: m.content,
+          })),
+        ];
+
+        try {
+          const result = await invokeLLM({ messages: llmMessages });
+          const responseContent = result.choices[0]?.message?.content;
+          const text = typeof responseContent === "string"
+            ? responseContent
+            : Array.isArray(responseContent)
+              ? responseContent.map(c => (typeof c === "string" ? c : c.type === "text" ? c.text : "")).join("")
+              : "Desculpa, ocorreu um erro ao gerar a resposta.";
+
+          return { content: text };
+        } catch (error: unknown) {
+          const errMsg = error instanceof Error ? error.message : "Erro desconhecido";
+          console.error("[AI Chat Error]", errMsg);
+          return { content: "Desculpa, ocorreu um erro ao contactar o assistente. Tenta novamente mais tarde." };
+        }
+      }),
   }),
 });
 
