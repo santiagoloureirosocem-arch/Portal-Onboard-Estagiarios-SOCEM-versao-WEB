@@ -71,7 +71,7 @@ export default function Plans() {
   };
 
   const handleEdit = (plan: any) => {
-    setFormData({ title: plan.title, description: plan.description || '', status: plan.status, assignedToUserId: null });
+    setFormData({ title: plan.title, description: plan.description || '', status: plan.status, assignedToUserId: null, startDate: '', endDate: '' });
     setEditingId(plan.id);
     setShowForm(true);
   };

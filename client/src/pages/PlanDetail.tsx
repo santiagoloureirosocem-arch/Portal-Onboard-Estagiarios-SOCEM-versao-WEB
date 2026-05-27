@@ -70,11 +70,19 @@ function KanbanView({ tasks, onStatusChange, onDelete, canEdit }: {
                     <p className="text-xs text-muted-foreground truncate mb-2">{task.description}</p>
                   )}
                   <div className="flex items-center justify-between">
-                    {task.dueDate ? (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock size={10} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
-                      </span>
-                    ) : <span />}
+                    <div className="flex items-center gap-2 min-w-0">
+                      {task.startDate && (
+                        <span className="text-xs text-teal-500 flex items-center gap-1">
+                          <Clock size={10} />{new Date(task.startDate).toLocaleDateString('pt-PT')}
+                        </span>
+                      )}
+                      {task.dueDate && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock size={10} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
+                        </span>
+                      )}
+                      {!task.startDate && !task.dueDate && <span />}
+                    </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                       {canEdit && col.key !== 'pending' && (
                         <button onClick={() => onStatusChange(task, col.key === 'in_progress' ? 'pending' : 'in_progress')}
@@ -148,6 +156,11 @@ function ListView({ tasks, onStatusChange, onDelete, canEdit }: {
             {task.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {task.startDate && (
+              <span className="hidden sm:flex text-xs text-teal-500 items-center gap-1">
+                <Clock size={11} />{new Date(task.startDate).toLocaleDateString('pt-PT')}
+              </span>
+            )}
             {task.dueDate && (
               <span className="hidden sm:flex text-xs text-muted-foreground items-center gap-1">
                 <Clock size={11} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
@@ -187,7 +200,7 @@ export default function PlanDetail() {
 
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [showTaskForm, setShowTaskForm] = useState(false);
-  const [taskForm, setTaskForm] = useState({ title: '', description: '', dueDate: '' });
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', startDate: '', dueDate: '' });
 
 
   const handleAddTask = async (e: React.FormEvent) => {
@@ -199,10 +212,11 @@ export default function PlanDetail() {
         title: taskForm.title.trim(),
         description: taskForm.description.trim() || undefined,
         order: (plan?.tasks?.length || 0) + 1,
+        startDate: taskForm.startDate ? new Date(taskForm.startDate) : undefined,
         dueDate: taskForm.dueDate ? new Date(taskForm.dueDate) : undefined,
       });
       toast.success('Tarefa criada com sucesso');
-      setTaskForm({ title: '', description: '', dueDate: '' });
+      setTaskForm({ title: '', description: '', startDate: '', dueDate: '' });
       setShowTaskForm(false);
       refetch();
     } catch {
@@ -384,7 +398,10 @@ export default function PlanDetail() {
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                 rows={2}
               />
-              <Input type="date" value={taskForm.dueDate} onChange={e => setTaskForm({ ...taskForm, dueDate: e.target.value })} />
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="date" value={taskForm.startDate} onChange={e => setTaskForm({ ...taskForm, startDate: e.target.value })} placeholder="Data de início" />
+                <Input type="date" value={taskForm.dueDate} onChange={e => setTaskForm({ ...taskForm, dueDate: e.target.value })} placeholder="Data de fim" />
+              </div>
               <div className="flex gap-2">
                 <Button type="submit" size="sm" disabled={createTaskMutation.isPending}>
                   {createTaskMutation.isPending ? 'A criar...' : 'Criar Tarefa'}

@@ -150,6 +150,11 @@ function TaskPanel({ task, onClose, canEdit }: { task: any; onClose: () => void;
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefa</p>
             <h3 className="font-bold text-foreground text-base leading-snug">{task.title}</h3>
             {task.description && <p className="text-sm text-muted-foreground mt-1">{task.description}</p>}
+            {task.startDate && (
+              <p className="text-xs text-teal-500 mt-1.5 flex items-center gap-1">
+                <CalendarIcon size={11} />Início: {new Date(task.startDate).toLocaleDateString('pt-PT')}
+              </p>
+            )}
             {task.dueDate && (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                 <CalendarIcon size={11} />Prazo: {new Date(task.dueDate).toLocaleDateString('pt-PT')}
@@ -266,6 +271,7 @@ function AddTaskForm({ planId, nextOrder, onSuccess, onCancel }: {
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const createTaskMutation = trpc.tasks.create.useMutation();
 
@@ -277,6 +283,7 @@ function AddTaskForm({ planId, nextOrder, onSuccess, onCancel }: {
         planId, title: title.trim(),
         description: description.trim() || undefined,
         order: nextOrder,
+        startDate: startDate ? new Date(startDate) : undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
       });
       toast.success('Tarefa criada com sucesso!');
@@ -292,10 +299,17 @@ function AddTaskForm({ planId, nextOrder, onSuccess, onCancel }: {
         <Input placeholder="Título da tarefa *" value={title} onChange={e => setTitle(e.target.value)} required autoFocus className="bg-background" />
         <textarea placeholder="Descrição (opcional)" value={description} onChange={e => setDescription(e.target.value)} rows={2}
           className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" />
-        <div className="flex items-center gap-2 flex-1">
-          <CalendarIcon size={14} className="text-muted-foreground shrink-0" />
-          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-            className="flex-1 px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center gap-2">
+            <CalendarIcon size={14} className="text-muted-foreground shrink-0" />
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+              className="flex-1 px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          <div className="flex items-center gap-2">
+            <CalendarIcon size={14} className="text-muted-foreground shrink-0" />
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+              className="flex-1 px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
         </div>
         <div className="flex gap-2">
           <Button type="submit" size="sm" className="gap-1.5" disabled={createTaskMutation.isPending}>
@@ -355,12 +369,20 @@ function KanbanCard({
         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
       )}
       <div className="flex items-center justify-between mt-2.5">
-        {task.dueDate ? (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <CalendarIcon size={10} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
-          </p>
-        ) : <span />}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 min-w-0">
+          {task.startDate && (
+            <p className="text-xs text-teal-500 flex items-center gap-1">
+              <CalendarIcon size={10} />{new Date(task.startDate).toLocaleDateString('pt-PT')}
+            </p>
+          )}
+          {task.dueDate && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <CalendarIcon size={10} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
+            </p>
+          )}
+          {!task.startDate && !task.dueDate && <span />}
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
           {STATUS_ICON[task.status]}
         </div>
       </div>
@@ -730,6 +752,11 @@ function PlanTaskGroup({ plan, filterStatus, canEdit }: {
                     {task.title}
                   </p>
                   {task.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{task.description}</p>}
+                  {task.startDate && (
+                    <p className="text-xs text-teal-500 mt-1 flex items-center gap-1">
+                      <CalendarIcon size={11} />{new Date(task.startDate).toLocaleDateString('pt-PT')}
+                    </p>
+                  )}
                   {task.dueDate && (
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                       <CalendarIcon size={11} />{new Date(task.dueDate).toLocaleDateString('pt-PT')}
