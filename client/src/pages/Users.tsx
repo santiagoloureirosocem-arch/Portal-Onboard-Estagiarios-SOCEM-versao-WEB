@@ -44,7 +44,7 @@ const EMPTY_FORM = { name: "", email: "", username: "", newUsername: "", passwor
 
 export default function Users() {
   const { user: me } = useAuth();
-  const { data: users, refetch } = trpc.users.list.useQuery();
+  const { data: users, refetch } = trpc.users.list.useQuery(undefined, { refetchInterval: 30000 });
   const createUserMutation = trpc.users.create.useMutation();
   const updateUserMutation = trpc.users.update.useMutation();
   const deactivateMutation = trpc.users.deactivate.useMutation();
@@ -207,7 +207,6 @@ export default function Users() {
   const countByRole = (role: Role) => users?.filter((u: any) => u.role === role).length ?? 0;
 
   return (
-    <>
     <DashboardLayout title="Gestão de Utilizadores">
       <div className="space-y-6">
         {/* Header */}
@@ -544,6 +543,5 @@ export default function Users() {
           </div>
         </div>
       )}
-    </>
   );
 }
