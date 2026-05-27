@@ -191,11 +191,21 @@ export const appRouter = router({
       title: z.string().min(1),
       description: z.string().optional(),
       assignedToUserId: z.number().optional(),
+      startDate: z.date().optional(),
       endDate: z.date().optional(),
     })).mutation(async ({ input, ctx }) => {
-      const { assignedToUserId, endDate, ...planData } = input;
+      const { assignedToUserId, startDate, endDate, ...planData } = input;
       const plan = await db.createOnboardingPlan({ ...planData, createdBy: ctx.user.id });
-      // If an end date was provided, create a milestone task so it appears in the calendar
+      // If dates were provided, create milestone tasks so they appear in the calendar
+      if (startDate) {
+        await db.createOnboardingTask({
+          planId: plan.id,
+          title: `🚀 Início do plano: ${planData.title}`,
+          description: 'Marco de início do plano',
+          order: 0,
+          dueDate: startDate,
+        });
+      }
       if (endDate) {
         await db.createOnboardingTask({
           planId: plan.id,
@@ -211,7 +221,7 @@ export const appRouter = router({
           planId: plan.id,
           userId: assignedToUserId,
           assignedBy: ctx.user.id,
-          startDate: new Date(),
+          startDate: startDate ?? new Date(),
           expectedEndDate: endDate,
         });
         const assignedUser = await db.getUserById(assignedToUserId);

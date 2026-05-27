@@ -14,6 +14,7 @@ interface PlanFormData {
   description: string;
   status: 'draft' | 'active' | 'completed' | 'archived';
   assignedToUserId: number | null;
+  startDate: string;
   endDate: string;
 }
 
@@ -33,7 +34,7 @@ export default function Plans() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [formData, setFormData] = useState<PlanFormData>({
-    title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '',
+    title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '',
   });
 
   // Only show estagiários in the user selector
@@ -55,11 +56,12 @@ export default function Plans() {
           title: formData.title,
           description: formData.description || undefined,
           assignedToUserId: formData.assignedToUserId || undefined,
+          startDate: formData.startDate ? new Date(formData.startDate) : undefined,
           endDate: formData.endDate ? new Date(formData.endDate) : undefined,
         });
         toast.success(formData.assignedToUserId ? 'Plano criado e atribuído com sucesso' : 'Plano criado com sucesso');
       }
-      setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '' });
+      setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' });
       setShowForm(false);
       setEditingId(null);
       refetch();
@@ -123,7 +125,7 @@ export default function Plans() {
               </Button>
               <Button onClick={() => {
                 setShowForm(!showForm);
-                if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '' }); }
+                if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' }); }
               }} className="gap-2">
                 <Plus size={20} /> Novo Plano
               </Button>
@@ -141,22 +143,37 @@ export default function Plans() {
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground resize-none"
                 rows={4}
               />
-              {/* End date — only when creating */}
+              {/* Dates — only when creating */}
               {!editingId && (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                     <span>📅</span>
-                    Data de conclusão do plano <span className="text-muted-foreground font-normal">(opcional)</span>
+                    Duração do plano <span className="text-muted-foreground font-normal">(opcional)</span>
                   </label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleInputChange}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <p className="text-xs text-muted-foreground">Se definida, aparecerá como marco no Calendário.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground font-medium">Data de início</span>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground font-medium">Data de conclusão</span>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleInputChange}
+                        min={formData.startDate || new Date().toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">As datas aparecem como marcos no Calendário.</p>
                 </div>
               )}
               {editingId && (
@@ -195,7 +212,7 @@ export default function Plans() {
                 <Button type="submit" className="flex-1" disabled={createPlanMutation.isPending || updatePlanMutation.isPending}>
                   {editingId ? 'Atualizar' : 'Criar'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, endDate: '' }); }}>
+                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' }); }}>
                   Cancelar
                 </Button>
               </div>
