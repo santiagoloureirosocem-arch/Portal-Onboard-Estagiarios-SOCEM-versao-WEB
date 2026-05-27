@@ -195,26 +195,7 @@ export const appRouter = router({
       endDate: z.date().optional(),
     })).mutation(async ({ input, ctx }) => {
       const { assignedToUserId, startDate, endDate, ...planData } = input;
-      const plan = await db.createOnboardingPlan({ ...planData, createdBy: ctx.user.id });
-      // If dates were provided, create milestone tasks so they appear in the calendar
-      if (startDate) {
-        await db.createOnboardingTask({
-          planId: plan.id,
-          title: `🚀 Início do plano: ${planData.title}`,
-          description: 'Marco de início do plano',
-          order: 0,
-          dueDate: startDate,
-        });
-      }
-      if (endDate) {
-        await db.createOnboardingTask({
-          planId: plan.id,
-          title: `📅 Fim do plano: ${planData.title}`,
-          description: 'Marco de conclusão do plano',
-          order: 9999,
-          dueDate: endDate,
-        });
-      }
+      const plan = await db.createOnboardingPlan({ ...planData, createdBy: ctx.user.id, startDate, endDate });
       // If a user was specified, immediately create an assignment
       if (assignedToUserId) {
         await db.assignPlanToUser({
@@ -250,6 +231,8 @@ export const appRouter = router({
       title: z.string().optional(),
       description: z.string().optional(),
       status: z.enum(["draft", "active", "completed", "archived"]).optional(),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
     })).mutation(async ({ input }) => {
       const { id, ...updateData } = input;
       await db.updateOnboardingPlan(id, updateData);
@@ -283,6 +266,7 @@ export const appRouter = router({
       title: z.string().min(1),
       description: z.string().optional(),
       order: z.number(),
+      startDate: z.date().optional(),
       dueDate: z.date().optional(),
       assignedTo: z.number().optional(),
     })).mutation(async ({ input }) => {
@@ -295,6 +279,7 @@ export const appRouter = router({
       description: z.string().optional(),
       status: z.enum(["pending", "in_progress", "completed"]).optional(),
       assignedTo: z.number().optional(),
+      startDate: z.date().optional(),
       dueDate: z.date().optional(),
       order: z.number().optional(),
     })).mutation(async ({ input, ctx }) => {
