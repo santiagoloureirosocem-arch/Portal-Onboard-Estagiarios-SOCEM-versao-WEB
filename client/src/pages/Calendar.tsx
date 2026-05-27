@@ -47,6 +47,7 @@ function ScheduleTaskModal({
   const [planId, setPlanId] = useState<number | ''>('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [startDate, setStartDate] = useState('');
   const createTask = trpc.tasks.create.useMutation();
   const availablePlans = (plans || []).filter((p: any) => p.status !== 'archived');
 
@@ -57,7 +58,9 @@ function ScheduleTaskModal({
       await createTask.mutateAsync({
         planId: Number(planId), title: title.trim(),
         description: description.trim() || undefined,
-        order: 99, dueDate: date,
+        order: 99,
+        startDate: startDate ? new Date(startDate) : undefined,
+        dueDate: date,
       });
       toast.success('Tarefa agendada com sucesso!');
       onSuccess();
@@ -106,6 +109,10 @@ function ScheduleTaskModal({
               <label className="text-sm font-medium text-foreground">Descrição <span className="text-muted-foreground font-normal">(opcional)</span></label>
               <textarea placeholder="Descrição da tarefa..." value={description} onChange={e => setDescription(e.target.value)} rows={3}
                 className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Data de início <span className="text-muted-foreground font-normal">(opcional)</span></label>
+              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
             </div>
             <div className="flex gap-2 pt-1">
               <Button type="submit" className="flex-1 gap-2" disabled={createTask.isPending}>
@@ -196,17 +203,26 @@ export default function Calendar() {
   const { data: allTasksRaw, refetch: refetchTasks } = trpc.tasks.listAll.useQuery();
   const allTasks = allTasksRaw || [];
 
-  // Build set of date keys that have tasks with dueDate
-  const datesWithTasks = new Set(
-    allTasks.filter(t => t.dueDate).map(t => toDateKey(new Date(t.dueDate!)))
+  // Marker sets — dates that have events
+  const datesWithTaskDueDates = new Set(
+    allTasks.filter((t: any) => t.dueDate).map((t: any) => toDateKey(new Date(t.dueDate)))
   );
-  const datesWithMilestones = new Set(
-    allTasks.filter(t => t.dueDate && (t.title?.startsWith('📅 Fim do plano:') || t.title?.startsWith('🚀 Início do plano:'))).map(t => toDateKey(new Date(t.dueDate!)))
+  const datesWithTaskStartDates = new Set(
+    allTasks.filter((t: any) => t.startDate).map((t: any) => toDateKey(new Date(t.startDate)))
+  );
+  const datesWithPlanStarts = new Set(
+    (plans || []).filter((p: any) => p.startDate).map((p: any) => toDateKey(new Date(p.startDate)))
+  );
+  const datesWithPlanEnds = new Set(
+    (plans || []).filter((p: any) => p.endDate).map((p: any) => toDateKey(new Date(p.endDate)))
   );
 
-  // Tasks for selected date
+  // Tasks for selected date — match on both dueDate AND startDate
   const selectedKey = toDateKey(selectedDate);
-  const selectedDayTasks = allTasks.filter(t => t.dueDate && toDateKey(new Date(t.dueDate!)) === selectedKey);
+  const selectedDayTasks = allTasks.filter((t: any) =>
+    (t.dueDate && toDateKey(new Date(t.dueDate!)) === selectedKey) ||
+    (t.startDate && toDateKey(new Date(t.startDate!)) === selectedKey)
+  );
 
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
@@ -228,7 +244,13 @@ export default function Calendar() {
   const isSelected = (d: number) => d === selectedDate.getDate() && currentMonth === selectedDate.getMonth() && currentYear === selectedDate.getFullYear();
 
   const activePlans = (plans || []);
-  const scheduledCount = allTasks.filter(t => t.dueDate).length;
+  const scheduledCount = allTasks.filter((t: any) => t.dueDate || t.startDate).length;
+
+  // Plans that have dates on the selected date
+  const selectedDayPlans = (plans || []).filter((p: any) =>
+    (p.startDate && toDateKey(new Date(p.startDate)) === selectedKey) ||
+    (p.endDate && toDateKey(new Date(p.endDate)) === selectedKey)
+  );
 
   return (
     <DashboardLayout title="Calendário">
@@ -307,15 +329,24 @@ export default function Calendar() {
               {cells.map((day, idx) => {
                 if (day === null) return <div key={idx} />;
                 const key = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const hasTasks = datesWithTasks.has(key);
+                const hasTaskDue = datesWithTaskDueDates.has(key);
+                const hasTaskStart = datesWithTaskStartDates.has(key);
+                const hasPlanStart = datesWithPlanStarts.has(key);
+                const hasPlanEnd = datesWithPlanEnds.has(key);
                 const todayCell = isToday(day);
                 const selectedCell = isSelected(day);
+                // Collect marker colors for this cell
+                const markers: string[] = [];
+                if (hasPlanStart) markers.push('bg-green-500 ring-2 ring-green-300 dark:ring-green-700');
+                if (hasPlanEnd) markers.push('bg-purple-500 ring-2 ring-purple-300 dark:ring-purple-700');
+                if (hasTaskStart) markers.push('bg-teal-500 ring-2 ring-teal-300 dark:ring-teal-700');
+                if (hasTaskDue) markers.push('bg-primary ring-2 ring-primary/40');
                 return (
                   <button
                     key={idx}
                     onClick={() => setSelectedDate(new Date(currentYear, currentMonth, day))}
                     className={`
-                      aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-all
+                      aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-all relative
                       ${todayCell
                         ? 'bg-primary text-primary-foreground shadow-md'
                         : selectedCell
@@ -325,8 +356,12 @@ export default function Calendar() {
                     `}
                   >
                     {day}
-                    {hasTasks && (
-                      <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${todayCell ? 'bg-white/80' : datesWithMilestones.has(key) ? 'bg-purple-500' : 'bg-primary'}`} />
+                    {markers.length > 0 && (
+                      <div className="flex items-center gap-[2px] mt-0.5">
+                        {markers.slice(0, 3).map((cls, i) => (
+                          <span key={i} className={`w-2.5 h-2.5 rounded-full ${cls}`} />
+                        ))}
+                      </div>
                     )}
                   </button>
                 );
@@ -352,24 +387,52 @@ export default function Calendar() {
                 </button>
               </div>
 
-              {selectedDayTasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma tarefa neste dia.</p>
+              {selectedDayTasks.length === 0 && selectedDayPlans.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma tarefa ou evento neste dia.</p>
               ) : (
                 <div className="space-y-2">
-                  {selectedDayTasks.map(t => {
-                    const isMilestone = t.title?.startsWith('📅 Fim do plano:') || t.title?.startsWith('🚀 Início do plano:');
-                    const isStartMilestone = t.title?.startsWith('🚀 Início do plano:');
+                  {/* Plan date markers */}
+                  {selectedDayPlans.map((p: any) => {
+                    const isStart = p.startDate && toDateKey(new Date(p.startDate)) === selectedKey;
+                    const isEnd = p.endDate && toDateKey(new Date(p.endDate)) === selectedKey;
                     return (
-                      <div key={t.id} className={`flex items-start gap-2 p-2.5 rounded-lg border ${isStartMilestone ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : isMilestone ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800' : 'bg-muted/50 border-border/50'}`}>
-                        {isMilestone ? <CalendarIcon size={14} className={`shrink-0 mt-0.5 ${isStartMilestone ? 'text-green-500' : 'text-purple-500'}`} /> : (STATUS_ICON[t.status] || <Circle size={14} />)}
+                      <button key={`plan-${p.id}-${isStart ? 'start' : 'end'}`}
+                        onClick={() => setLocation(`/plans/${p.id}`)}
+                        className={`w-full text-left flex items-start gap-2 p-2.5 rounded-lg border ${isStart ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800'}`}>
+                        <CalendarIcon size={14} className={`shrink-0 mt-0.5 ${isStart ? 'text-green-500' : 'text-purple-500'}`} />
                         <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-medium ${isStartMilestone ? 'text-green-700 dark:text-green-300' : isMilestone ? 'text-purple-700 dark:text-purple-300' : t.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                            {isMilestone ? t.title.replace('📅 Fim do plano: ', '').replace('🚀 Início do plano: ', '') : t.title}
+                          <p className={`text-sm font-medium ${isStart ? 'text-green-700 dark:text-green-300' : 'text-purple-700 dark:text-purple-300'}`}>
+                            {p.title}
                           </p>
-                          {isMilestone
-                            ? <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block ${isStartMilestone ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'}`}>{isStartMilestone ? 'Marco de Início' : 'Marco de Conclusão'}</span>
-                            : <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block ${STATUS_COLORS[t.status]}`}>{STATUS_LABELS[t.status]}</span>
-                          }
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block ${isStart ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'}`}>
+                            {isStart ? 'Início do Plano' : 'Fim do Plano'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {/* Tasks */}
+                  {selectedDayTasks.map(t => {
+                    const onStartDate = t.startDate && toDateKey(new Date(t.startDate)) === selectedKey;
+                    const onDueDate = t.dueDate && toDateKey(new Date(t.dueDate)) === selectedKey;
+                    return (
+                      <div key={t.id} className="flex items-start gap-2 p-2.5 rounded-lg border bg-muted/50 border-border/50">
+                        <span className="mt-0.5 shrink-0">{STATUS_ICON[t.status] || <Circle size={14} />}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">{t.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{t.planName || `Plano #${t.planId}`}</p>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {onStartDate && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+                                Início
+                              </span>
+                            )}
+                            {onDueDate && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${t.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-primary/10 text-primary'}`}>
+                                {t.status === 'completed' ? 'Concluída' : 'Prazo'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
