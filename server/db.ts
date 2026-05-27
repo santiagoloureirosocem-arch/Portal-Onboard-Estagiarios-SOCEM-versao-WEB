@@ -34,6 +34,7 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         isActive BOOLEAN NOT NULL DEFAULT TRUE,
         darkMode BOOLEAN NOT NULL DEFAULT FALSE,
         avatar TEXT,
+        presence ENUM('online','ausente','offline') NOT NULL DEFAULT 'online',
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         lastSignedIn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -42,6 +43,7 @@ async function initTables(db: ReturnType<typeof drizzle>) {
     // Migração: adicionar colunas em falta se a tabela já existir
     try { await db.execute(sql`ALTER TABLE users ADD COLUMN darkMode BOOLEAN NOT NULL DEFAULT FALSE`); } catch {}
     try { await db.execute(sql`ALTER TABLE users ADD COLUMN avatar TEXT`); } catch {}
+    try { await db.execute(sql`ALTER TABLE users ADD COLUMN presence ENUM('online','ausente','offline') NOT NULL DEFAULT 'online'`); } catch {}
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS onboarding_plans (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -212,6 +214,8 @@ function makeUser(data: InsertUser): User {
     updatedAt: now,
     lastSignedIn: now,
     passwordHash: data.passwordHash ?? null,
+    darkMode: (data as any).darkMode ?? false,
+    avatar: (data as any).avatar ?? null,
     presence: (data as any).presence ?? 'online',
   };
 }
