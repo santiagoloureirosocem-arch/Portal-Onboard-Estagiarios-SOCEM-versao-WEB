@@ -400,6 +400,19 @@ export const appRouter = router({
         completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
       };
     }),
+    myStreak: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserStreak(ctx.user.id);
+    }),
+    myBadges: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserBadges(ctx.user.id);
+    }),
+    certificateStatus: protectedProcedure.query(async ({ ctx }) => {
+      const allCompleted = await db.hasCompletedAllPlans(ctx.user.id);
+      const assignments = await db.getPlanAssignmentsByUserId(ctx.user.id);
+      const totalPlans = assignments.length;
+      const completedPlans = assignments.filter((a: any) => a.status === 'completed').length;
+      return { eligible: totalPlans > 0 && allCompleted, totalPlans, completedPlans };
+    }),
   }),
 
   taskComments: router({
@@ -481,6 +494,58 @@ export const appRouter = router({
 
     unreadCounts: protectedProcedure.query(async ({ ctx }) => {
       return await db.getUnreadCounts(ctx.user.id);
+    }),
+  }),
+
+  notifications: router({
+    list: protectedProcedure.input(z.object({ limit: z.number().default(20) })).query(async ({ input, ctx }) => {
+      return await db.getNotificationsByUserId(ctx.user.id, input.limit);
+    }),
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUnreadNotificationCount(ctx.user.id);
+    }),
+    markAsRead: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.markNotificationAsRead(input.id);
+      return { success: true };
+    }),
+    markAllAsRead: protectedProcedure.mutation(async ({ ctx }) => {
+      await db.markAllNotificationsAsRead(ctx.user.id);
+      return { success: true };
+    }),
+  }),
+
+  dailyCheckins: router({
+    today: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getTodayCheckin(ctx.user.id);
+    }),
+    history: protectedProcedure.input(z.object({ limit: z.number().default(30) })).query(async ({ input, ctx }) => {
+      return await db.getDailyCheckinsByUserId(ctx.user.id, input.limit);
+    }),
+    create: protectedProcedure.input(z.object({
+      mood: z.enum(["great", "good", "okay", "bad", "terrible"]),
+      note: z.string().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const existing = await db.getTodayCheckin(ctx.user.id);
+      if (existing) {
+        throw new TRPCError({ code: "CONFLICT", message: "Já fizeste o check-in hoje" });
+      }
+      const checkin = await db.createDailyCheckin({
+        userId: ctx.user.id,
+        date: new Date(),
+        mood: input.mood,
+        note: input.note,
+      });
+      // Check streak for badge award
+      const streak = await db.getUserStreak(ctx.user.id);
+      if (streak.currentStreak === 7) {
+        await db.awardBadge({ userId: ctx.user.id, badge: "streak_7", label: "7 Dias Seguidos", description: "Fizeste check-in 7 dias seguidos!" });
+        await db.createNotification({ userId: ctx.user.id, title: "Distintivo Desbloqueado! 🏅", message: "Ganhaste o distintivo '7 Dias Seguidos' por fazeres check-in 7 dias consecutivos!", type: "badge", link: "/dashboard" });
+      }
+      if (streak.currentStreak === 30) {
+        await db.awardBadge({ userId: ctx.user.id, badge: "streak_30", label: "30 Dias Seguidos", description: "Fizeste check-in 30 dias seguidos!" });
+        await db.createNotification({ userId: ctx.user.id, title: "Distintivo Desbloqueado! 🏅", message: "Ganhaste o distintivo '30 Dias Seguidos' por fazeres check-in 30 dias consecutivos!", type: "badge", link: "/dashboard" });
+      }
+      return checkin;
     }),
   }),
 

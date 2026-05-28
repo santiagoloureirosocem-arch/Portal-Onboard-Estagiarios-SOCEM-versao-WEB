@@ -1,6 +1,6 @@
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage } from "../drizzle/schema";
+import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage, notifications, dailyCheckins } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -137,6 +137,28 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        userId INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type ENUM('task','plan','message','system','badge') NOT NULL DEFAULT 'system',
+        link VARCHAR(500),
+        isRead BOOLEAN NOT NULL DEFAULT FALSE,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS daily_checkins (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        userId INT NOT NULL,
+        date DATETIME NOT NULL,
+        mood ENUM('great','good','okay','bad','terrible') NOT NULL,
+        note TEXT,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     console.log("[Database] Tables ready");
   } catch (err) {
     console.warn("[Database] Table init error:", err);
@@ -156,6 +178,9 @@ interface LocalDb {
   tasks: any[];
   assignments: any[];
   completions: any[];
+  notifications: any[];
+  dailyCheckins: any[];
+  userBadges: any[];
 }
 
 function loadLocalDb(): LocalDb {
@@ -175,7 +200,7 @@ function loadLocalDb(): LocalDb {
   } catch (e) {
     console.warn("[LocalDB] Failed to load, starting fresh:", e);
   }
-  return { nextId: 1, users: [], plans: [], tasks: [], assignments: [], completions: [] };
+  return { nextId: 1, users: [], plans: [], tasks: [], assignments: [], completions: [], notifications: [], dailyCheckins: [], userBadges: [] };
 }
 
 export function saveLocalDb(): void {
@@ -189,6 +214,9 @@ export function saveLocalDb(): void {
       tasks: memTasks,
       assignments: memAssignments,
       completions: memCompletions,
+      notifications: _memNotifications,
+      dailyCheckins: _memDailyCheckins,
+      userBadges: _memUserBadges,
     };
     fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch (e) {
@@ -203,6 +231,12 @@ const memPlans: any[] = _localDb.plans || [];
 const memTasks: any[] = _localDb.tasks || [];
 const memAssignments: any[] = _localDb.assignments || [];
 const memCompletions: any[] = _localDb.completions || [];
+let _memNotifications: any[] = _localDb.notifications || [];
+let _notificationNextId = _memNotifications.length > 0 ? Math.max(..._memNotifications.map((n: any) => n.id)) + 1 : 1;
+let _memDailyCheckins: any[] = _localDb.dailyCheckins || [];
+let _checkinNextId = _memDailyCheckins.length > 0 ? Math.max(..._memDailyCheckins.map((c: any) => c.id)) + 1 : 1;
+let _memUserBadges: any[] = _localDb.userBadges || [];
+let _badgeNextId = _memUserBadges.length > 0 ? Math.max(..._memUserBadges.map((b: any) => b.id)) + 1 : 1;
 
 function makeUser(data: InsertUser): User {
   const now = new Date();
@@ -768,4 +802,146 @@ export async function deleteAttachment(id: number) {
   const dbConn = await getDb();
   if (!dbConn) { _memAttachments = _memAttachments.filter(a => a.id !== id); return; }
   await dbConn.delete(taskAttachments).where(eq(taskAttachments.id, id));
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export async function createNotification(data: { userId: number; title: string; message: string; type?: string; link?: string }) {
+  const dbConn = await getDb();
+    const notif = { id: _notificationNextId++, ...data, type: (data.type ?? 'system') as any, isRead: false, createdAt: new Date() };
+  if (!dbConn) {
+    _memNotifications.unshift(notif);
+    saveLocalDb();
+    return notif;
+  }
+  await dbConn.insert(notifications).values(notif);
+  return notif;
+}
+
+export async function getNotificationsByUserId(userId: number, limit = 20) {
+  const dbConn = await getDb();
+  if (!dbConn) return _memNotifications.filter((n: any) => n.userId === userId).slice(0, limit);
+  return await dbConn.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(limit);
+}
+
+export async function markNotificationAsRead(id: number) {
+  const dbConn = await getDb();
+  if (!dbConn) {
+    const n = _memNotifications.find((n: any) => n.id === id);
+    if (n) n.isRead = true;
+    saveLocalDb();
+    return;
+  }
+  await dbConn.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+}
+
+export async function markAllNotificationsAsRead(userId: number) {
+  const dbConn = await getDb();
+  if (!dbConn) {
+    _memNotifications.forEach((n: any) => { if (n.userId === userId) n.isRead = true; });
+    saveLocalDb();
+    return;
+  }
+  await dbConn.update(notifications).set({ isRead: true }).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+}
+
+export async function getUnreadNotificationCount(userId: number) {
+  const dbConn = await getDb();
+  if (!dbConn) return _memNotifications.filter((n: any) => n.userId === userId && !n.isRead).length;
+  const rows = await dbConn.select({ cnt: sql<number>`COUNT(*)` }).from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  return Number(rows[0]?.cnt ?? 0);
+}
+
+// ─── Daily Check-ins ──────────────────────────────────────────────────────────
+
+export async function createDailyCheckin(data: { userId: number; date: Date; mood: string; note?: string }) {
+  const dbConn = await getDb();
+    const checkin = { id: _checkinNextId++, ...data, mood: data.mood as any, createdAt: new Date() };
+  if (!dbConn) {
+    _memDailyCheckins.push(checkin);
+    saveLocalDb();
+    return checkin;
+  }
+  await dbConn.insert(dailyCheckins).values(checkin);
+  return checkin;
+}
+
+export async function getDailyCheckinsByUserId(userId: number, limit = 30) {
+  const dbConn = await getDb();
+  if (!dbConn) return _memDailyCheckins.filter((c: any) => c.userId === userId).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
+  return await dbConn.select().from(dailyCheckins).where(eq(dailyCheckins.userId, userId)).orderBy(desc(dailyCheckins.date)).limit(limit);
+}
+
+export async function getTodayCheckin(userId: number) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dbConn = await getDb();
+  if (!dbConn) return _memDailyCheckins.find((c: any) => c.userId === userId && new Date(c.date) >= today && new Date(c.date) < tomorrow);
+  const rows = await dbConn.select().from(dailyCheckins).where(and(eq(dailyCheckins.userId, userId), sql`${dailyCheckins.date} >= ${today}`, sql`${dailyCheckins.date} < ${tomorrow}`)).limit(1);
+  return rows.length > 0 ? rows[0] : undefined;
+}
+
+// ─── Streaks ──────────────────────────────────────────────────────────────────
+
+export async function getUserStreak(userId: number) {
+  const checkins = await getDailyCheckinsByUserId(userId, 365);
+  if (checkins.length === 0) return { currentStreak: 0, longestStreak: 0 };
+  const dates = checkins.map((c: any) => {
+    const d = new Date(c.date);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  });
+  const uniqueDates = [...new Set(dates)].sort().reverse();
+  let currentStreak = 0;
+  let longestStreak = 0;
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+  if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
+    currentStreak = 1;
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prev = new Date(uniqueDates[i-1]);
+      const curr = new Date(uniqueDates[i]);
+      const diff = (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24);
+      if (diff === 1) currentStreak++;
+      else break;
+    }
+  }
+  let run = 0;
+  for (let i = 0; i < uniqueDates.length; i++) {
+    const curr = new Date(uniqueDates[i]);
+    if (i === 0) { run = 1; continue; }
+    const prev = new Date(uniqueDates[i-1]);
+    const diff = (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24);
+    if (diff === 1) run++;
+    else { longestStreak = Math.max(longestStreak, run); run = 1; }
+  }
+  longestStreak = Math.max(longestStreak, run);
+  return { currentStreak, longestStreak };
+}
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
+
+export async function getUserBadges(userId: number) {
+  return _memUserBadges.filter((b: any) => b.userId === userId);
+}
+
+export async function awardBadge(data: { userId: number; badge: string; label: string; description?: string; icon?: string }) {
+  const exists = _memUserBadges.find((b: any) => b.userId === data.userId && b.badge === data.badge);
+  if (exists) return exists;
+  const badge = { id: _badgeNextId++, ...data, awardedAt: new Date() };
+  _memUserBadges.push(badge);
+  saveLocalDb();
+  return badge;
+}
+
+// ─── Certificate ──────────────────────────────────────────────────────────────
+
+export async function hasCompletedAllPlans(userId: number) {
+  const assignments = await getPlanAssignmentsByUserId(userId);
+  if (assignments.length === 0) return false;
+  return assignments.every((a: any) => a.status === 'completed');
 }
