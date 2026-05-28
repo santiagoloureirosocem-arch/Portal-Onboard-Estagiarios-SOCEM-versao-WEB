@@ -292,7 +292,14 @@ export default function Plans() {
     e.preventDefault();
     try {
       if (editingId) {
-        await updatePlanMutation.mutateAsync({ id: editingId, title: formData.title, description: formData.description, status: formData.status });
+        await updatePlanMutation.mutateAsync({
+          id: editingId,
+          title: formData.title,
+          description: formData.description,
+          status: formData.status,
+          startDate: formData.startDate ? new Date(formData.startDate) : undefined,
+          endDate: formData.endDate ? new Date(formData.endDate) : undefined,
+        });
         toast.success('Plano atualizado com sucesso');
       } else {
         await createPlanMutation.mutateAsync({
@@ -314,7 +321,14 @@ export default function Plans() {
   };
 
   const handleEdit = (plan: any) => {
-    setFormData({ title: plan.title, description: plan.description || '', status: plan.status, assignedToUserId: null, startDate: '', endDate: '' });
+    setFormData({
+      title: plan.title,
+      description: plan.description || '',
+      status: plan.status,
+      assignedToUserId: null,
+      startDate: plan.startDate ? new Date(plan.startDate).toISOString().split('T')[0] : '',
+      endDate: plan.endDate ? new Date(plan.endDate).toISOString().split('T')[0] : '',
+    });
     setEditingId(plan.id);
     setShowForm(true);
   };
@@ -401,39 +415,39 @@ export default function Plans() {
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground resize-none"
                 rows={4}
               />
-              {/* Dates — only when creating */}
-              {!editingId && (
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <span>📅</span>
-                    Duração do plano <span className="text-muted-foreground font-normal">(opcional)</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground font-medium">Data de início</span>
-                      <input
-                        type="date"
-                        name="startDate"
-                        value={formData.startDate}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground font-medium">Data de conclusão</span>
-                      <input
-                        type="date"
-                        name="endDate"
-                        value={formData.endDate}
-                        onChange={handleInputChange}
-                        min={formData.startDate || new Date().toISOString().split('T')[0]}
-                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
+              {/* Dates — sempre visíveis (criação e edição) */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <span>📅</span>
+                  Duração do plano <span className="text-muted-foreground font-normal">(opcional)</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground font-medium">Data de início</span>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground">As datas aparecem como marcos no Calendário.</p>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground font-medium">Data de conclusão</span>
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={formData.endDate}
+                      onChange={handleInputChange}
+                      min={formData.startDate || new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
                 </div>
-              )}
+                <p className="text-xs text-muted-foreground">As datas aparecem como marcos no Calendário.</p>
+              </div>
+
+              {/* Estado — apenas na edição */}
               {editingId && (
                 <select name="status" value={formData.status} onChange={handleInputChange}
                   className="px-4 py-2 border border-border rounded-lg bg-background text-foreground w-full">
