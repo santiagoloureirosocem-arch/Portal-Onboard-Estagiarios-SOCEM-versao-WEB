@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   ArrowLeft, Plus, CheckCircle, Clock, Circle, Trash2,
-  X, LayoutGrid, List, ChevronRight, FileText
+  X, LayoutGrid, List, ChevronRight, FileText, Upload, Paperclip
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -41,10 +41,12 @@ const KANBAN_COLS = [
   { key: 'completed',   label: 'Concluída',    color: 'bg-green-500',  light: 'bg-green-50 dark:bg-green-950/20',  border: 'border-green-200 dark:border-green-800' },
 ];
 
-function KanbanView({ tasks, onStatusChange, onDelete, canEdit }: {
+function KanbanView({ tasks, onStatusChange, onDelete, canEdit, onFileUpload, uploadingTaskId }: {
   tasks: any[];
   onStatusChange: (t: any, s: string) => void;
   onDelete: (id: number) => void; canEdit: boolean;
+  onFileUpload?: (taskId: number) => void;
+  uploadingTaskId?: number | null;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -98,6 +100,14 @@ function KanbanView({ tasks, onStatusChange, onDelete, canEdit }: {
                           <CheckCircle size={13} className="text-green-500" />
                         </button>
                       )}
+                      {!canEdit && (
+                        <button onClick={() => onFileUpload?.(task.id)}
+                          className="p-1 rounded hover:bg-blue-100 transition-colors" title="Submeter ficheiro">
+                          {uploadingTaskId === task.id
+                            ? <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin block" />
+                            : <Upload size={13} className="text-blue-500" />}
+                        </button>
+                      )}
                       {canEdit && (
                         <button onClick={() => onDelete(task.id)}
                           className="p-1 rounded hover:bg-destructive/10 transition-colors">
@@ -120,10 +130,12 @@ function KanbanView({ tasks, onStatusChange, onDelete, canEdit }: {
 }
 
 // ── List view ─────────────────────────────────────────────────────────────────
-function ListView({ tasks, onStatusChange, onDelete, canEdit }: {
+function ListView({ tasks, onStatusChange, onDelete, canEdit, onFileUpload, uploadingTaskId }: {
   tasks: any[];
   onStatusChange: (t: any, s: string) => void;
   onDelete: (id: number) => void; canEdit: boolean;
+  onFileUpload?: (taskId: number) => void;
+  uploadingTaskId?: number | null;
 }) {
   const STATUS_COLORS: Record<string, string> = {
     pending:     'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -170,6 +182,13 @@ function ListView({ tasks, onStatusChange, onDelete, canEdit }: {
               {STATUS_LABELS[task.status]}
             </span>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+              {!canEdit && (
+                <button onClick={() => onFileUpload?.(task.id)} className="p-1 rounded hover:bg-blue-100 transition-colors" title="Submeter ficheiro">
+                  {uploadingTaskId === task.id
+                    ? <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin block" />
+                    : <Upload size={14} className="text-blue-500" />}
+                </button>
+              )}
               {canEdit && (
                 <button onClick={() => onDelete(task.id)} className="p-1 rounded hover:bg-destructive/10 transition-colors">
                   <Trash2 size={14} className="text-destructive" />
@@ -201,7 +220,39 @@ export default function PlanDetail() {
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskForm, setTaskForm] = useState({ title: '', description: '', startDate: '', dueDate: '' });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingTaskId, setUploadingTaskId] = useState<number | null>(null);
+  const createAttachmentMutation = trpc.taskAttachments.create.useMutation();
 
+  const handleFileUploadClick = (taskId: number) => {
+    setUploadingTaskId(taskId);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingTaskId) return;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const resp = await fetch('/api/storage/upload', { method: 'POST', body: formData });
+      if (!resp.ok) throw new Error('Upload failed');
+      const data = await resp.json();
+      await createAttachmentMutation.mutateAsync({
+        taskId: uploadingTaskId,
+        fileName: file.name,
+        fileUrl: data.url,
+        fileSize: file.size.toString(),
+      });
+      toast.success('Ficheiro submetido com sucesso!');
+      refetch();
+    } catch {
+      toast.error('Erro ao submeter ficheiro');
+    } finally {
+      setUploadingTaskId(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -411,6 +462,7 @@ export default function PlanDetail() {
             </form>
           )}
 
+          <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelected} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip" />
           {plan.tasks && plan.tasks.length > 0 ? (
             viewMode === 'kanban' ? (
               <KanbanView
@@ -418,6 +470,8 @@ export default function PlanDetail() {
                 onStatusChange={handleStatusChange}
                 onDelete={handleDelete}
                 canEdit={canEdit}
+                onFileUpload={handleFileUploadClick}
+                uploadingTaskId={uploadingTaskId}
               />
             ) : (
               <ListView
@@ -425,6 +479,8 @@ export default function PlanDetail() {
                 onStatusChange={handleStatusChange}
                 onDelete={handleDelete}
                 canEdit={canEdit}
+                onFileUpload={handleFileUploadClick}
+                uploadingTaskId={uploadingTaskId}
               />
             )
           ) : (
