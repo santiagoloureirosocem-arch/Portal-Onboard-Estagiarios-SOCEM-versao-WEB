@@ -86,19 +86,13 @@ function KanbanView({ tasks, onStatusChange, onDelete, canEdit, onFileUpload, up
                       {!task.startDate && !task.dueDate && <span />}
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                      {canEdit && col.key !== 'pending' && (
+                      {col.key !== 'pending' && (
                         <button onClick={() => onStatusChange(task, col.key === 'in_progress' ? 'pending' : 'in_progress')}
-                          className="p-1 rounded hover:bg-muted transition-colors text-xs text-muted-foreground hover:text-foreground">←</button>
+                          className="p-1 rounded hover:bg-muted transition-colors text-xs text-muted-foreground hover:text-foreground" title="Anterior">←</button>
                       )}
-                      {canEdit && col.key !== 'completed' && (
+                      {col.key !== 'completed' && (
                         <button onClick={() => onStatusChange(task, col.key === 'pending' ? 'in_progress' : 'completed')}
-                          className="p-1 rounded hover:bg-muted transition-colors text-xs text-muted-foreground hover:text-foreground">→</button>
-                      )}
-                      {!canEdit && col.key !== 'completed' && (
-                        <button onClick={() => onStatusChange(task, 'completed')}
-                          className="p-1 rounded hover:bg-green-100 transition-colors" title="Concluir">
-                          <CheckCircle size={13} className="text-green-500" />
-                        </button>
+                          className="p-1 rounded hover:bg-muted transition-colors text-xs text-muted-foreground hover:text-foreground" title="Seguinte">→</button>
                       )}
                       {!canEdit && (
                         <button onClick={() => onFileUpload?.(task.id)}

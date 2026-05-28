@@ -1,0 +1,1 @@
+Schema compiles without errors for our changes. Remaining errors are pre-existing (MapIterator TS2802).

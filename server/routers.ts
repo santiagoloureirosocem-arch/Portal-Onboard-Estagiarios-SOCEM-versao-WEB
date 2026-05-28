@@ -284,11 +284,11 @@ export const appRouter = router({
       dueDate: z.date().optional(),
       order: z.number().optional(),
     })).mutation(async ({ input, ctx }) => {
-      // Estagiários can only toggle status to "completed"
+      // Estagiários podem atualizar o status entre todos os estados
       if (ctx.user.role === "estagiario") {
         const allowed = Object.keys(input).filter(k => k !== "id");
-        if (allowed.some(k => k !== "status") || (input.status && input.status !== "completed" && input.status !== "pending")) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Estagiários só podem marcar tarefas como concluídas" });
+        if (allowed.some(k => k !== "status") || (input.status && !["pending", "in_progress", "completed"].includes(input.status))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Estagiários só podem alterar o estado das tarefas" });
         }
       }
       const { id, ...updateData } = input;
