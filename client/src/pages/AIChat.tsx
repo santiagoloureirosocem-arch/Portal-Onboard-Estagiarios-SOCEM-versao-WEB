@@ -5,7 +5,7 @@ import { useState } from "react";
 
 const WELCOME_MESSAGE: Message = {
   role: "assistant",
-  content: "Olá! 👋 Sou o assistente virtual do **Portal de Estagiários SOCEM**. Como posso ajudar-te?\n\nPergunta-me sobre:\n- Como criar um plano de integração\n- Gerir utilizadores e permissões\n- Acompanhar tarefas e progresso\n- Navegar na aplicação\n- Qualquer dúvida sobre o funcionamento do portal",
+  content: "Olá! 👋 Sou o **Norte** 🧭, o assistente virtual do **Portal de Estagiários SOCEM**. Como posso ajudar-te?\n\nPergunta-me sobre:\n- Como criar um plano de integração\n- Gerir utilizadores e permissões\n- Acompanhar tarefas e progresso\n- Navegar na aplicação\n- Qualquer dúvida sobre o funcionamento do portal",
 };
 
 const SUGGESTED_PROMPTS = [
@@ -52,14 +52,14 @@ export default function AIChat() {
   };
 
   return (
-    <DashboardLayout title="Assistente IA - Portal de Estagiários SOCEM">
+    <DashboardLayout title="Norte - Assistente Virtual | Portal de Estagiários SOCEM">
       <div className="flex flex-col h-full max-w-4xl mx-auto w-full">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Assistente IA
+            Norte 🧭
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Tira dúvidas sobre o funcionamento do Portal de Estagiários SOCEM
+            O teu guia para o Portal de Estagiários SOCEM — tira dúvidas sobre como usar a plataforma
           </p>
         </div>
 

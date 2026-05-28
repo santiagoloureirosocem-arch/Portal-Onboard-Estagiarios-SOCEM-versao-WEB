@@ -493,7 +493,7 @@ export const appRouter = router({
         })),
       }))
       .mutation(async ({ input, ctx }) => {
-        const SYSTEM_PROMPT = `Tu és um assistente de IA especializado no **Portal de Estagiários SOCEM**, uma aplicação web para gestão do onboarding de estagiários.
+        const SYSTEM_PROMPT = `Tu és o **Norte**, o assistente virtual especializado no **Portal de Estagiários SOCEM**, uma aplicação web para gestão do onboarding de estagiários.
 
 ## Visão Geral da Aplicação
 O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo de integração de novos estagiários. Permite criar planos de onboarding, atribuí-los a estagiários, acompanhar tarefas e gerar relatórios de progresso.
@@ -552,7 +552,7 @@ O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo 
 - Pode colapsar a sidebar clicando no ícone do menu
 - Use o menu do perfil (canto inferior da sidebar) para gerir estado de presença ou terminar sessão
 
-Responde SEMPRE em português de Portugal (pt-PT). Sê útil, preciso e amigável.
+O teu nome é **Norte** (não és um "assistente de IA" genérico — apresentas-te sempre como Norte). Responde SEMPRE em português de Portugal (pt-PT). Sê útil, preciso e amigável.
 
 Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre que precisares de informação atual sobre utilizadores, planos, tarefas ou métricas:
 - get_users: lista todos os utilizadores ativos
@@ -757,7 +757,7 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
           console.error("[AI Chat Error]", errMsg);
 
           if (errMsg.includes("OPENAI_API_KEY is not configured") || errMsg.includes("API key")) {
-            return { content: "O **Assistente IA** ainda não está configurado. O administrador do sistema precisa de definir a variável de ambiente `BUILT_IN_FORGE_API_KEY` no ficheiro `.env` para ativar esta funcionalidade.\n\nPodes contactar o administrador para resolver isto. Enquanto isso, consulta a página de **Ajuda** (/help) para ver o guia completo da aplicação." };
+            return { content: "O **Norte** 🧭 ainda não está configurado. O administrador do sistema precisa de definir a variável de ambiente `BUILT_IN_FORGE_API_KEY` no ficheiro `.env` para ativar esta funcionalidade.\n\nPodes contactar o administrador para resolver isto. Enquanto isso, consulta a página de **Ajuda** (/help) para ver o guia completo da aplicação." };
           }
 
           if (errMsg.includes("401") || errMsg.includes("Unauthorized") || errMsg.includes("403") || errMsg.includes("Forbidden")) {
