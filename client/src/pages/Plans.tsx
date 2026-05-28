@@ -5,11 +5,15 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit2, Eye, Trash2, User, FileSpreadsheet, FileText as FilePDF, Loader } from 'lucide-react';
+import { Plus, Edit2, Eye, Trash2, User, FileSpreadsheet, FileText as FilePDF, Loader, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface PlanFormData {
   title: string;
@@ -53,119 +57,6 @@ async function addDocHeader(doc: any, pageW: number, margin: number) {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(`Planos de Integração — ${format(new Date(), "d 'de' MMMM yyyy", { locale: pt })}`, margin, 22);
-}
-
-// ── Bulk export (lista de planos) ──
-
-async function exportPlansToPDF(plans: any[]) {
-  const { default: jsPDF } = await import("jspdf").catch(() => {
-    throw new Error("jspdf não disponível");
-  });
-
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageW = 210;
-  const pageH = 297;
-  const margin = 20;
-
-  await addDocHeader(doc, pageW, margin);
-
-  let y = 42;
-  const pageWContent = pageW - 2 * margin;
-  const cols = [
-    { label: "#", w: 10 },
-    { label: "Título", w: 72 },
-    { label: "Estado", w: 22 },
-    { label: "Descrição", w: 66 },
-  ];
-
-  doc.setFillColor(SOCEM_RED);
-  doc.rect(margin, y, pageWContent, 8, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  let hx = margin;
-  cols.forEach(c => { doc.text(c.label, hx + 2, y + 5.5); hx += c.w; });
-  y += 8;
-
-  plans.forEach((plan, idx) => {
-    if (y > pageH - 25) { doc.addPage(); y = 20; }
-
-    const bg = idx % 2 === 0 ? [255, 255, 255] : [250, 250, 252];
-    doc.setFillColor(bg[0], bg[1], bg[2]);
-    doc.rect(margin, y, pageWContent, 7.5, "F");
-    doc.setDrawColor(230, 230, 230);
-    doc.rect(margin, y, pageWContent, 7.5, "S");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(SOCEM_DARK);
-
-    const cells = [
-      String(plan.id),
-      plan.title,
-      STATUS_LABELS[plan.status] ?? plan.status,
-      plan.description
-        ? (doc.splitTextToSize(plan.description.replace(/[#*_`>\-]/g, ""), cols[3].w - 4)[0] ?? "")
-        : "—",
-    ];
-    let cx = margin;
-    cells.forEach((txt, ci) => {
-      doc.text(txt, cx + 2, y + 5);
-      cx += cols[ci].w;
-    });
-    y += 7.5;
-  });
-
-  await addPageFooter(doc, pageW, pageH, margin);
-  doc.save(`SOCEM_Planos_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`);
-}
-
-async function exportPlansToExcel(plans: any[]) {
-  const XLSX = await import("xlsx").catch(() => { throw new Error("xlsx não disponível"); });
-
-  const header = [["ID", "Título", "Estado", "Descrição", "Data de Início", "Data de Conclusão"]];
-  const rows = plans.map((p: any) => [
-    p.id,
-    p.title,
-    STATUS_LABELS[p.status] ?? p.status,
-    p.description?.replace(/[#*_`>\-]/g, "").replace(/\n+/g, " ").trim() ?? "",
-    p.startDate ? format(new Date(p.startDate), "dd/MM/yyyy") : "",
-    p.endDate ? format(new Date(p.endDate), "dd/MM/yyyy") : "",
-  ]);
-
-  const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]);
-  ws["!cols"] = [
-    { wch: 8 }, { wch: 40 }, { wch: 14 }, { wch: 50 }, { wch: 16 }, { wch: 16 },
-  ];
-
-  const HEADER_FILL = { fgColor: { rgb: "CC0000" } };
-  const HEADER_FONT = { bold: true, color: { rgb: "FFFFFF" }, sz: 10, name: "Calibri" };
-  const BORDER_ALL = { style: "thin", color: { rgb: "D0D0D0" } };
-
-  ["A1", "B1", "C1", "D1", "E1", "F1"].forEach(ref => {
-    const cell = ws[ref];
-    if (cell) {
-      cell.s = { font: HEADER_FONT, fill: HEADER_FILL, border: { top: BORDER_ALL, bottom: BORDER_ALL, left: BORDER_ALL, right: BORDER_ALL }, alignment: { horizontal: "center" } };
-    }
-  });
-
-  for (let i = 0; i < rows.length; i++) {
-    const isEven = i % 2 === 0;
-    ["A", "B", "C", "D", "E", "F"].forEach((col, ci) => {
-      const ref = XLSX.utils.encode_cell({ r: i + 1, c: ci });
-      const cell = ws[ref];
-      if (cell) {
-        cell.s = {
-          font: { sz: 9, name: "Calibri", color: { rgb: SOCEM_DARK.slice(1) } },
-          border: { top: BORDER_ALL, bottom: BORDER_ALL, left: BORDER_ALL, right: BORDER_ALL },
-          fill: isEven ? { fgColor: { rgb: "F8F8FA" } } : { fgColor: { rgb: "FFFFFF" } },
-        };
-      }
-    });
-  }
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Planos");
-  XLSX.writeFile(wb, `SOCEM_Planos_${format(new Date(), "yyyyMMdd_HHmm")}.xlsx`);
 }
 
 // ── Single plan export (com tasks) ──
@@ -384,7 +275,6 @@ export default function Plans() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [exporting, setExporting] = useState<"pdf" | "xlsx" | null>(null);
   const [exportingPlanId, setExportingPlanId] = useState<number | null>(null);
   const [formData, setFormData] = useState<PlanFormData>({
     title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '',
@@ -440,20 +330,6 @@ export default function Plans() {
     }
   };
 
-  const handleExportPlans = async (type: "pdf" | "xlsx") => {
-    if (!plans || plans.length === 0) { toast.error("Não há planos para exportar"); return; }
-    setExporting(type);
-    try {
-      if (type === "pdf") await exportPlansToPDF(plans);
-      else await exportPlansToExcel(plans);
-      toast.success(`Planos exportados como ${type.toUpperCase()}`);
-    } catch {
-      toast.error("Erro ao exportar planos");
-    } finally {
-      setExporting(null);
-    }
-  };
-
   const handleExportSinglePlan = async (planId: number, type: "pdf" | "xlsx") => {
     setExportingPlanId(planId);
     try {
@@ -500,41 +376,19 @@ export default function Plans() {
               {isIntern ? 'Planos de onboarding atribuídos a ti' : 'Crie e gira os planos de onboarding'}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30"
-              onClick={() => handleExportPlans("xlsx")}
-              disabled={exporting !== null || !plans || plans.length === 0}
-            >
-              {exporting === "xlsx" ? <Loader className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              Excel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-              onClick={() => handleExportPlans("pdf")}
-              disabled={exporting !== null || !plans || plans.length === 0}
-            >
-              {exporting === "pdf" ? <Loader className="h-4 w-4 animate-spin" /> : <FilePDF className="h-4 w-4" />}
-              PDF
-            </Button>
-            {canEdit && (
-              <>
-                <Button onClick={() => setLocation("/assign-plan")} variant="outline" className="gap-2">
-                  <User size={18} /> Atribuir Plano
-                </Button>
-                <Button onClick={() => {
-                  setShowForm(!showForm);
-                  if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' }); }
-                }} className="gap-2">
-                  <Plus size={20} /> Novo Plano
-                </Button>
-              </>
-            )}
-          </div>
+          {canEdit && (
+            <div className="flex gap-2">
+              <Button onClick={() => setLocation("/assign-plan")} variant="outline" className="gap-2">
+                <User size={18} /> Atribuir Plano
+              </Button>
+              <Button onClick={() => {
+                setShowForm(!showForm);
+                if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' }); }
+              }} className="gap-2">
+                <Plus size={20} /> Novo Plano
+              </Button>
+            </div>
+          )}
         </div>
 
         {showForm && canEdit && (
@@ -652,31 +506,61 @@ export default function Plans() {
                         ? plan.description.replace(/[#*_`>\-]/g, '').replace(/\n+/g, ' ').trim()
                         : 'Sem descrição'}
                     </p>
-                    <div className={`flex gap-2 pt-4 border-t border-border ${isIntern ? '' : ''}`}>
-                      <button onClick={() => setLocation(`/plans/${plan.id}`)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                        <Eye size={16} /> Ver
-                      </button>
-                      <button onClick={() => handleExportSinglePlan(plan.id, "pdf")}
-                        disabled={exportingPlanId === plan.id}
-                        className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
-                        title="Exportar PDF">
-                        {exportingPlanId === plan.id ? <Loader size={16} className="text-blue-500 animate-spin" /> : <FilePDF size={16} className="text-blue-500" />}
-                      </button>
-                      <button onClick={() => handleExportSinglePlan(plan.id, "xlsx")}
-                        disabled={exportingPlanId === plan.id}
-                        className="p-2 hover:bg-green-50 dark:hover:bg-green-950/30 rounded-lg transition-colors"
-                        title="Exportar Excel">
-                        {exportingPlanId === plan.id ? <Loader size={16} className="text-green-500 animate-spin" /> : <FileSpreadsheet size={16} className="text-green-500" />}
-                      </button>
+                    <div className={`flex gap-1.5 pt-4 border-t border-border ${isIntern ? '' : ''}`}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button onClick={() => setLocation(`/plans/${plan.id}`)}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium">
+                            <Eye size={16} /> Ver
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">Ver detalhes do plano</TooltipContent>
+                      </Tooltip>
+
+                      <DropdownMenu>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                disabled={exportingPlanId === plan.id}
+                                className="p-2 rounded-lg bg-muted/50 hover:bg-muted border border-border transition-colors"
+                              >
+                                {exportingPlanId === plan.id ? <Loader size={16} className="text-muted-foreground animate-spin" /> : <Download size={16} className="text-muted-foreground" />}
+                              </button>
+                            </DropdownMenuTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">Exportar plano</TooltipContent>
+                        </Tooltip>
+                        <DropdownMenuContent align="end" className="min-w-36 rounded-xl p-1">
+                          <DropdownMenuItem onClick={() => handleExportSinglePlan(plan.id, "pdf")} className="gap-2 rounded-lg cursor-pointer">
+                            <FilePDF size={15} className="text-[#CC0000]" />
+                            <span>Exportar PDF</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExportSinglePlan(plan.id, "xlsx")} className="gap-2 rounded-lg cursor-pointer">
+                            <FileSpreadsheet size={15} className="text-green-600" />
+                            <span>Exportar Excel</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
                       {canEdit && (
                         <>
-                          <button onClick={() => handleEdit(plan)} className="p-2 hover:bg-muted rounded-lg transition-colors" title="Editar">
-                            <Edit2 size={16} className="text-muted-foreground" />
-                          </button>
-                          <button onClick={() => setConfirmDeleteId(plan.id)} className="p-2 hover:bg-destructive/10 rounded-lg transition-colors" title="Eliminar">
-                            <Trash2 size={16} className="text-destructive" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button onClick={() => handleEdit(plan)} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                                <Edit2 size={16} className="text-muted-foreground" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">Editar plano</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button onClick={() => setConfirmDeleteId(plan.id)} className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
+                                <Trash2 size={16} className="text-destructive" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">Eliminar plano</TooltipContent>
+                          </Tooltip>
                         </>
                       )}
                     </div>
