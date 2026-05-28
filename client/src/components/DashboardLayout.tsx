@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity, AlertTriangle, MessageCircle, Bot } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, BarChart3, Settings, HelpCircle, Calendar, CheckSquare, Shield, GraduationCap, Activity, AlertTriangle, MessageCircle, Bot, Bell } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -147,6 +147,78 @@ export default function DashboardLayout({
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
+  );
+}
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { data: unreadCount } = trpc.notifications.unreadCount.useQuery();
+  const { data: notifications } = trpc.notifications.list.useQuery({ limit: 10 });
+  const markAllRead = trpc.notifications.markAllAsRead.useMutation();
+  const markRead = trpc.notifications.markAsRead.useMutation();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="relative p-2 rounded-lg hover:bg-accent/50 transition-colors"
+      >
+        <Bell size={18} className="text-muted-foreground" />
+        {unreadCount !== undefined && unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-popover border border-border rounded-xl shadow-xl z-50 animate-in fade-in-0 slide-in-from-top-2 duration-150">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <p className="text-sm font-bold text-foreground">Notificações</p>
+            {(unreadCount ?? 0) > 0 && (
+              <button
+                onClick={() => { markAllRead.mutateAsync().then(() => setOpen(false)); }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Marcar todas como lidas
+              </button>
+            )}
+          </div>
+          <div className="max-h-[300px] overflow-y-auto">
+            {notifications && notifications.length > 0 ? (
+              notifications.map((n: any) => (
+                <div
+                  key={n.id}
+                  className={`px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/30 transition-colors ${!n.isRead ? "bg-accent/10" : ""}`}
+                  onClick={() => {
+                    if (!n.isRead) markRead.mutate({ id: n.id });
+                    if (n.link) setLocation(n.link);
+                    setOpen(false);
+                  }}
+                >
+                  <p className="text-sm font-medium text-foreground">{n.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-8 text-center">
+                <Bell size={24} className="mx-auto mb-2 text-muted-foreground opacity-40" />
+                <p className="text-sm text-muted-foreground">Sem notificações</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -395,7 +467,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
           <div className="flex-1 min-w-0 flex justify-center">
             <GlobalSearch />
           </div>
-          <div className="shrink-0 w-2" />
+          <NotificationBell />
         </div>
         <main className="flex-1 p-4 flex flex-col overflow-hidden min-h-0">{children}</main>
       </SidebarInset>

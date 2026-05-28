@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -8,10 +9,11 @@ import {
   Users, FileText, CheckCircle2, TrendingUp,
   ArrowRight, AlertCircle, Calendar, Clock,
   Flame, Star, Target, ChevronRight, Sun,
-  BookOpen, Zap, CheckSquare,
+  BookOpen, Zap, CheckSquare, MessageCircle, Bot,
 } from "lucide-react";
 import { format, isToday, isTomorrow, isPast, parseISO, differenceInDays } from "date-fns";
 import { pt } from "date-fns/locale";
+import { toast } from "sonner";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -233,6 +235,13 @@ function InternDashboard() {
   const { data: myPlans } = trpc.plans.list.useQuery();
   const { data: allTasks } = trpc.tasks.listAll.useQuery();
 
+  const { data: todayCheckin, refetch: refetchCheckin } = trpc.dailyCheckins.today.useQuery();
+  const { data: streak } = trpc.dashboard.myStreak.useQuery();
+  const { data: badges } = trpc.dashboard.myBadges.useQuery();
+  const createCheckinMutation = trpc.dailyCheckins.create.useMutation();
+  const [checkinMood, setCheckinMood] = useState<string | null>(null);
+  const [checkinNote, setCheckinNote] = useState("");
+
   // Compute today's tasks and upcoming tasks
   const pendingTasks = (allTasks || []).filter((t: any) => t.status === "pending" || t.status === "in_progress");
   const todayTasks = pendingTasks.filter((t: any) => t.dueDate && isToday(typeof t.dueDate === "string" ? parseISO(t.dueDate) : new Date(t.dueDate)));
@@ -317,6 +326,119 @@ function InternDashboard() {
           color={overdueTasks.length > 0 ? "red" : "green"}
           sub={overdueTasks.length > 0 ? "Requerem atenção" : "Tudo em dia!"}
         />
+      </div>
+
+      {/* Atalhos Rápidos */}
+      <Card className="p-5">
+        <SectionHeader title="Atalhos Rápidos" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button onClick={() => setLocation("/mensagens")} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/20 border border-blue-200 dark:border-blue-800 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center"><MessageCircle size={20} className="text-blue-500" /></div>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Mensagens</span>
+          </button>
+          <button onClick={() => setLocation("/calendar")} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100/60 dark:from-purple-950/40 dark:to-purple-900/20 border border-purple-200 dark:border-purple-800 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center"><Calendar size={20} className="text-purple-500" /></div>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Calendário</span>
+          </button>
+          <button onClick={() => setLocation("/tasks")} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100/60 dark:from-green-950/40 dark:to-green-900/20 border border-green-200 dark:border-green-800 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center"><CheckSquare size={20} className="text-green-500" /></div>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tarefas</span>
+          </button>
+          <button onClick={() => setLocation("/ai-assist")} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/60 dark:from-amber-950/40 dark:to-amber-900/20 border border-amber-200 dark:border-amber-800 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center"><Bot size={20} className="text-amber-500" /></div>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Norte</span>
+          </button>
+        </div>
+      </Card>
+
+      {/* Check-in Diário + Streak & Badges */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-5 md:col-span-2">
+          <SectionHeader title="Check-in Diário" />
+          {todayCheckin ? (
+            <div className="flex items-center gap-3 py-4">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-xl">
+                {todayCheckin.mood === "great" ? "😄" : todayCheckin.mood === "good" ? "🙂" : todayCheckin.mood === "okay" ? "😐" : todayCheckin.mood === "bad" ? "😟" : "😢"}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Check-in feito hoje</p>
+                {todayCheckin.note && <p className="text-xs text-muted-foreground mt-0.5">{todayCheckin.note}</p>}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Como estás a sentir-te hoje?</p>
+              <div className="flex gap-2">
+                {(["great", "good", "okay", "bad", "terrible"] as const).map(mood => (
+                  <button
+                    key={mood}
+                    onClick={() => setCheckinMood(mood)}
+                    className={`flex-1 py-3 rounded-xl text-center text-lg transition-all border ${
+                      checkinMood === mood
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "border-border hover:border-primary/40 hover:bg-accent/30"
+                    }`}
+                    title={{ great: "Ótimo", good: "Bom", okay: "Ok", bad: "Mau", terrible: "Terrível" }[mood]}
+                  >
+                    <div className="text-xl mb-1">{mood === "great" ? "😄" : mood === "good" ? "🙂" : mood === "okay" ? "😐" : mood === "bad" ? "😟" : "😢"}</div>
+                    <div className="text-[10px] font-medium text-muted-foreground">{{ great: "Ótimo", good: "Bom", okay: "Ok", bad: "Mau", terrible: "Terrível" }[mood]}</div>
+                  </button>
+                ))}
+              </div>
+              <textarea
+                placeholder="Algo que queiras partilhar sobre o teu dia?"
+                value={checkinNote}
+                onChange={e => setCheckinNote(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                rows={2}
+              />
+              <Button
+                size="sm"
+                disabled={!checkinMood || createCheckinMutation.isPending}
+                onClick={async () => {
+                  if (!checkinMood) return;
+                  await createCheckinMutation.mutateAsync({ mood: checkinMood as any, note: checkinNote || undefined });
+                  setCheckinMood(null);
+                  setCheckinNote("");
+                  refetchCheckin();
+                  toast.success("Check-in registado!");
+                }}
+              >
+                {createCheckinMutation.isPending ? "A registar..." : "Registar Check-in"}
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-5 flex flex-col justify-center">
+          <SectionHeader title="Sequência" />
+          <div className="flex items-center gap-4 py-3">
+            <div className="relative">
+              <Flame size={40} className="text-orange-500" />
+              <span className="absolute -top-1 -right-1 text-xs font-bold text-orange-600">
+                {streak?.currentStreak || 0}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">{streak?.currentStreak || 0} dias</p>
+              <p className="text-xs text-muted-foreground">sequência atual</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Recorde: {streak?.longestStreak || 0} dias</p>
+            </div>
+          </div>
+          {badges && badges.length > 0 && (
+            <div className="border-t border-border pt-3 mt-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Distintivos</p>
+              <div className="flex gap-2">
+                {badges.map((b: any) => (
+                  <div key={b.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" title={b.description}>
+                    <Star size={12} className="fill-amber-500" />
+                    <span className="text-[10px] font-semibold">{b.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* What to do today */}
@@ -409,6 +531,49 @@ function InternDashboard() {
                   <div className="shrink-0 flex items-center gap-1.5 ml-2">
                     <Calendar size={11} className={urg.color} />
                     <span className={`text-xs font-semibold ${urg.color}`}>{urg.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Linha do Tempo */}
+      {myPlans && myPlans.length > 0 && (
+        <Card className="p-6">
+          <SectionHeader title="Linha do Tempo" action="Ver planos" onAction={() => setLocation("/plans")} />
+          <div className="space-y-3">
+            {myPlans.slice(0, 5).map((plan: any) => {
+              const start = plan.startDate ? new Date(plan.startDate) : null;
+              const end = plan.endDate ? new Date(plan.endDate) : null;
+              const today = new Date();
+              const totalDays = start && end ? Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 1;
+              const elapsedDays = start ? Math.max(0, Math.min(totalDays, (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+              const progressPct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+              const taskCount = plan.tasks ? plan.tasks.filter((t: any) => t.status === "completed").length : 0;
+              const totalTaskCount = plan.tasks ? plan.tasks.length : 0;
+              return (
+                <div key={plan.id} onClick={() => setLocation(`/plans/${plan.id}`)} className="cursor-pointer group">
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <span className="text-xs font-medium text-foreground truncate flex-1">{plan.title}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {start ? format(start, "d MMM") : "—"} → {end ? format(end, "d MMM") : "—"}
+                    </span>
+                  </div>
+                  <div className="relative h-8 rounded-lg bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary/40 to-primary/60 rounded-lg transition-all"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                    <div className="absolute inset-0 flex items-center px-3">
+                      <div className="w-full h-1.5 rounded-full bg-background/40 overflow-hidden">
+                        <div className="h-full bg-white/70 rounded-full" style={{ width: `${totalTaskCount > 0 ? (taskCount / totalTaskCount) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-end px-3">
+                      <span className="text-[10px] font-semibold text-foreground/70">{taskCount}/{totalTaskCount}</span>
+                    </div>
                   </div>
                 </div>
               );
