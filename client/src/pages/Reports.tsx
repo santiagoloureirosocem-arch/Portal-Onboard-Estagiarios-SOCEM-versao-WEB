@@ -250,33 +250,91 @@ async function exportToPDF(data: ExportData) {
 
 // ─── Excel Export ─────────────────────────────────────────────────────────────
 
+const SOCEM_RED_HEX = "CC0000";
+const SOCEM_DARK_HEX = "1a1a1a";
+const HEADER_FILL = { fgColor: { rgb: SOCEM_RED_HEX } };
+const HEADER_FONT = { bold: true, color: { rgb: "FFFFFF" }, sz: 10, name: "Calibri" };
+const TITLE_FONT = { bold: true, sz: 16, color: { rgb: "FFFFFF" }, name: "Calibri" };
+const SUBTITLE_FONT = { sz: 9, color: { rgb: "FFFFFF" }, name: "Calibri" };
+const KPI_LABEL_FONT = { bold: true, sz: 10, color: { rgb: "666666" }, name: "Calibri" };
+const KPI_VALUE_FONT = { bold: true, sz: 18, color: { rgb: SOCEM_RED_HEX }, name: "Calibri" };
+const BORDER_THIN = { style: "thin", color: { rgb: "D0D0D0" } } as const;
+const BORDER_ALL = { top: BORDER_THIN, bottom: BORDER_THIN, left: BORDER_THIN, right: BORDER_THIN };
+
+function applyHeaderStyle(ws: any, ref: string) {
+  const cell = ws[ref];
+  if (cell) {
+    cell.s = { font: HEADER_FONT, fill: HEADER_FILL, border: BORDER_ALL, alignment: { horizontal: "center", vertical: "center" } };
+  }
+}
+
+function styleDataRow(xlsxMod: any, ws: any, rowNum: number, cols: string[], startCol: number = 1) {
+  const isEven = rowNum % 2 === 0;
+  cols.forEach((col, i) => {
+    const ref = xlsxMod.utils.encode_cell({ r: rowNum, c: startCol + i });
+    const cell = ws[ref];
+    if (cell) {
+      cell.s = {
+        ...cell.s,
+        border: BORDER_ALL,
+        fill: isEven ? { fgColor: { rgb: "F8F8FA" } } : { fgColor: { rgb: "FFFFFF" } },
+        font: { sz: 9, name: "Calibri", color: { rgb: SOCEM_DARK_HEX } },
+      };
+    }
+  });
+}
+
 async function exportToExcel(data: ExportData) {
   const XLSX = await import("xlsx").catch(() => { throw new Error("xlsx não disponível"); });
 
   const wb = XLSX.utils.book_new();
 
   // ── Sheet 1: Resumo ──
-  const resumoData = [
-    ["SOCEM — Portal de Estagiários", "", "", ""],
-    [`Relatório gerado em ${format(new Date(), "d/MM/yyyy HH:mm")}`, "", "", ""],
-    ["", "", "", ""],
-    ["INDICADOR", "VALOR", "", ""],
-    ["Estagiários Ativos", data.activeInterns, "", ""],
-    ["Planos Ativos", data.activePlans, "", ""],
-    ["Tarefas Pendentes", data.pendingTasks, "", ""],
-    ["Taxa de Conclusão (%)", data.completionRate, "", ""],
-  ];
-  const wsResumo = XLSX.utils.aoa_to_sheet(resumoData);
-  wsResumo["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
-  // Style header cell A1
-  if (wsResumo["A1"]) {
-    wsResumo["A1"].s = {
-      font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "CC0000" } },
-      alignment: { horizontal: "center" },
-    };
+  {
+    const resumoData = [
+      ["SOCEM — Portal de Estagiários", null, null, null],
+      [`Relatório gerado em ${format(new Date(), "d 'de' MMMM yyyy 'às' HH:mm", { locale: pt })}`, null, null, null],
+      [null, null, null, null],
+      ["INDICADOR", "VALOR", null, null],
+      ["Estagiários Ativos", data.activeInterns, null, null],
+      ["Planos Ativos", data.activePlans, null, null],
+      ["Tarefas Pendentes", data.pendingTasks, null, null],
+      ["Taxa de Conclusão (%)", data.completionRate, null, null],
+    ];
+    const wsResumo = XLSX.utils.aoa_to_sheet(resumoData);
+    wsResumo["!cols"] = [{ wch: 32 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+    wsResumo["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+    ];
+
+    // Title row
+    if (wsResumo["A1"]) wsResumo["A1"].s = { font: TITLE_FONT, fill: HEADER_FILL, alignment: { horizontal: "left", vertical: "center" } };
+    if (wsResumo["A2"]) wsResumo["A2"].s = { font: SUBTITLE_FONT, fill: HEADER_FILL, alignment: { horizontal: "left", vertical: "center" } };
+
+    // KPI header
+    if (wsResumo["A4"]) wsResumo["A4"].s = { font: { bold: true, sz: 10, color: { rgb: SOCEM_RED_HEX }, name: "Calibri" }, fill: { fgColor: { rgb: "FFF0F0" } }, border: BORDER_ALL };
+
+    // KPI rows
+    [4, 5, 6, 7].forEach((row, i) => {
+      const labelRef = XLSX.utils.encode_cell({ r: row, c: 0 });
+      const valRef = XLSX.utils.encode_cell({ r: row, c: 1 });
+      if (wsResumo[labelRef]) {
+        wsResumo[labelRef].s = { font: KPI_LABEL_FONT, border: BORDER_ALL, fill: { fgColor: { rgb: i % 2 === 0 ? "F8F8FA" : "FFFFFF" } } };
+      }
+      if (wsResumo[valRef]) {
+        const isString = typeof resumoData[row][1] === "string";
+        wsResumo[valRef].s = {
+          font: isString ? { ...KPI_VALUE_FONT, sz: 14 } : KPI_VALUE_FONT,
+          border: BORDER_ALL,
+          fill: { fgColor: { rgb: i % 2 === 0 ? "F8F8FA" : "FFFFFF" } },
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+      }
+    });
+
+    XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
   }
-  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
 
   // ── Sheet 2: Planos ──
   if (data.plans.length > 0) {
@@ -284,13 +342,13 @@ async function exportToExcel(data: ExportData) {
     const header = [["ID", "Título", "Estado", "Descrição"]];
     const rows = data.plans.map((p: any) => [p.id, p.title, statusLabels[p.status] ?? p.status, p.description ?? ""]);
     const wsPlanos = XLSX.utils.aoa_to_sheet([...header, ...rows]);
-    wsPlanos["!cols"] = [{ wch: 8 }, { wch: 35 }, { wch: 15 }, { wch: 45 }];
-    // Header row styling
-    ["A1","B1","C1","D1"].forEach(cell => {
-      if (wsPlanos[cell]) {
-        wsPlanos[cell].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "CC0000" } } };
-      }
-    });
+    wsPlanos["!cols"] = [{ wch: 8 }, { wch: 40 }, { wch: 14 }, { wch: 50 }];
+
+    const headerCols = ["A1", "B1", "C1", "D1"];
+    headerCols.forEach(ref => applyHeaderStyle(wsPlanos, ref));
+    for (let i = 0; i < rows.length; i++) {
+      styleDataRow(XLSX, wsPlanos, i + 1, ["A", "B", "C", "D"]);
+    }
     XLSX.utils.book_append_sheet(wb, wsPlanos, "Planos");
   }
 
@@ -303,12 +361,13 @@ async function exportToExcel(data: ExportData) {
       t.dueDate ? format(new Date(t.dueDate), "dd/MM/yyyy") : "",
     ]);
     const wsTarefas = XLSX.utils.aoa_to_sheet([...header, ...rows]);
-    wsTarefas["!cols"] = [{ wch: 8 }, { wch: 40 }, { wch: 15 }, { wch: 40 }, { wch: 15 }];
-    ["A1","B1","C1","D1","E1"].forEach(cell => {
-      if (wsTarefas[cell]) {
-        wsTarefas[cell].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "CC0000" } } };
-      }
-    });
+    wsTarefas["!cols"] = [{ wch: 8 }, { wch: 45 }, { wch: 16 }, { wch: 45 }, { wch: 14 }];
+
+    const headerCols = ["A1", "B1", "C1", "D1", "E1"];
+    headerCols.forEach(ref => applyHeaderStyle(wsTarefas, ref));
+    for (let i = 0; i < rows.length; i++) {
+      styleDataRow(XLSX, wsTarefas, i + 1, ["A", "B", "C", "D", "E"]);
+    }
     XLSX.utils.book_append_sheet(wb, wsTarefas, "Tarefas");
   }
 
@@ -320,12 +379,13 @@ async function exportToExcel(data: ExportData) {
       u.id, u.name, u.email, u.position ?? "", roleLabels[u.role] ?? u.role, u.isActive ? "Ativo" : "Inativo",
     ]);
     const wsUsers = XLSX.utils.aoa_to_sheet([...header, ...rows]);
-    wsUsers["!cols"] = [{ wch: 8 }, { wch: 30 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 12 }];
-    ["A1","B1","C1","D1","E1","F1"].forEach(cell => {
-      if (wsUsers[cell]) {
-        wsUsers[cell].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "CC0000" } } };
-      }
-    });
+    wsUsers["!cols"] = [{ wch: 8 }, { wch: 30 }, { wch: 38 }, { wch: 25 }, { wch: 18 }, { wch: 12 }];
+
+    const headerCols = ["A1", "B1", "C1", "D1", "E1", "F1"];
+    headerCols.forEach(ref => applyHeaderStyle(wsUsers, ref));
+    for (let i = 0; i < rows.length; i++) {
+      styleDataRow(XLSX, wsUsers, i + 1, ["A", "B", "C", "D", "E", "F"]);
+    }
     XLSX.utils.book_append_sheet(wb, wsUsers, "Utilizadores");
   }
 
