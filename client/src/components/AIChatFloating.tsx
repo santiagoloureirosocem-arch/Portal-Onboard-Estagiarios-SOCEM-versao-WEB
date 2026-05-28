@@ -7,7 +7,7 @@ import { useState } from "react";
 
 const WELCOME_MESSAGE: Message = {
   role: "assistant",
-  content: "Olá! 👋 Sou o assistente virtual do **Portal de Estagiários SOCEM**. Como posso ajudar-te?",
+  content: "Olá! 👋 Sou o **Norte** 🧭, o assistente virtual do **Portal de Estagiários SOCEM**. Como posso ajudar-te?",
 };
 
 export function AIChatFloating() {
@@ -60,7 +60,7 @@ export function AIChatFloating() {
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-[420px] sm:max-w-[480px] p-0">
-        <SheetTitle className="sr-only">Assistente IA</SheetTitle>
+        <SheetTitle className="sr-only">Norte - Assistente Virtual</SheetTitle>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center gap-3 px-5 py-4 border-b bg-card">
@@ -68,8 +68,8 @@ export function AIChatFloating() {
               <MessageCircle className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">Assistente IA</p>
-              <p className="text-xs text-muted-foreground">Tira dúvidas sobre o portal</p>
+              <p className="text-sm font-semibold text-foreground">Norte 🧭</p>
+              <p className="text-xs text-muted-foreground">O teu guia do portal</p>
             </div>
           </div>
 

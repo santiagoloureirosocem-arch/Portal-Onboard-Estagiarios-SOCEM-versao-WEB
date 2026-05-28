@@ -85,7 +85,7 @@ const menuItems: { icon: any; label: string; path: string; roles: MenuRole[] }[]
 
 const footerItems = [
   { icon: Settings, label: "Definições", path: "/settings" },
-  { icon: Bot, label: "Assistente IA", path: "/ai-assist" },
+  { icon: Bot, label: "Norte", path: "/ai-assist" },
   { icon: HelpCircle, label: "Ajuda", path: "/help" },
 ];
 
