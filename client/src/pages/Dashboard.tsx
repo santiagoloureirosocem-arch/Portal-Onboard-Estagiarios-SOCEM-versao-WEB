@@ -109,6 +109,19 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
   );
 }
 
+function QuickActionButton({ icon: Icon, label, color, iconBg, iconColor, onClick }: {
+  icon: any; label: string; color: string; iconBg: string; iconColor: string; onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-gradient-to-br ${color} hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all`}>
+      <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}>
+        <Icon size={18} className={iconColor} />
+      </div>
+      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{label}</span>
+    </button>
+  );
+}
+
 // ─── Staff Dashboard ──────────────────────────────────────────────────────────
 
 function StaffDashboard() {
@@ -274,305 +287,267 @@ function InternDashboard() {
   return (
     <div className="space-y-6">
 
-      {/* Welcome — compact greeting + overall progress */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-5 text-white shadow-lg">
+      {/* ── Welcome ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-6 text-white shadow-lg">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15)_0%,_transparent_60%)]" />
-        <div className="relative flex items-center gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 text-sm opacity-80">
-              <Sun size={14} />
-              <span>{getGreeting()}, <strong>{user?.name?.split(" ")[0] || "Estagiário"}</strong></span>
-            </div>
-            <p className="text-xs opacity-60 mt-1">
-              {format(new Date(), "EEEE, d 'de' MMMM", { locale: pt })}
-            </p>
+        <div className="relative">
+          <div className="flex items-center gap-2 text-sm font-medium opacity-80">
+            <Sun size={16} />
+            <span>{getGreeting()}, {user?.name?.split(" ")[0] || "Estagiário"}</span>
           </div>
-          <div className="flex items-center gap-5 shrink-0">
-            <div className="text-center">
-              <div className="text-lg font-bold tabular-nums">{completedTasks}/{totalTasks}</div>
-              <div className="text-[10px] opacity-70">concluídas</div>
+          <p className="text-sm opacity-60 mt-0.5">{format(new Date(), "EEEE, d 'de' MMMM", { locale: pt })}</p>
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="opacity-80">Progresso global</span>
+              <span className="font-bold">{completionRate}%</span>
             </div>
-            <div className="text-center">
-              <div className="text-lg font-bold tabular-nums">{overdueTasks.length}</div>
-              <div className="text-[10px] opacity-70">em atraso</div>
+            <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden mt-1.5">
+              <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${completionRate}%` }} />
             </div>
-          </div>
-        </div>
-        <div className="relative mt-3">
-          <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${completionRate}%` }} />
+            <div className="flex justify-between text-xs opacity-60 mt-1.5">
+              <span>{completedTasks} tarefas concluídas</span>
+              <span>{totalTasks} no total</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Atalhos Rápidos — navegação principal */}
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { icon: MessageCircle, label: "Mensagens", color: "blue", path: "/mensagens" },
-          { icon: Calendar, label: "Calendário", color: "purple", path: "/calendar" },
-          { icon: CheckSquare, label: "Tarefas", color: "green", path: "/tasks" },
-          { icon: Bot, label: "Norte", color: "amber", path: "/ai-assist" },
-        ].map(item => (
-          <button
-            key={item.path}
-            onClick={() => setLocation(item.path)}
-            className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/60 dark:from-gray-800/40 dark:to-gray-800/20 border border-gray-200 dark:border-gray-700 hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all"
-          >
-            <item.icon size={18} className="text-gray-500" />
-            <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">{item.label}</span>
-          </button>
-        ))}
+      {/* ── Visão Geral (stat cards) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Planos Atribuídos" value={progress?.assignedPlans ?? 0} icon={BookOpen} color="blue" />
+        <StatCard label="Tarefas Concluídas" value={completedTasks} icon={CheckCircle2} color="green" sub={`de ${totalTasks} no total`} />
+        <StatCard label="Em Atraso" value={overdueTasks.length} icon={AlertCircle} color={overdueTasks.length > 0 ? "red" : "green"} sub={overdueTasks.length > 0 ? "Requerem atenção" : "Tudo em dia!"} />
       </div>
 
-      {/* Secção principal: Hoje */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          {todayItems.length > 0 ? (
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
-                <Flame size={13} className="text-orange-500" />
+      {/* ── Atalhos Rápidos ── */}
+      <Card className="p-5">
+        <SectionHeader title="Atalhos Rápidos" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <QuickActionButton icon={MessageCircle} label="Mensagens" color="from-blue-50 to-blue-100/60 dark:from-blue-950/40 dark:to-blue-900/20 border-blue-200 dark:border-blue-800" iconBg="bg-blue-500/10" iconColor="text-blue-500" onClick={() => setLocation("/mensagens")} />
+          <QuickActionButton icon={Calendar} label="Calendário" color="from-purple-50 to-purple-100/60 dark:from-purple-950/40 dark:to-purple-900/20 border-purple-200 dark:border-purple-800" iconBg="bg-purple-500/10" iconColor="text-purple-500" onClick={() => setLocation("/calendar")} />
+          <QuickActionButton icon={CheckSquare} label="Tarefas" color="from-green-50 to-green-100/60 dark:from-green-950/40 dark:to-green-900/20 border-green-200 dark:border-green-800" iconBg="bg-green-500/10" iconColor="text-green-500" onClick={() => setLocation("/tasks")} />
+          <QuickActionButton icon={Bot} label="Norte" color="from-amber-50 to-amber-100/60 dark:from-amber-950/40 dark:to-amber-900/20 border-amber-200 dark:border-amber-800" iconBg="bg-amber-500/10" iconColor="text-amber-500" onClick={() => setLocation("/ai-assist")} />
+        </div>
+      </Card>
+
+      {/* ── O que fazer hoje ── */}
+      {todayItems.length > 0 ? (
+        <Card className="p-6 border-2 border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/10">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+              <Flame size={16} className="text-orange-500" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">O que fazer hoje</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{todayItems.length} tarefa{todayItems.length !== 1 ? "s" : ""} a tratar</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {todayItems.map((task: any) => {
+              const urg = getUrgencyInfo(task.dueDate);
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => setLocation("/tasks")}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${urg.bg}`}
+                >
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${urg.urgent ? "bg-red-100 dark:bg-red-900/40" : "bg-orange-100 dark:bg-orange-900/40"}`}>
+                    <Target size={13} className={urg.color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{task.title}</p>
+                    {task.description && <p className="text-xs text-slate-400 truncate">{task.description}</p>}
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <Clock size={11} className={urg.color} />
+                    <span className={`text-xs font-bold ${urg.color}`}>{urg.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <Button variant="outline" size="sm" className="mt-4 w-full border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30" onClick={() => setLocation("/tasks")}>
+            <CheckSquare size={14} className="mr-1.5" />
+            Ver todas as tarefas
+          </Button>
+        </Card>
+      ) : noDueTasks.length > 0 ? (
+        <Card className="p-5 border-dashed border-2 border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20">
+          <div className="flex items-center gap-3 mb-3">
+            <Zap size={16} className="text-slate-400" />
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">Tarefas sem prazo definido</p>
+          </div>
+          <div className="space-y-1.5">
+            {noDueTasks.map((task: any) => (
+              <div key={task.id} onClick={() => setLocation("/tasks")} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer group">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                <p className="text-sm text-slate-600 dark:text-slate-300 truncate flex-1">{task.title}</p>
+                <ChevronRight size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
               </div>
-              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                {todayItems.length} tarefa{todayItems.length !== 1 ? "s" : ""} para hoje
-              </h2>
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-6 text-center border-2 border-green-200 dark:border-green-900/50 bg-green-50/50 dark:bg-green-950/10">
+          <CheckCircle2 size={28} className="mx-auto text-green-400 mb-2" />
+          <p className="text-sm font-semibold text-green-700 dark:text-green-400">Tudo em dia!</p>
+          <p className="text-xs text-green-600/70 dark:text-green-500/70 mt-1">Não há tarefas urgentes neste momento.</p>
+        </Card>
+      )}
+
+      {/* ── Check-in + Streak ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-5 md:col-span-2">
+          <SectionHeader title="Check-in Diário" />
+          {todayCheckin ? (
+            <div className="flex items-center gap-4 py-3">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-2xl">
+                {todayCheckin.mood === "great" ? "😄" : todayCheckin.mood === "good" ? "🙂" : todayCheckin.mood === "okay" ? "😐" : todayCheckin.mood === "bad" ? "😟" : "😢"}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Check-in feito hoje</p>
+                {todayCheckin.note && <p className="text-xs text-muted-foreground mt-0.5">{todayCheckin.note}</p>}
+              </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                <CheckCircle2 size={13} className="text-green-500" />
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Como estás a sentir-te hoje?</p>
+              <div className="flex gap-2">
+                {(["great", "good", "okay", "bad", "terrible"] as const).map(mood => (
+                  <button key={mood} onClick={() => setCheckinMood(mood)}
+                    className={`flex-1 py-3 rounded-xl text-center text-lg transition-all border ${
+                      checkinMood === mood ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:border-primary/40 hover:bg-accent/30"
+                    }`}
+                    title={{ great: "Ótimo", good: "Bom", okay: "Ok", bad: "Mau", terrible: "Terrível" }[mood]}
+                  >
+                    <div className="text-xl mb-1">{mood === "great" ? "😄" : mood === "good" ? "🙂" : mood === "okay" ? "😐" : mood === "bad" ? "😟" : "😢"}</div>
+                    <div className="text-[10px] font-medium text-muted-foreground">{{ great: "Ótimo", good: "Bom", okay: "Ok", bad: "Mau", terrible: "Terrível" }[mood]}</div>
+                  </button>
+                ))}
               </div>
-              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Tudo em dia! 🎉</h2>
+              <textarea placeholder="Algo que queiras partilhar sobre o teu dia?" value={checkinNote} onChange={e => setCheckinNote(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" rows={2} />
+              <Button size="sm" disabled={!checkinMood || createCheckinMutation.isPending}
+                onClick={async () => {
+                  if (!checkinMood) return;
+                  await createCheckinMutation.mutateAsync({ mood: checkinMood as any, note: checkinNote || undefined });
+                  setCheckinMood(null); setCheckinNote(""); refetchCheckin();
+                  toast.success("Check-in registado!");
+                }}
+              >{createCheckinMutation.isPending ? "A registar..." : "Registar Check-in"}</Button>
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Coluna da esquerda: tarefas urgentes / sem prazo */}
-          <div className="lg:col-span-2 space-y-3">
-            {todayItems.length > 0 ? (
-              <div className="space-y-2">
-                {todayItems.map((task: any) => {
-                  const urg = getUrgencyInfo(task.dueDate);
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => setLocation("/tasks")}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer hover:shadow-sm transition-all ${urg.bg}`}
-                    >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${urg.urgent ? "bg-red-100 dark:bg-red-900/40" : "bg-orange-100 dark:bg-orange-900/40"}`}>
-                        <Target size={14} className={urg.color} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{task.title}</p>
-                        {task.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{task.description}</p>}
-                      </div>
-                      <span className={`shrink-0 text-xs font-bold px-2 py-1 rounded-full ${urg.urgent ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" : "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"}`}>
-                        {urg.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : noDueTasks.length > 0 ? (
-              <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/20">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Tarefas sem prazo</p>
-                <div className="space-y-1.5">
-                  {noDueTasks.map((task: any) => (
-                    <div key={task.id} onClick={() => setLocation("/tasks")} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer group">
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
-                      <p className="text-sm text-slate-600 dark:text-slate-300 truncate flex-1">{task.title}</p>
-                      <ChevronRight size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <CheckCircle2 size={28} className="text-green-400 mb-2" />
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Não há tarefas pendentes</p>
-                <p className="text-xs text-muted-foreground mt-1">Aproveita para rever o teu progresso!</p>
-              </div>
-            )}
+        <Card className="p-5 flex flex-col justify-center">
+          <SectionHeader title="Sequência" />
+          <div className="flex items-center gap-4 py-3">
+            <div className="relative">
+              <Flame size={40} className="text-orange-500" />
+              <span className="absolute -top-1 -right-1 text-xs font-bold text-orange-600">{streak?.currentStreak || 0}</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">{streak?.currentStreak || 0} dias</p>
+              <p className="text-xs text-muted-foreground">sequência atual</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Recorde: {streak?.longestStreak || 0} dias</p>
+            </div>
           </div>
+          {badges && badges.length > 0 && (
+            <div className="border-t border-border pt-3 mt-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Distintivos</p>
+              <div className="flex flex-wrap gap-2">
+                {badges.map((b: any) => (
+                  <span key={b.id} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-semibold" title={b.description}>
+                    <Star size={10} className="fill-amber-500" /> {b.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
 
-          {/* Coluna da direita: check-in + streak */}
+      {/* ── Próximas Tarefas ── */}
+      {upcomingTasks.length > 0 && (
+        <Card className="p-6">
+          <SectionHeader title="Próximas Tarefas" action="Ver todas" onAction={() => setLocation("/tasks")} />
+          <div className="space-y-2">
+            {upcomingTasks.map((task: any) => {
+              const urg = getUrgencyInfo(task.dueDate);
+              return (
+                <div key={task.id} onClick={() => setLocation("/tasks")}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all group">
+                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
+                    <CheckSquare size={14} className="text-slate-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{task.title}</p>
+                    {task.description && <p className="text-xs text-slate-400 truncate">{task.description}</p>}
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                    <Calendar size={11} className={urg.color} />
+                    <span className={`text-xs font-semibold ${urg.color}`}>{urg.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Linha do Tempo ── */}
+      {myPlans && myPlans.length > 0 && (
+        <Card className="p-6">
+          <SectionHeader title="Linha do Tempo" action="Ver planos" onAction={() => setLocation("/plans")} />
           <div className="space-y-3">
-            {/* Check-in */}
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                  <Sun size={13} className="text-blue-500" />
-                </div>
-                <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100">Como estás?</h3>
-              </div>
-              {todayCheckin ? (
-                <div className="flex items-center gap-3 py-2">
-                  <span className="text-2xl">{todayCheckin.mood === "great" ? "😄" : todayCheckin.mood === "good" ? "🙂" : todayCheckin.mood === "okay" ? "😐" : todayCheckin.mood === "bad" ? "😟" : "😢"}</span>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Check-in feito ✅</p>
-                    {todayCheckin.note && <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{todayCheckin.note}</p>}
+            {myPlans.slice(0, 5).map((plan: any) => {
+              const start = plan.startDate ? new Date(plan.startDate) : null;
+              const end = plan.endDate ? new Date(plan.endDate) : null;
+              const today = new Date();
+              const totalDays = start && end ? Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 1;
+              const elapsedDays = start ? Math.max(0, Math.min(totalDays, (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+              const progressPct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
+              const taskCount = plan.tasks ? plan.tasks.filter((t: any) => t.status === "completed").length : 0;
+              const totalTaskCount = plan.tasks ? plan.tasks.length : 0;
+              return (
+                <div key={plan.id} onClick={() => setLocation(`/plans/${plan.id}`)} className="cursor-pointer group">
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <span className="text-sm font-medium text-foreground truncate flex-1">{plan.title}</span>
+                    <span className="text-xs text-muted-foreground">{start ? format(start, "d MMM") : "—"} → {end ? format(end, "d MMM") : "—"}</span>
+                  </div>
+                  <div className="relative h-8 rounded-lg bg-muted overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-primary/40 to-primary/60 rounded-lg transition-all" style={{ width: `${progressPct}%` }} />
+                    <div className="absolute inset-0 flex items-center px-3">
+                      <div className="w-full h-1.5 rounded-full bg-background/40 overflow-hidden">
+                        <div className="h-full bg-white/70 rounded-full" style={{ width: `${totalTaskCount > 0 ? (taskCount / totalTaskCount) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-end px-3">
+                      <span className="text-xs font-semibold text-foreground/70">{taskCount}/{totalTaskCount}</span>
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-2.5">
-                  <div className="flex gap-1.5">
-                    {(["great", "good", "okay", "bad", "terrible"] as const).map(mood => (
-                      <button
-                        key={mood}
-                        onClick={() => setCheckinMood(mood)}
-                        className={`flex-1 py-2 rounded-lg text-center transition-all border ${
-                          checkinMood === mood
-                            ? "border-primary bg-primary/10 ring-1 ring-primary"
-                            : "border-border hover:border-primary/40 hover:bg-accent/30"
-                        }`}
-                        title={{ great: "Ótimo", good: "Bom", okay: "Ok", bad: "Mau", terrible: "Terrível" }[mood]}
-                      >
-                        <div className="text-base">{mood === "great" ? "😄" : mood === "good" ? "🙂" : mood === "okay" ? "😐" : mood === "bad" ? "😟" : "😢"}</div>
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    placeholder="Como está a correr?"
-                    value={checkinNote}
-                    onChange={e => setCheckinNote(e.target.value)}
-                    className="w-full px-2.5 py-1.5 border border-border rounded-lg bg-background text-xs resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                    rows={2}
-                  />
-                  <Button
-                    size="sm"
-                    className="w-full text-xs h-8"
-                    disabled={!checkinMood || createCheckinMutation.isPending}
-                    onClick={async () => {
-                      if (!checkinMood) return;
-                      await createCheckinMutation.mutateAsync({ mood: checkinMood as any, note: checkinNote || undefined });
-                      setCheckinMood(null);
-                      setCheckinNote("");
-                      refetchCheckin();
-                      toast.success("Check-in registado!");
-                    }}
-                  >
-                    {createCheckinMutation.isPending ? "A registar..." : "Registar"}
-                  </Button>
-                </div>
-              )}
-            </Card>
-
-            {/* Streak + Badges */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Flame size={18} className="text-orange-500" />
-                  <span className="text-xs font-bold text-foreground">Sequência</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-bold text-orange-500">{streak?.currentStreak || 0}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">dias</span>
-                </div>
-              </div>
-              <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full mt-2 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full" style={{ width: `${Math.min(100, ((streak?.currentStreak || 0) / 30) * 100)}%` }} />
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">Recorde: {streak?.longestStreak || 0} dias</p>
-              {badges && badges.length > 0 && (
-                <div className="flex gap-1.5 mt-2 pt-2 border-t border-border">
-                  {badges.map((b: any) => (
-                    <span key={b.id} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" title={b.description}>
-                      <Star size={10} className="inline fill-amber-500 mr-0.5" />{b.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Card>
+              );
+            })}
           </div>
-        </div>
-      </div>
+        </Card>
+      )}
 
-      {/* Secção: Futuro — próximas tarefas + timeline */}
-      <div>
-        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">O que vem a seguir</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Próximas tarefas */}
-          {upcomingTasks.length > 0 && (
-            <Card className="p-4">
-              <SectionHeader title="Próximas Tarefas" action="Ver todas" onAction={() => setLocation("/tasks")} />
-              <div className="space-y-2">
-                {upcomingTasks.map((task: any) => {
-                  const urg = getUrgencyInfo(task.dueDate);
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => setLocation("/tasks")}
-                      className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all group"
-                    >
-                      <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
-                        <CheckSquare size={13} className="text-slate-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{task.title}</p>
-                      </div>
-                      <span className={`shrink-0 text-[10px] font-semibold ${urg.color}`}>{urg.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
-
-          {/* Timeline compacta */}
-          {myPlans && myPlans.length > 0 && (
-            <Card className="p-4">
-              <SectionHeader title="Linha do Tempo" action="Ver planos" onAction={() => setLocation("/plans")} />
-              <div className="space-y-2.5">
-                {myPlans.slice(0, 4).map((plan: any) => {
-                  const start = plan.startDate ? new Date(plan.startDate) : null;
-                  const end = plan.endDate ? new Date(plan.endDate) : null;
-                  const today = new Date();
-                  const totalDays = start && end ? Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 1;
-                  const elapsedDays = start ? Math.max(0, Math.min(totalDays, (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                  const progressPct = Math.min(100, Math.round((elapsedDays / totalDays) * 100));
-                  const taskCount = plan.tasks ? plan.tasks.filter((t: any) => t.status === "completed").length : 0;
-                  const totalTaskCount = plan.tasks ? plan.tasks.length : 0;
-                  return (
-                    <div key={plan.id} onClick={() => setLocation(`/plans/${plan.id}`)} className="cursor-pointer group">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-foreground truncate flex-1">{plan.title}</span>
-                        <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{taskCount}/{totalTaskCount}</span>
-                      </div>
-                      <div className="relative h-2.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full bg-primary/40 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
-                        <div className="absolute inset-0 flex items-center px-1">
-                          <div className="w-full h-1 rounded-full bg-background/30 overflow-hidden">
-                            <div className="h-full bg-primary rounded-full" style={{ width: `${totalTaskCount > 0 ? (taskCount / totalTaskCount) * 100 : 0}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      {/* Planos */}
-      <Card className="p-4">
+      {/* ── Os Meus Planos ── */}
+      <Card className="p-6">
         <SectionHeader title="Os Meus Planos" action="Ver todos" onAction={() => setLocation("/plans")} />
         {myPlans && myPlans.length > 0 ? (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {myPlans.slice(0, 5).map((plan: any) => (
-              <div
-                key={plan.id}
-                onClick={() => setLocation(`/plans/${plan.id}`)}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
-                    <FileText size={13} className="text-slate-400" />
+              <div key={plan.id} onClick={() => setLocation(`/plans/${plan.id}`)}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer transition-all group">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center shrink-0">
+                    <FileText size={14} className="text-slate-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{plan.title}</p>
-                    {plan.description && <p className="text-[10px] text-muted-foreground truncate">{plan.description}</p>}
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{plan.title}</p>
+                    {plan.description && <p className="text-xs text-slate-400 truncate">{plan.description}</p>}
                   </div>
                 </div>
                 <PlanStatusBadge status={plan.status} />
@@ -580,10 +555,10 @@ function InternDashboard() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-10">
-            <BookOpen size={28} className="text-slate-300 mx-auto mb-2" />
-            <p className="text-xs font-medium text-slate-500">Ainda não tens planos atribuídos</p>
-            <p className="text-[10px] text-muted-foreground mt-1">O teu tutor irá atribuir-te um plano em breve.</p>
+          <div className="text-center py-12">
+            <BookOpen size={36} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-sm font-medium text-slate-500">Ainda não tens planos atribuídos</p>
+            <p className="text-xs text-slate-400 mt-1">O teu tutor irá atribuir-te um plano em breve.</p>
           </div>
         )}
       </Card>

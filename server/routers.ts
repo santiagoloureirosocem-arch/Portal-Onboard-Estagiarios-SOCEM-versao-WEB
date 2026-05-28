@@ -550,6 +550,10 @@ export const appRouter = router({
   }),
 
   ai: router({
+    quota: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getAiQuota(ctx.user.id, ctx.user.role);
+    }),
+
     chat: protectedProcedure
       .input(z.object({
         messages: z.array(z.object({
@@ -558,6 +562,15 @@ export const appRouter = router({
         })),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Check quota before processing
+        const quota = await db.getAiQuota(ctx.user.id, ctx.user.role);
+        if (!quota.isUnlimited && quota.remaining <= 0) {
+          return {
+            content: `O **Norte** 🧭 atingiu o limite diário de ${quota.limit} mensagens para o teu perfil. O limite será reposto amanhã.\n\nSe precisares de ajuda urgente, consulta a página de **Ajuda** (/help) ou contacta o teu tutor.`,
+            quota,
+          };
+        }
+
         const SYSTEM_PROMPT = `Tu és o **Norte**, o assistente virtual especializado no **Portal de Estagiários SOCEM**, uma aplicação web para gestão do onboarding de estagiários.
 
 ## Visão Geral da Aplicação
@@ -816,7 +829,11 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
             finalContent = "Desculpa, ocorreu um erro ao gerar a resposta.";
           }
 
-          return { content: finalContent };
+          // Increment usage after successful response
+          await db.incrementAiUsage(ctx.user.id);
+          const updatedQuota = await db.getAiQuota(ctx.user.id, ctx.user.role);
+
+          return { content: finalContent, quota: updatedQuota };
         } catch (error: unknown) {
           const errMsg = error instanceof Error ? error.message : "Erro desconhecido";
           console.error("[AI Chat Error]", errMsg);

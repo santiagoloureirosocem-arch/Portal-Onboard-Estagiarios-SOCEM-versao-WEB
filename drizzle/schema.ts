@@ -190,3 +190,18 @@ export const dailyCheckins = mysqlTable("daily_checkins", {
 
 export type DailyCheckin = typeof dailyCheckins.$inferSelect;
 export type InsertDailyCheckin = typeof dailyCheckins.$inferInsert;
+
+/**
+ * AI usage tracking per user - daily request limits
+ */
+export const aiUsage = mysqlTable("ai_usage", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  date: datetime("date").notNull(),
+  count: int("count").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiUsage = typeof aiUsage.$inferSelect;
+export type InsertAiUsage = typeof aiUsage.$inferInsert;

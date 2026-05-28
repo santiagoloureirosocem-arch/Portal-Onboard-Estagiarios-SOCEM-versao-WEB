@@ -1,6 +1,6 @@
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage, notifications, dailyCheckins } from "../drizzle/schema";
+import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage, notifications, dailyCheckins, aiUsage } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -159,6 +159,16 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ai_usage (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        userId INT NOT NULL,
+        date DATETIME NOT NULL,
+        \`count\` INT NOT NULL DEFAULT 0,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
     console.log("[Database] Tables ready");
   } catch (err) {
     console.warn("[Database] Table init error:", err);
@@ -181,6 +191,7 @@ interface LocalDb {
   notifications: any[];
   dailyCheckins: any[];
   userBadges: any[];
+  aiUsage: any[];
 }
 
 function loadLocalDb(): LocalDb {
@@ -200,7 +211,7 @@ function loadLocalDb(): LocalDb {
   } catch (e) {
     console.warn("[LocalDB] Failed to load, starting fresh:", e);
   }
-  return { nextId: 1, users: [], plans: [], tasks: [], assignments: [], completions: [], notifications: [], dailyCheckins: [], userBadges: [] };
+  return { nextId: 1, users: [], plans: [], tasks: [], assignments: [], completions: [], notifications: [], dailyCheckins: [], userBadges: [], aiUsage: [] };
 }
 
 export function saveLocalDb(): void {
@@ -217,6 +228,7 @@ export function saveLocalDb(): void {
       notifications: _memNotifications,
       dailyCheckins: _memDailyCheckins,
       userBadges: _memUserBadges,
+      aiUsage: _memAiUsage,
     };
     fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch (e) {
@@ -237,6 +249,8 @@ let _memDailyCheckins: any[] = _localDb.dailyCheckins || [];
 let _checkinNextId = _memDailyCheckins.length > 0 ? Math.max(..._memDailyCheckins.map((c: any) => c.id)) + 1 : 1;
 let _memUserBadges: any[] = _localDb.userBadges || [];
 let _badgeNextId = _memUserBadges.length > 0 ? Math.max(..._memUserBadges.map((b: any) => b.id)) + 1 : 1;
+let _memAiUsage: any[] = [];
+let _aiUsageNextId = 1;
 
 function makeUser(data: InsertUser): User {
   const now = new Date();
@@ -936,6 +950,79 @@ export async function awardBadge(data: { userId: number; badge: string; label: s
   _memUserBadges.push(badge);
   saveLocalDb();
   return badge;
+}
+
+// ─── AI Usage / Quota ──────────────────────────────────────────────────────────
+
+const AI_DAILY_LIMITS: Record<string, number> = {
+  estagiario: 20,
+  tutor: 100,
+  admin: -1,
+};
+
+function getTodayDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+export async function getAiUsageToday(userId: number): Promise<number> {
+  const dbConn = await getDb();
+  const todayStr = getTodayDateString();
+  if (!dbConn) {
+    const usage = _memAiUsage.find((u: any) => u.userId === userId && u.date === todayStr);
+    return usage?.count ?? 0;
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const rows = await dbConn
+    .select({ cnt: sql<number>`COALESCE(SUM(\`count\`),0)` })
+    .from(aiUsage)
+    .where(and(eq(aiUsage.userId, userId), sql`${aiUsage.date} >= ${today}`, sql`${aiUsage.date} < ${tomorrow}`));
+  return Number(rows[0]?.cnt ?? 0);
+}
+
+export async function incrementAiUsage(userId: number): Promise<void> {
+  const dbConn = await getDb();
+  const todayStr = getTodayDateString();
+  if (!dbConn) {
+    const existing = _memAiUsage.find((u: any) => u.userId === userId && u.date === todayStr);
+    if (existing) {
+      existing.count++;
+    } else {
+      _memAiUsage.push({ id: _aiUsageNextId++, userId, date: todayStr, count: 1, createdAt: new Date() });
+    }
+    return;
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const existing = await dbConn
+    .select()
+    .from(aiUsage)
+    .where(and(eq(aiUsage.userId, userId), sql`${aiUsage.date} >= ${today}`))
+    .limit(1);
+  if (existing.length > 0) {
+    await dbConn.update(aiUsage).set({ count: sql`\`count\` + 1` }).where(eq(aiUsage.id, existing[0].id));
+  } else {
+    await dbConn.insert(aiUsage).values({ userId, date: today, count: 1 });
+  }
+}
+
+export async function getAiQuota(userId: number, role: string) {
+  const limit = AI_DAILY_LIMITS[role] ?? AI_DAILY_LIMITS.estagiario;
+  const used = await getAiUsageToday(userId);
+  const today = new Date();
+  const resetDate = new Date(today);
+  resetDate.setDate(resetDate.getDate() + 1);
+  resetDate.setHours(0, 0, 0, 0);
+  return {
+    limit,
+    used,
+    remaining: limit === -1 ? -1 : Math.max(0, limit - used),
+    resetDate,
+    isUnlimited: limit === -1,
+  };
 }
 
 // ─── Certificate ──────────────────────────────────────────────────────────────
