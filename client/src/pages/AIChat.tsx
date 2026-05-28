@@ -101,7 +101,7 @@ export default function AIChat() {
             }`}>
               <AlertCircle size={14} className="shrink-0" />
               <span>{showQuotaLow
-                ? `Restam apenas ${quota.remaining} mensagens hoje. O limite será reposto amanhã.`
+                ? `Restam apenas ${quota.remaining} mensagens hoje. O limite é reposto à meia-noite.`
                 : `Restam ${quota.remaining} mensagens hoje.`}
               </span>
             </div>
@@ -110,7 +110,7 @@ export default function AIChat() {
           {limitReached && (
             <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg border bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
               <AlertCircle size={14} className="shrink-0" />
-              <span>Limite diário atingido. Volta amanhã para mais conversas ou contacta o teu tutor se precisares de ajuda urgente.</span>
+              <span>Limite diário atingido. O limite é reposto à meia-noite. Contacta o teu tutor se precisares de ajuda urgente.</span>
             </div>
           )}
         </div>

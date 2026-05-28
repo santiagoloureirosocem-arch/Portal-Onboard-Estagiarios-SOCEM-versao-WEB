@@ -566,7 +566,7 @@ export const appRouter = router({
         const quota = await db.getAiQuota(ctx.user.id, ctx.user.role);
         if (!quota.isUnlimited && quota.remaining <= 0) {
           return {
-            content: `O **Norte** 🧭 atingiu o limite diário de ${quota.limit} mensagens para o teu perfil. O limite será reposto amanhã.\n\nSe precisares de ajuda urgente, consulta a página de **Ajuda** (/help) ou contacta o teu tutor.`,
+            content: `O **Norte** 🧭 atingiu o limite diário de ${quota.limit} mensagens para o teu perfil. O limite é reposto à meia-noite.\n\nSe precisares de ajuda urgente, consulta a página de **Ajuda** (/help) ou contacta o teu tutor.`,
             quota,
           };
         }
