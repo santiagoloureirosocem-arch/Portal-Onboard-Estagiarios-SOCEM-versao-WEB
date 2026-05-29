@@ -158,8 +158,8 @@ export default function DashboardLayout({
 function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { data: unreadCount } = trpc.notifications.unreadCount.useQuery();
-  const { data: notifications } = trpc.notifications.list.useQuery({ limit: 10 });
+  const { data: unreadCount } = trpc.notifications.unreadCount.useQuery(undefined, { refetchInterval: 10_000 });
+  const { data: notifications } = trpc.notifications.list.useQuery({ limit: 10 }, { refetchInterval: 10_000 });
   const markAllRead = trpc.notifications.markAllAsRead.useMutation();
   const markRead = trpc.notifications.markAsRead.useMutation();
   const [, setLocation] = useLocation();
