@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import {
   Send, Paperclip, File, Download, Search,
   X, Check, CheckCheck, Image as ImageIcon, FileText,
-  Info, ArrowLeft
+  Info, ArrowLeft, ChevronDown
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,8 +103,11 @@ export default function Mensagens() {
   const [search, setSearch] = useState("");
   const [showInfo, setShowInfo] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
+  const [sortMode, setSortMode] = useState<"recent" | "alpha">("recent");
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const contactsQuery = trpc.users.listForMessaging.useQuery(undefined, { refetchInterval: 30000 });
@@ -115,8 +118,26 @@ export default function Mensagens() {
   const unreadQuery = trpc.messages.unreadCounts.useQuery(undefined, { refetchInterval: 5000 });
   const sendMutation = trpc.messages.send.useMutation({ onSuccess: () => messagesQuery.refetch() });
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messagesQuery.data]);
-  useEffect(() => { if (selectedUserId) setTimeout(() => unreadQuery.refetch(), 500); }, [selectedUserId]);
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    setIsAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (isAtBottom) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messagesQuery.data, isAtBottom]);
+
+  useEffect(() => {
+    if (selectedUserId) {
+      setTimeout(() => unreadQuery.refetch(), 500);
+      setIsAtBottom(true);
+    }
+  }, [selectedUserId]);
 
   const allContacts = (contactsQuery.data ?? []) as any[];
   const unreadCounts = (unreadQuery.data ?? {}) as Record<number, number>;
@@ -126,6 +147,9 @@ export default function Mensagens() {
     !search || (c.name ?? c.openId ?? "").toLowerCase().includes(search.toLowerCase())
   );
   const sortedContacts = [...filteredContacts].sort((a, b) => {
+    if (sortMode === "alpha") {
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    }
     const aU = unreadCounts[a.id] ?? 0, bU = unreadCounts[b.id] ?? 0;
     if (aU !== bU) return bU - aU;
     return (a.name ?? "").localeCompare(b.name ?? "");
@@ -201,6 +225,28 @@ export default function Mensagens() {
                 className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm bg-slate-100 dark:bg-slate-800/80 border-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-all"
               />
             </div>
+            <div className="flex items-center gap-1 mt-3">
+              <button
+                onClick={() => setSortMode("recent")}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  sortMode === "recent"
+                    ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 font-semibold"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                Recentes
+              </button>
+              <button
+                onClick={() => setSortMode("alpha")}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  sortMode === "alpha"
+                    ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 font-semibold"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                A-Z
+              </button>
+            </div>
           </div>
 
           {/* Contact List */}
@@ -265,7 +311,9 @@ export default function Mensagens() {
           </div>
         ) : (
           <div className="flex-1 flex min-w-0">
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 relative">
+
+              <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto flex flex-col">
 
               {/* ── Chat Header ── */}
               <div className="h-[65px] px-5 bg-white dark:bg-[#111318] border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between flex-shrink-0">
@@ -293,8 +341,7 @@ export default function Mensagens() {
               </div>
 
               {/* ── Messages ── */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col">
-                <div className="mt-auto space-y-0.5">
+              <div className="mt-auto px-5 py-4 space-y-0.5">
                 {messagesQuery.isLoading && (
                   <div className="flex items-center justify-center py-10 gap-2 text-slate-400 text-sm">
                     <div className="w-4 h-4 border-2 border-slate-200 border-t-red-500 rounded-full animate-spin" />
@@ -402,6 +449,18 @@ export default function Mensagens() {
                 ))}
                 <div ref={messagesEndRef} />
                 </div>
+
+              {!isAtBottom && (
+                <div className="sticky bottom-4 flex justify-center z-10 pointer-events-none">
+                  <button
+                    onClick={scrollToBottom}
+                    className="pointer-events-auto flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-full shadow-lg shadow-red-300/40 dark:shadow-red-900/50 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200"
+                  >
+                    <ChevronDown size={15} strokeWidth={3} />
+                    Ir para o fundo
+                  </button>
+                </div>
+              )}
               </div>
 
               {/* ── Input ── */}
