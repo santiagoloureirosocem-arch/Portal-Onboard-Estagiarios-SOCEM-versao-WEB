@@ -44,6 +44,9 @@ async function initTables(db: ReturnType<typeof drizzle>) {
     try { await db.execute(sql`ALTER TABLE users ADD COLUMN darkMode BOOLEAN NOT NULL DEFAULT FALSE`); } catch {}
     try { await db.execute(sql`ALTER TABLE users ADD COLUMN avatar TEXT`); } catch {}
     try { await db.execute(sql`ALTER TABLE users ADD COLUMN presence ENUM('online','ausente','offline') NOT NULL DEFAULT 'online'`); } catch {}
+    try { await db.execute(sql`ALTER TABLE users ADD COLUMN emailTaskDeadline BOOLEAN NOT NULL DEFAULT TRUE`); } catch {}
+    try { await db.execute(sql`ALTER TABLE users ADD COLUMN emailTaskOverdue BOOLEAN NOT NULL DEFAULT TRUE`); } catch {}
+    try { await db.execute(sql`ALTER TABLE users ADD COLUMN emailNewMessage BOOLEAN NOT NULL DEFAULT TRUE`); } catch {}
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS onboarding_plans (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -275,6 +278,9 @@ function makeUser(data: InsertUser): User {
     darkMode: (data as any).darkMode ?? false,
     avatar: (data as any).avatar ?? null,
     presence: (data as any).presence ?? 'online',
+    emailTaskDeadline: (data as any).emailTaskDeadline ?? true,
+    emailTaskOverdue: (data as any).emailTaskOverdue ?? true,
+    emailNewMessage: (data as any).emailNewMessage ?? true,
   };
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -392,6 +398,21 @@ export async function updateUser(id: number, data: Partial<InsertUser>) {
   }
   await db.update(users).set({ ...data, updatedAt: new Date() }).where(eq(users.id, id));
   return await getUserById(id);
+}
+
+export async function getUserEmailPreferences(userId: number) {
+  const user = await getUserById(userId);
+  if (!user) return { emailTaskDeadline: true, emailTaskOverdue: true, emailNewMessage: true };
+  return {
+    emailTaskDeadline: (user as any).emailTaskDeadline !== false,
+    emailTaskOverdue: (user as any).emailTaskOverdue !== false,
+    emailNewMessage: (user as any).emailNewMessage !== false,
+  };
+}
+
+export async function updateEmailPreferences(userId: number, prefs: { emailTaskDeadline?: boolean; emailTaskOverdue?: boolean; emailNewMessage?: boolean }) {
+  await updateUser(userId, prefs as any);
+  return { success: true };
 }
 
 export async function deactivateUser(id: number) {

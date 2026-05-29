@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Bell, Lock, User, Moon, Sun, Eye, EyeOff, Camera } from "lucide-react";
+import { Bell, Lock, User, Moon, Sun, Eye, EyeOff, Camera, AlertTriangle, Calendar, MessageSquare } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -32,8 +32,22 @@ function PasswordInput({ value, onChange, placeholder, show, onToggle }: {
 export default function Settings() {
   const { user, refresh } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailDigest, setEmailDigest] = useState(true);
+  const { data: emailPrefs, refetch: refetchEmailPrefs } = trpc.auth.emailPreferences.useQuery();
+  const updateEmailPrefsMutation = trpc.auth.updateEmailPreferences.useMutation();
+  const [emailPrefsLocal, setEmailPrefsLocal] = useState<{ emailTaskDeadline: boolean; emailTaskOverdue: boolean; emailNewMessage: boolean } | null>(null);
+  const prefs = emailPrefsLocal ?? emailPrefs ?? { emailTaskDeadline: true, emailTaskOverdue: true, emailNewMessage: true };
+
+  const toggleEmailPref = async (key: keyof typeof prefs) => {
+    const updated = { ...prefs, [key]: !prefs[key] };
+    setEmailPrefsLocal(updated);
+    try {
+      await updateEmailPrefsMutation.mutateAsync({ [key]: updated[key] });
+      refetchEmailPrefs();
+    } catch {
+      setEmailPrefsLocal(null);
+      toast.error("Erro ao atualizar preferência");
+    }
+  };
 
   // Profile state
   const [name, setName] = useState(user?.name || "");
@@ -300,18 +314,23 @@ export default function Settings() {
             <Bell size={17} className="text-primary" /> Notificações
           </h2>
           <div className="space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notificações por Email</p>
             {[
-              { label: "Notificações no Sistema", desc: "Alertas sobre atividades importantes", value: notificationsEnabled, set: setNotificationsEnabled },
-              { label: "Resumo por Email", desc: "Resumo semanal das atividades", value: emailDigest, set: setEmailDigest },
+              { key: 'emailTaskDeadline' as const, label: 'Prazo a 2 dias', desc: 'Envia email quando uma tarefa está a 2 dias do prazo', icon: Calendar },
+              { key: 'emailTaskOverdue' as const, label: 'Tarefas em atraso', desc: 'Envia email ao tutor quando um estagiário tem tarefas em atraso', icon: AlertTriangle },
+              { key: 'emailNewMessage' as const, label: 'Novas mensagens', desc: 'Envia email quando recebes uma mensagem de outro utilizador', icon: MessageSquare },
             ].map(item => (
-              <div key={item.label} className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+              <div key={item.key} className="flex items-center justify-between py-1">
+                <div className="flex items-start gap-3 flex-1">
+                  <item.icon size={16} className="text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{item.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                  </div>
                 </div>
-                <button onClick={() => { item.set(!item.value); toast.success(`${item.label} ${!item.value ? "ativado" : "desativado"}`); }}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${item.value ? "bg-primary" : "bg-muted-foreground/30"}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${item.value ? "translate-x-5" : ""}`} />
+                <button onClick={() => toggleEmailPref(item.key)}
+                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${prefs[item.key] ? "bg-primary" : "bg-muted-foreground/30"}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${prefs[item.key] ? "translate-x-5" : ""}`} />
                 </button>
               </div>
             ))}

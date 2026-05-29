@@ -6,6 +6,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM, type Message, type Tool } from "./_core/llm";
+import { sendEmail } from "./_core/email";
 
 
 // ── Default avatar for new users ─────────────────────────────────────────────
@@ -44,6 +45,18 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await db.updateUser(ctx.user.id, { darkMode: input.darkMode } as any);
         return { success: true };
+      }),
+    emailPreferences: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserEmailPreferences(ctx.user.id);
+    }),
+    updateEmailPreferences: protectedProcedure
+      .input(z.object({
+        emailTaskDeadline: z.boolean().optional(),
+        emailTaskOverdue: z.boolean().optional(),
+        emailNewMessage: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateEmailPreferences(ctx.user.id, input);
       }),
     updateAvatar: protectedProcedure
       .input(z.object({ avatar: z.string() }))
@@ -512,7 +525,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const senderName = (ctx.user as any).name ?? ctx.user.openId;
-        return await db.createDirectMessage({
+        const msg = await db.createDirectMessage({
           senderId: ctx.user.id,
           senderName,
           receiverId: input.receiverId,
@@ -522,6 +535,27 @@ export const appRouter = router({
           fileSize: input.fileSize,
           fileType: input.fileType,
         });
+        // Email notification to receiver if enabled
+        try {
+          const receiver = await db.getUserById(input.receiverId);
+          if (receiver?.email) {
+            const prefs = await db.getUserEmailPreferences(input.receiverId);
+            if (prefs.emailNewMessage) {
+              sendEmail({
+                to: receiver.email,
+                toName: receiver.name ?? undefined,
+                subject: `Nova mensagem de ${senderName}`,
+                heading: `Nova Mensagem no Portal SOCEM`,
+                bodyHtml: `<p>Olá <strong>${receiver.name ?? "utilizador"}</strong>,</p>
+<p>Recebeste uma nova mensagem de <strong>${senderName}</strong> no Portal de Onboarding.</p>
+${input.text ? `<div style="background:#f5f5f5;border-left:4px solid #c0392b;padding:16px;margin:16px 0;border-radius:6px;"><p style="margin:0;font-size:14px;color:#333;">${input.text}</p></div>` : ""}
+${input.fileName ? `<p style="font-size:13px;color:#666;">📎 Ficheiro anexado: ${input.fileName}</p>` : ""}
+<p style="margin-top:20px;"><a href="${process.env.APP_URL || "http://localhost:3000"}/mensagens" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Ver Mensagens</a></p>`,
+              });
+            }
+          }
+        } catch {}
+        return msg;
       }),
 
     unreadCounts: protectedProcedure.query(async ({ ctx }) => {
