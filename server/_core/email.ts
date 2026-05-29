@@ -59,7 +59,7 @@ export async function sendEmail(options: {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: "Portal SOCEM <noreply@socem.pt>",
+        from: "Portal SOCEM <onboarding@resend.dev>",
         to: options.to,
         subject: options.subject,
         html: buildHtml(options.heading, options.bodyHtml),
