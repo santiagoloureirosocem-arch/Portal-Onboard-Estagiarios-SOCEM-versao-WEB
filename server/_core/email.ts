@@ -1,7 +1,11 @@
-const BREVO_API = "https://api.brevo.com/v3/smtp/email";
+const RESEND_API = "https://api.resend.com/emails";
 
 function getApiKey(): string {
-  return process.env.BREVO_API_KEY ?? "";
+  return process.env.RESEND_API_KEY ?? "";
+}
+
+function getAppUrl(): string {
+  return process.env.APP_URL ?? process.env.ORIGIN ?? "http://localhost:3000";
 }
 
 function buildHtml(heading: string, bodyHtml: string): string {
@@ -43,31 +47,33 @@ export async function sendEmail(options: {
 }): Promise<boolean> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    console.warn("[Email] BREVO_API_KEY not configured, skipping email");
+    console.warn("[Email] RESEND_API_KEY not configured, skipping email");
     return false;
   }
 
   try {
-    const response = await fetch(BREVO_API, {
+    const response = await fetch(RESEND_API, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        sender: { name: "Portal SOCEM", email: "noreply@socem.pt" },
-        to: [{ email: options.to, name: options.toName ?? options.to }],
+        from: "Portal SOCEM <noreply@socem.pt>",
+        to: options.to,
         subject: options.subject,
-        htmlContent: buildHtml(options.heading, options.bodyHtml),
+        html: buildHtml(options.heading, options.bodyHtml),
       }),
     });
 
     if (!response.ok) {
       const error = await response.text().catch(() => "");
-      console.warn(`[Email] Brevo error (${response.status}): ${error}`);
+      console.warn(`[Email] Resend error (${response.status}): ${error}`);
       return false;
     }
 
+    const data = await response.json();
+    console.log(`[Email] Sent "${options.subject}" to ${options.to} (id: ${data.id})`);
     return true;
   } catch (err) {
     console.warn("[Email] Error sending email:", err);

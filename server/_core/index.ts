@@ -64,7 +64,8 @@ async function notifyOverdueTasks() {
           if (tutorPrefs.emailTaskOverdue) {
             const tutor = await db.getUserById((plan as any).createdBy);
             if (tutor?.email) {
-              sendEmail({
+              const appUrl = process.env.APP_URL ?? process.env.ORIGIN ?? "http://localhost:3000";
+              await sendEmail({
                 to: tutor.email,
                 toName: tutor.name ?? undefined,
                 subject: `Tarefa em atraso — ${intern.name ?? "Estagiário"}`,
@@ -76,7 +77,7 @@ async function notifyOverdueTasks() {
   <p style="margin:0;font-size:13px;color:#b91c1c;">Prazo: ${due.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
 </div>
 <p style="font-size:13px;color:#666;">Plano: ${plan.title}</p>
-<p style="margin-top:20px;"><a href="${process.env.APP_URL || "http://localhost:3000"}/tasks" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Ver Tarefas</a></p>`,
+<p style="margin-top:20px;"><a href="${appUrl}/tasks" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Ver Tarefas</a></p>`,
               });
             }
           }
@@ -123,7 +124,8 @@ async function notifyUpcomingDeadlines() {
         if (intern?.email) {
           const prefs = await db.getUserEmailPreferences(userId);
           if (prefs.emailTaskDeadline) {
-            sendEmail({
+            const appUrl = process.env.APP_URL ?? process.env.ORIGIN ?? "http://localhost:3000";
+            await sendEmail({
               to: intern.email,
               toName: intern.name ?? undefined,
               subject: `Prazo aproxima-se — ${task.title}`,
@@ -133,7 +135,7 @@ async function notifyUpcomingDeadlines() {
 <div style="background:#fff7ed;border-left:4px solid #f97316;padding:16px;margin:16px 0;border-radius:6px;">
   <p style="margin:0;font-size:13px;color:#9a3412;">Prazo: ${due.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
 </div>
-<p style="margin-top:20px;"><a href="${process.env.APP_URL || "http://localhost:3000"}/tasks" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Ver Tarefas</a></p>`,
+<p style="margin-top:20px;"><a href="${appUrl}/tasks" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Ver Tarefas</a></p>`,
             });
           }
         }

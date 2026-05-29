@@ -541,7 +541,8 @@ export const appRouter = router({
           if (receiver?.email) {
             const prefs = await db.getUserEmailPreferences(input.receiverId);
             if (prefs.emailNewMessage) {
-              sendEmail({
+              const appUrl = process.env.APP_URL ?? process.env.ORIGIN ?? "http://localhost:3000";
+              await sendEmail({
                 to: receiver.email,
                 toName: receiver.name ?? undefined,
                 subject: `Nova mensagem de ${senderName}`,
@@ -550,7 +551,7 @@ export const appRouter = router({
 <p>Recebeste uma nova mensagem de <strong>${senderName}</strong> no Portal de Onboarding.</p>
 ${input.text ? `<div style="background:#f5f5f5;border-left:4px solid #c0392b;padding:16px;margin:16px 0;border-radius:6px;"><p style="margin:0;font-size:14px;color:#333;">${input.text}</p></div>` : ""}
 ${input.fileName ? `<p style="font-size:13px;color:#666;">📎 Ficheiro anexado: ${input.fileName}</p>` : ""}
-<p style="margin-top:20px;"><a href="${process.env.APP_URL || "http://localhost:3000"}/mensagens" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Ver Mensagens</a></p>`,
+<p style="margin-top:20px;"><a href="${appUrl}/mensagens" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Ver Mensagens</a></p>`,
               });
             }
           }
