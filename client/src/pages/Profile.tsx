@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Briefcase, Calendar, CheckCircle, Clock, Settings, Award, Download, FileText } from 'lucide-react';
+import { User, Mail, Briefcase, Calendar, CheckCircle, Clock, Settings, Award, Download, FileText, Heart } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 
 async function downloadCertificate(userName: string, department: string, plansCompleted: number) {
   try {
@@ -81,6 +82,89 @@ async function downloadCertificate(userName: string, department: string, plansCo
   } catch {
     toast.error("Erro ao gerar certificado. Tenta novamente.");
   }
+}
+
+const MOOD_EMOJI: Record<string, string> = {
+  great: '😄', good: '🙂', okay: '😐', bad: '😟', terrible: '😢',
+};
+const MOOD_VALUE: Record<string, number> = {
+  great: 5, good: 4, okay: 3, bad: 2, terrible: 1,
+};
+const MOOD_COLOR: Record<string, string> = {
+  great: '#22c55e', good: '#86efac', okay: '#facc15', bad: '#f97316', terrible: '#ef4444',
+};
+
+function ProfileMoodChart() {
+  const { data: checkins } = trpc.dailyCheckins.history.useQuery({ limit: 30 });
+
+  const chartData = useMemo(() => {
+    if (!checkins) return [];
+    const days: { date: string; mood: number; label: string; emoji: string; fill: string }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const checkin = (checkins as any[]).find((c: any) => {
+        const cd = new Date(c.date);
+        return `${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')}` === key;
+      });
+      days.push({
+        date: key,
+        mood: checkin ? MOOD_VALUE[checkin.mood] || 0 : 0,
+        label: d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }),
+        emoji: checkin ? MOOD_EMOJI[checkin.mood] || '' : '',
+        fill: checkin ? MOOD_COLOR[checkin.mood] || '#e5e7eb' : '#e5e7eb',
+      });
+    }
+    return days;
+  }, [checkins]);
+
+  if (!checkins || checkins.length === 0) return null;
+
+  return (
+    <Card className="p-6">
+      <h3 className="font-bold text-foreground text-base mb-1 flex items-center gap-2">
+        <Heart size={18} className="text-red-400" />
+        Meu Humor (últimos 30 dias)
+      </h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        A evolução do teu humor ao longo dos últimos dias. Fazer check-in diário ajuda a perceber o teu bem-estar.
+      </p>
+      <div className="h-32">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: 5 }}>
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 9, fill: '#888' }}
+              interval={Math.max(0, Math.floor(chartData.length / 6) - 1)}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload;
+                return (
+                  <div className="bg-popover border border-border rounded-lg shadow-lg px-3 py-2 text-sm">
+                    <p className="font-medium text-foreground">{d.date}</p>
+                    <p className="text-muted-foreground">{d.mood > 0 ? `${d.emoji} Valor: ${d.mood}/5` : 'Sem check-in'}</p>
+                  </div>
+                );
+              }}
+            />
+            <Bar dataKey="mood" radius={[3, 3, 0, 0]} maxBarSize={12}>
+              {chartData.map((entry, idx) => (
+                <Cell key={idx} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex items-center justify-center gap-3 mt-3 text-xs text-muted-foreground">
+        <span>😢</span><div className="w-6 h-1.5 rounded-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400" /><span>😄</span>
+      </div>
+    </Card>
+  );
 }
 
 export default function Profile() {
@@ -269,6 +353,9 @@ export default function Profile() {
             </Card>
           )}
         </div>
+
+        {/* Mood Chart - last 30 days */}
+        {user?.role === 'estagiario' && <ProfileMoodChart />}
 
         {/* Certificado */}
         {user?.role === 'estagiario' && certStatus && (

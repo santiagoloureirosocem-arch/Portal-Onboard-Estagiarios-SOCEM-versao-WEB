@@ -12,9 +12,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useOnboardingTour } from "@/components/OnboardingTour";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function Help() {
-  const { restartTour } = useOnboardingTour();
+  const { user } = useAuth();
+  const { restartTour } = useOnboardingTour(user?.id ?? '');
 
   return (
     <DashboardLayout title="Ajuda - Portal de Estagiários SOCEM">
