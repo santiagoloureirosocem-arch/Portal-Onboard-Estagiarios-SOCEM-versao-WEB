@@ -638,7 +638,10 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
 - get_plan_tasks: obtém tarefas de um plano específico
 - get_metrics: métricas do dashboard (contagens globais)
 - get_user_by_name: procura um utilizador pelo nome
-- get_plan_assignments: quem está atribuído a um plano específico`;
+- get_plan_assignments: quem está atribuído a um plano específico
+- get_my_plans: obtém os planos atribuídos ao utilizador que está a falar contigo (não precisas de ID)
+- get_my_tasks: obtém as tarefas do utilizador que está a falar contigo (não precisas de ID)
+- get_my_progress: obtém o progresso do utilizador que está a falar contigo: número de planos, tarefas totais, concluídas, taxa de conclusão`;
 
         const { messages } = input;
 
@@ -716,6 +719,30 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
               },
             },
           },
+          {
+            type: "function",
+            function: {
+              name: "get_my_plans",
+              description: "Obtém os planos de integração atribuídos ao utilizador que está a falar. Não precisa de parâmetros — usa automaticamente o utilizador atual.",
+              parameters: { type: "object", properties: {}, required: [] },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_my_tasks",
+              description: "Obtém as tarefas do utilizador que está a falar (de todos os planos dele). Não precisa de parâmetros — usa automaticamente o utilizador atual.",
+              parameters: { type: "object", properties: {}, required: [] },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_my_progress",
+              description: "Obtém métricas de progresso do utilizador que está a falar: número de planos ativos, tarefas totais, concluídas, e taxa de conclusão. Não precisa de parâmetros.",
+              parameters: { type: "object", properties: {}, required: [] },
+            },
+          },
         ];
 
         // Tool handler: executes the tool and returns a string result
@@ -763,6 +790,39 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
               case "get_plan_assignments": {
                 const assignments = await db.getPlanAssignmentsByPlanId(args.planId as number);
                 return JSON.stringify(assignments);
+              }
+              case "get_my_plans": {
+                const myPlans = await db.getPlansAssignedToUser(ctx.user.id);
+                return JSON.stringify(myPlans.map((p: any) => ({
+                  id: p.id, title: p.title, description: p.description,
+                  status: p.status, startDate: p.startDate, endDate: p.endDate,
+                })));
+              }
+              case "get_my_tasks": {
+                const assignedPlans = await db.getPlansAssignedToUser(ctx.user.id);
+                if (assignedPlans.length === 0) return JSON.stringify([]);
+                const planIds = assignedPlans.map((p: any) => p.id);
+                const allTasks = await db.getAllTasks();
+                const myTasks = allTasks.filter((t: any) => planIds.includes(t.planId));
+                return JSON.stringify(myTasks);
+              }
+              case "get_my_progress": {
+                const myPlansData = await db.getPlansAssignedToUser(ctx.user.id);
+                const myAssignments = await db.getPlanAssignmentsByUserId(ctx.user.id);
+                let totalTasks = 0;
+                let completedTasks = 0;
+                for (const plan of myPlansData) {
+                  const tasks = await db.getTasksByPlanId((plan as any).id);
+                  totalTasks += tasks.length;
+                  completedTasks += tasks.filter((t: any) => t.status === "completed").length;
+                }
+                return JSON.stringify({
+                  assignedPlans: myPlansData.length,
+                  activePlans: myAssignments.filter((a: any) => a.status === "active").length,
+                  totalTasks,
+                  completedTasks,
+                  completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+                });
               }
               default:
                 return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });
