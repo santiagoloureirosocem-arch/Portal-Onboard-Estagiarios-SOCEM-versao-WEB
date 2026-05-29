@@ -53,12 +53,16 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         endDate DATETIME,
         status ENUM('draft','active','completed','archived') NOT NULL DEFAULT 'draft',
         createdBy INT NOT NULL,
+        isTemplate BOOLEAN NOT NULL DEFAULT FALSE,
+        templateOriginPlanId INT,
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
     try { await db.execute(sql`ALTER TABLE onboarding_plans ADD COLUMN startDate DATETIME`); } catch {}
     try { await db.execute(sql`ALTER TABLE onboarding_plans ADD COLUMN endDate DATETIME`); } catch {}
+    try { await db.execute(sql`ALTER TABLE onboarding_plans ADD COLUMN isTemplate BOOLEAN NOT NULL DEFAULT FALSE`); } catch {}
+    try { await db.execute(sql`ALTER TABLE onboarding_plans ADD COLUMN templateOriginPlanId INT`); } catch {}
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS onboarding_tasks (
         id INT AUTO_INCREMENT PRIMARY KEY,
