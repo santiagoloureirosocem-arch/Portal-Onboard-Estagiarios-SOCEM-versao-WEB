@@ -144,6 +144,7 @@ export default function DashboardLayout({
   return (
     <SidebarProvider
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+      className="overflow-hidden"
     >
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
         {children}
