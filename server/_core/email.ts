@@ -63,11 +63,12 @@ export async function sendEmail(options: {
   subject: string;
   heading: string;
   bodyHtml: string;
-}): Promise<boolean> {
+}): Promise<{ ok: boolean; error?: string }> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    console.warn("[Email] RESEND_API_KEY not configured, skipping email");
-    return false;
+    const msg = "RESEND_API_KEY not configured";
+    console.warn(`[Email] ${msg}`);
+    return { ok: false, error: msg };
   }
 
   try {
@@ -86,16 +87,18 @@ export async function sendEmail(options: {
     });
 
     if (!response.ok) {
-      const error = await response.text().catch(() => "");
-      console.warn(`[Email] Resend error (${response.status}): ${error}`);
-      return false;
+      const error = await response.text().catch(() => "unknown error");
+      const msg = `Resend error (${response.status}): ${error}`;
+      console.warn(`[Email] ${msg}`);
+      return { ok: false, error: msg };
     }
 
     const data = await response.json();
     console.log(`[Email] Sent "${options.subject}" to ${options.to} (id: ${data.id})`);
-    return true;
+    return { ok: true };
   } catch (err) {
-    console.warn("[Email] Error sending email:", err);
-    return false;
+      const msg = `Error sending email: ${err}`;
+    console.warn(`[Email] ${msg}`);
+    return { ok: false, error: msg };
   }
 }

@@ -20,19 +20,21 @@ export function registerEmailColaboradorRoute(app: Express) {
         ? programas.join(", ")
         : "Nenhum";
 
-      const sent = await sendEmail({
+      const bodyHtml = buildHtml({
+        nome, numColaborador, empresa, departamento,
+        responsavel, permissoes, temComputador, temOffice, programasLista,
+      });
+      const result = await sendEmail({
         to: "informatica@socem.pt",
         toName: "Informática SOCEM",
         subject: `Novo Colaborador Registado — ${nome}`,
         heading: "Novo Colaborador Registado",
-        bodyHtml: buildHtml({
-          nome, numColaborador, empresa, departamento,
-          responsavel, permissoes, temComputador, temOffice, programasLista,
-        }),
+        bodyHtml,
       });
 
-      if (!sent) {
-        res.status(500).json({ error: "Erro ao enviar email" });
+      if (!result.ok) {
+        console.error(`[EmailColaborador] ${result.error}`);
+        res.status(500).json({ error: result.error ?? "Erro ao enviar email" });
         return;
       }
 
