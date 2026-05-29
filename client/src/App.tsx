@@ -24,6 +24,7 @@ import PortalSelector from "./pages/PortalSelector";
 import NovoColaborador from "./pages/NovoColaborador";
 import Mensagens from "./pages/Mensagens";
 import AIChat from "./pages/AIChat";
+import TeamPanel from "./pages/TeamPanel";
 
 function ProtectedRoute({ component: Component, minRole }: { component: any; minRole?: "tutor" | "admin" }) {
   const { user, loading } = useAuth();
@@ -69,6 +70,7 @@ function Router() {
       <Route path={"/settings"} component={() => <ProtectedRoute component={Settings} />} />
       <Route path={"/calendar"} component={() => <ProtectedRoute component={Calendar} />} />
       <Route path={"/tasks"} component={() => <ProtectedRoute component={Tasks} />} />
+      <Route path={"/equipa"} component={() => <ProtectedRoute component={TeamPanel} minRole="tutor" />} />
       <Route path={"/activity-log"} component={() => <ProtectedRoute component={ActivityLog} minRole="tutor" />} />
       <Route path={"/mensagens"} component={() => <ProtectedRoute component={Mensagens} />} />
       <Route path={"/ai-assist"} component={() => <ProtectedRoute component={AIChat} />} />

@@ -80,6 +80,7 @@ const menuItems: { icon: any; label: string; path: string; roles: MenuRole[]; to
   { icon: Calendar,        label: "Calendário",   path: "/calendar",    roles: ["estagiario", "tutor", "admin"], tourId: "nav-calendar" },
   { icon: CheckSquare,     label: "Tarefas",      path: "/tasks",       roles: ["estagiario", "tutor", "admin"], tourId: "nav-tasks" },
   { icon: BarChart3,       label: "Relatórios",   path: "/reports",     roles: ["tutor", "admin"],               tourId: "nav-reports" },
+  { icon: Users,           label: "Equipa",       path: "/equipa",      roles: ["tutor", "admin"],               tourId: "nav-equipa" },
   { icon: Activity,        label: "Atividade",    path: "/activity-log",roles: ["tutor", "admin"],               tourId: "nav-activity-log" },
   { icon: MessageCircle,   label: "Mensagens",    path: "/mensagens",   roles: ["estagiario", "tutor", "admin"], tourId: "nav-mensagens" },
 ];
