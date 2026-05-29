@@ -64,7 +64,7 @@ async function notifyOverdueTasks() {
           if (tutorPrefs.emailTaskOverdue) {
             const tutor = await db.getUserById((plan as any).createdBy);
             if (tutor?.email) {
-              const appUrl = process.env.APP_URL ?? process.env.ORIGIN ?? "http://localhost:3000";
+              const appUrl = process.env.APP_URL ?? process.env.RAILWAY_PUBLIC_DOMAIN ?? process.env.ORIGIN ?? "http://localhost:3000";
               await sendEmail({
                 to: tutor.email,
                 toName: tutor.name ?? undefined,
@@ -124,7 +124,7 @@ async function notifyUpcomingDeadlines() {
         if (intern?.email) {
           const prefs = await db.getUserEmailPreferences(userId);
           if (prefs.emailTaskDeadline) {
-            const appUrl = process.env.APP_URL ?? process.env.ORIGIN ?? "http://localhost:3000";
+            const appUrl = process.env.APP_URL ?? process.env.RAILWAY_PUBLIC_DOMAIN ?? process.env.ORIGIN ?? "http://localhost:3000";
             await sendEmail({
               to: intern.email,
               toName: intern.name ?? undefined,

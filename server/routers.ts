@@ -541,7 +541,7 @@ export const appRouter = router({
           if (receiver?.email) {
             const prefs = await db.getUserEmailPreferences(input.receiverId);
             if (prefs.emailNewMessage) {
-              const appUrl = process.env.APP_URL ?? process.env.ORIGIN ?? "http://localhost:3000";
+              const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
               await sendEmail({
                 to: receiver.email,
                 toName: receiver.name ?? undefined,
