@@ -10,6 +10,7 @@ import { registerEmailColaboradorRoute } from "./emailColaborador";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import * as db from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -28,6 +29,35 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
     }
   }
   throw new Error(`No available port found starting from ${startPort}`);
+}
+
+// ─── Overdue task notification job ────────────────────────────────────────────
+async function notifyOverdueTasks() {
+  try {
+    const allTasks = await db.getAllTasks();
+    const now = new Date();
+    for (const task of allTasks) {
+      if (!task.dueDate || task.status === 'completed') continue;
+      const due = new Date(task.dueDate);
+      if (due >= now) continue;
+      const userId = task.assignedTo;
+      if (!userId) continue;
+      const existing = await db.getNotificationsByUserId(userId, 50);
+      const alreadyNotified = (existing || []).some(
+        (n: any) => n.title?.includes('Tarefa em atraso') && n.message?.includes(task.title)
+      );
+      if (alreadyNotified) continue;
+      await db.createNotification({
+        userId,
+        title: 'Tarefa em atraso! ⏰',
+        message: `A tarefa "${task.title}" está em atraso desde ${due.toLocaleDateString('pt-PT')}.`,
+        type: 'task',
+        link: '/tasks',
+      });
+    }
+  } catch (err) {
+    console.warn('[OverdueNotification] Error:', err);
+  }
 }
 
 async function startServer() {
@@ -65,6 +95,10 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+
+  // Schedule overdue task check every 5 minutes
+  notifyOverdueTasks();
+  setInterval(notifyOverdueTasks, 5 * 60 * 1000);
 }
 
 startServer().catch(console.error);
