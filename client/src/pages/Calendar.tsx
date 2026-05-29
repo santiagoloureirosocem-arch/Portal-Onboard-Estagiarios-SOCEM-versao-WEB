@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/_core/hooks/useAuth';
 import {
   ChevronLeft, ChevronRight, CalendarIcon, Clock,
-  CheckCircle2, Circle, Plus, X, FileText, AlertCircle, List
+  CheckCircle2, Circle, Plus, X, FileText, AlertCircle, List, Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -103,7 +102,8 @@ function ScheduleTaskModal({
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Título *</label>
-              <Input placeholder="Ex: Reunião de boas-vindas" value={title} onChange={e => setTitle(e.target.value)} required />
+              <input placeholder="Ex: Reunião de boas-vindas" value={title} onChange={e => setTitle(e.target.value)} required
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Descrição <span className="text-muted-foreground font-normal">(opcional)</span></label>
@@ -112,7 +112,8 @@ function ScheduleTaskModal({
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Data de início <span className="text-muted-foreground font-normal">(opcional)</span></label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div className="flex gap-2 pt-1">
               <Button type="submit" className="flex-1 gap-2" disabled={createTask.isPending}>
@@ -188,6 +189,27 @@ function ScheduledTasksModal({
   );
 }
 
+// ── Legenda dos marcadores ────────────────────────────────────────────────────
+function MarkerLegend() {
+  const items = [
+    { color: 'bg-green-500', ring: 'ring-green-300', label: 'Início do plano' },
+    { color: 'bg-purple-500', ring: 'ring-purple-300', label: 'Fim do plano' },
+    { color: 'bg-teal-500', ring: 'ring-teal-300', label: 'Início de tarefa' },
+    { color: 'bg-primary', ring: 'ring-primary/40', label: 'Prazo de tarefa' },
+  ];
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Legenda</p>
+      {items.map(item => (
+        <div key={item.label} className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.color} ring-2 ${item.ring}`} />
+          <span className="text-xs text-muted-foreground">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 export default function Calendar() {
   const [, setLocation] = useLocation();
@@ -197,29 +219,68 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showScheduledList, setShowScheduledList] = useState(false);
+  const [filterPlanId, setFilterPlanId] = useState<number | 'all'>('all');
 
   const { data: plans } = trpc.plans.list.useQuery();
-  // Single query for ALL tasks — no more per-plan queries
   const { data: allTasksRaw, refetch: refetchTasks } = trpc.tasks.listAll.useQuery();
   const allTasks = allTasksRaw || [];
 
-  // Marker sets — dates that have events
+  // ── Filter by plan ────────────────────────────────────────────────────────────
+  const filteredTasks = useMemo(() => {
+    if (filterPlanId === 'all') return allTasks;
+    return allTasks.filter((t: any) => t.planId === filterPlanId);
+  }, [allTasks, filterPlanId]);
+
+  const filteredPlans = useMemo(() => {
+    if (filterPlanId === 'all') return plans || [];
+    return (plans || []).filter((p: any) => p.id === filterPlanId);
+  }, [plans, filterPlanId]);
+
+  // ── Marker sets ──────────────────────────────────────────────────────────────
   const datesWithTaskDueDates = new Set(
-    allTasks.filter((t: any) => t.dueDate).map((t: any) => toDateKey(new Date(t.dueDate)))
+    filteredTasks.filter((t: any) => t.dueDate).map((t: any) => toDateKey(new Date(t.dueDate)))
   );
   const datesWithTaskStartDates = new Set(
-    allTasks.filter((t: any) => t.startDate).map((t: any) => toDateKey(new Date(t.startDate)))
+    filteredTasks.filter((t: any) => t.startDate).map((t: any) => toDateKey(new Date(t.startDate)))
   );
   const datesWithPlanStarts = new Set(
-    (plans || []).filter((p: any) => p.startDate).map((p: any) => toDateKey(new Date(p.startDate)))
+    filteredPlans.filter((p: any) => p.startDate).map((p: any) => toDateKey(new Date(p.startDate)))
   );
   const datesWithPlanEnds = new Set(
-    (plans || []).filter((p: any) => p.endDate).map((p: any) => toDateKey(new Date(p.endDate)))
+    filteredPlans.filter((p: any) => p.endDate).map((p: any) => toDateKey(new Date(p.endDate)))
   );
 
-  // Tasks for selected date — match on both dueDate AND startDate
+  // ── Overdue dates ────────────────────────────────────────────────────────────
+  const overdueDateKeys = useMemo(() => {
+    const keys = new Set<string>();
+    const now = new Date();
+    for (const t of allTasks) {
+      if (t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now) {
+        keys.add(toDateKey(new Date(t.dueDate)));
+      }
+    }
+    return keys;
+  }, [allTasks]);
+
+  // ── Task count per date ──────────────────────────────────────────────────────
+  const taskCountByDate = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const t of filteredTasks) {
+      if (t.dueDate) {
+        const key = toDateKey(new Date(t.dueDate));
+        count.set(key, (count.get(key) || 0) + 1);
+      }
+      if (t.startDate) {
+        const key = toDateKey(new Date(t.startDate));
+        count.set(key, (count.get(key) || 0) + 1);
+      }
+    }
+    return count;
+  }, [filteredTasks]);
+
+  // Selected date tasks (from FILTERED tasks)
   const selectedKey = toDateKey(selectedDate);
-  const selectedDayTasks = allTasks.filter((t: any) =>
+  const selectedDayTasks = filteredTasks.filter((t: any) =>
     (t.dueDate && toDateKey(new Date(t.dueDate!)) === selectedKey) ||
     (t.startDate && toDateKey(new Date(t.startDate!)) === selectedKey)
   );
@@ -243,14 +304,24 @@ export default function Calendar() {
   const isToday = (d: number) => d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
   const isSelected = (d: number) => d === selectedDate.getDate() && currentMonth === selectedDate.getMonth() && currentYear === selectedDate.getFullYear();
 
-  const activePlans = (plans || []);
   const scheduledCount = allTasks.filter((t: any) => t.dueDate || t.startDate).length;
-
-  // Plans that have dates on the selected date
-  const selectedDayPlans = (plans || []).filter((p: any) =>
+  const selectedDayPlans = filteredPlans.filter((p: any) =>
     (p.startDate && toDateKey(new Date(p.startDate)) === selectedKey) ||
     (p.endDate && toDateKey(new Date(p.endDate)) === selectedKey)
   );
+
+  // Plan filter options: distinct plans that have tasks or are visible
+  const planOptions = useMemo(() => {
+    const planSet = new Map<number, string>();
+    for (const t of allTasks) {
+      const plan = (plans || []).find((p: any) => p.id === t.planId);
+      if (plan) planSet.set(plan.id, plan.title);
+    }
+    for (const p of plans || []) {
+      planSet.set(p.id, p.title);
+    }
+    return Array.from(planSet.entries()).map(([id, title]) => ({ id, title }));
+  }, [allTasks, plans]);
 
   return (
     <DashboardLayout title="Calendário">
@@ -301,7 +372,7 @@ export default function Calendar() {
             </Button>
             <Button onClick={() => setShowScheduleModal(true)} className="gap-2">
               <Plus size={16} />
-              Agendar Tarefa
+              Agendar
             </Button>
           </div>
         </div>
@@ -309,6 +380,29 @@ export default function Calendar() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Calendar Grid */}
           <Card className="p-6 lg:col-span-2">
+            {/* Filtro por plano */}
+            {planOptions.length > 1 && (
+              <div className="flex items-center gap-2 mb-4 pb-4 border-b border-border">
+                <Filter size={14} className="text-muted-foreground shrink-0" />
+                <select
+                  value={filterPlanId}
+                  onChange={e => setFilterPlanId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                  className="flex-1 px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="all">Todos os planos</option>
+                  {planOptions.map(({ id, title }) => (
+                    <option key={id} value={id}>{title}</option>
+                  ))}
+                </select>
+                {filterPlanId !== 'all' && (
+                  <button onClick={() => setFilterPlanId('all')}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1">
+                    Limpar
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-6">
               <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-muted transition-colors text-foreground">
                 <ChevronLeft size={20} />
@@ -333,14 +427,17 @@ export default function Calendar() {
                 const hasTaskStart = datesWithTaskStartDates.has(key);
                 const hasPlanStart = datesWithPlanStarts.has(key);
                 const hasPlanEnd = datesWithPlanEnds.has(key);
+                const isOverdue = overdueDateKeys.has(key);
+                const taskCount = taskCountByDate.get(key) || 0;
                 const todayCell = isToday(day);
                 const selectedCell = isSelected(day);
-                // Collect marker colors for this cell
+
                 const markers: string[] = [];
                 if (hasPlanStart) markers.push('bg-green-500 ring-2 ring-green-300 dark:ring-green-700');
                 if (hasPlanEnd) markers.push('bg-purple-500 ring-2 ring-purple-300 dark:ring-purple-700');
                 if (hasTaskStart) markers.push('bg-teal-500 ring-2 ring-teal-300 dark:ring-teal-700');
                 if (hasTaskDue) markers.push('bg-primary ring-2 ring-primary/40');
+
                 return (
                   <button
                     key={idx}
@@ -351,21 +448,38 @@ export default function Calendar() {
                         ? 'bg-primary text-primary-foreground shadow-md'
                         : selectedCell
                         ? 'bg-primary/15 text-primary border-2 border-primary'
+                        : isOverdue
+                        ? 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
                         : 'hover:bg-muted text-foreground'
                       }
                     `}
                   >
                     {day}
+                    {taskCount > 0 && (
+                      <span className={`text-[9px] font-bold leading-none mt-0.5 ${
+                        todayCell ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                      }`}>
+                        {taskCount}
+                      </span>
+                    )}
                     {markers.length > 0 && (
                       <div className="flex items-center gap-[2px] mt-0.5">
                         {markers.slice(0, 3).map((cls, i) => (
-                          <span key={i} className={`w-2.5 h-2.5 rounded-full ${cls}`} />
+                          <span key={i} className={`w-2 h-2 rounded-full ${cls}`} />
                         ))}
                       </div>
+                    )}
+                    {isOverdue && !todayCell && !selectedCell && markers.length === 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 absolute top-1 right-1" />
                     )}
                   </button>
                 );
               })}
+            </div>
+
+            {/* Legenda */}
+            <div className="mt-4 pt-4 border-t border-border">
+              <MarkerLegend />
             </div>
           </Card>
 
@@ -391,7 +505,6 @@ export default function Calendar() {
                 <p className="text-sm text-muted-foreground">Nenhuma tarefa ou evento neste dia.</p>
               ) : (
                 <div className="space-y-2">
-                  {/* Plan date markers */}
                   {selectedDayPlans.map((p: any) => {
                     const isStart = p.startDate && toDateKey(new Date(p.startDate)) === selectedKey;
                     const isEnd = p.endDate && toDateKey(new Date(p.endDate)) === selectedKey;
@@ -411,15 +524,15 @@ export default function Calendar() {
                       </button>
                     );
                   })}
-                  {/* Tasks */}
                   {selectedDayTasks.map(t => {
                     const onStartDate = t.startDate && toDateKey(new Date(t.startDate)) === selectedKey;
                     const onDueDate = t.dueDate && toDateKey(new Date(t.dueDate)) === selectedKey;
+                    const isOverdue = onDueDate && t.status !== 'completed' && new Date(t.dueDate) < new Date();
                     return (
-                      <div key={t.id} className="flex items-start gap-2 p-2.5 rounded-lg border bg-muted/50 border-border/50">
+                      <div key={t.id} className={`flex items-start gap-2 p-2.5 rounded-lg border ${isOverdue ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-muted/50 border-border/50'}`}>
                         <span className="mt-0.5 shrink-0">{STATUS_ICON[t.status] || <Circle size={14} />}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">{t.title}</p>
+                          <p className={`text-sm font-medium ${t.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{t.title}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{t.planName || `Plano #${t.planId}`}</p>
                           <div className="flex flex-wrap gap-2 mt-1">
                             {onStartDate && (
@@ -428,8 +541,8 @@ export default function Calendar() {
                               </span>
                             )}
                             {onDueDate && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${t.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-primary/10 text-primary'}`}>
-                                {t.status === 'completed' ? 'Concluída' : 'Prazo'}
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${t.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-primary/10 text-primary'}`}>
+                                {t.status === 'completed' ? 'Concluída' : isOverdue ? 'Atrasada' : 'Prazo'}
                               </span>
                             )}
                           </div>
@@ -445,11 +558,11 @@ export default function Calendar() {
             <Card className="p-5">
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
                 <Clock size={15} className="text-primary" />
-                Os meus Planos
+                Planos Ativos
               </h3>
-              {activePlans.length > 0 ? (
+              {(plans || []).filter((p: any) => p.status === 'active').length > 0 ? (
                 <div className="space-y-2">
-                  {activePlans.slice(0, 5).map((p: any) => (
+                  {(plans || []).filter((p: any) => p.status === 'active').slice(0, 5).map((p: any) => (
                     <button key={p.id} onClick={() => setLocation(`/plans/${p.id}`)}
                       className="w-full text-left flex items-start gap-2.5 p-2 rounded-lg hover:bg-muted transition-colors">
                       <span className="mt-1.5 w-2 h-2 rounded-full bg-green-500 shrink-0" />
@@ -459,14 +572,14 @@ export default function Calendar() {
                       </div>
                     </button>
                   ))}
-                  {activePlans.length > 5 && (
+                  {(plans || []).filter((p: any) => p.status === 'active').length > 5 && (
                     <button onClick={() => setLocation('/plans')} className="text-xs text-primary hover:underline w-full text-center pt-1">
-                      Ver todos ({activePlans.length})
+                      Ver todos ({(plans || []).filter((p: any) => p.status === 'active').length})
                     </button>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Nenhum plano atribuído.</p>
+                <p className="text-sm text-muted-foreground">Nenhum plano ativo.</p>
               )}
             </Card>
 
@@ -477,9 +590,10 @@ export default function Calendar() {
                 {[
                   { label: 'Total de Planos', value: (plans || []).length, color: 'text-foreground' },
                   { label: 'Planos Ativos', value: (plans || []).filter((p: any) => p.status === 'active').length, color: 'text-green-600 dark:text-green-400' },
-                  { label: 'Tarefas agendadas', value: scheduledCount, color: 'text-primary' },
+                  { label: 'Tarefas c/ data', value: scheduledCount, color: 'text-primary' },
                   { label: 'Tarefas concluídas', value: allTasks.filter(t => t.status === 'completed').length, color: 'text-blue-600 dark:text-blue-400' },
                   { label: 'Tarefas pendentes', value: allTasks.filter(t => t.status === 'pending').length, color: 'text-yellow-600 dark:text-yellow-400' },
+                  { label: 'Tarefas em atraso', value: overdueDateKeys.size, color: 'text-red-600 dark:text-red-400' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">{label}</span>
