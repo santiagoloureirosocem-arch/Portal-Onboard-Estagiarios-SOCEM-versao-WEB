@@ -176,12 +176,12 @@ function NotificationBell() {
     <div className="relative shrink-0" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg hover:bg-accent/50 transition-colors"
+        className="relative p-2 rounded-lg hover:bg-accent/50 transition-all duration-300 hover:scale-105 active:scale-95"
       >
-        <Bell size={18} className="text-muted-foreground" />
-        {unreadCount !== undefined && unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            {unreadCount > 9 ? "9+" : unreadCount}
+        <Bell size={18} className={`text-muted-foreground transition-all duration-300 ${(unreadCount ?? 0) > 0 ? "animate-float-rotate" : ""}`} />
+        {(unreadCount ?? 0) > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-bounce-in shadow-md shadow-red-300/40">
+            {unreadCount! > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
@@ -317,8 +317,8 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                   >
                     <PanelLeft className="h-4 w-4 text-muted-foreground" />
                   </button>
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 animate-float-rotate" style={{ borderRadius: "0.5rem" }}>
                       <img src="/socem-logo.png" alt="SOCEM" className="w-full h-full object-contain" />
                     </div>
                     <div className="min-w-0">
@@ -357,11 +357,12 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className="h-10 transition-all font-normal"
+                      className={`h-10 transition-all duration-300 font-normal relative ${isActive ? "bg-primary/10 text-primary font-semibold shadow-sm" : "hover:bg-accent/60"}`}
                       data-tour={item.tourId}
                     >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                      <item.icon className={`h-4 w-4 transition-all duration-300 ${isActive ? "text-primary scale-110" : "group-hover:scale-105"}`} />
                       <span>{item.label}</span>
+                      {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-full animate-in" />}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -377,11 +378,12 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                         isActive={isActive}
                         onClick={() => setLocation(item.path)}
                         tooltip={item.label}
-                        className="h-10 transition-all font-normal text-muted-foreground hover:text-foreground"
+                        className={`h-10 transition-all duration-300 font-normal relative ${isActive ? "bg-primary/10 text-primary font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-accent/60"}`}
                         data-tour={item.tourId}
                       >
-                        <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                        <item.icon className={`h-4 w-4 transition-all duration-300 ${isActive ? "text-primary scale-110" : ""}`} />
                         <span>{item.label}</span>
+                        {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-full animate-in" />}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
@@ -476,7 +478,11 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
           </div>
           <NotificationBell />
         </div>
-        <main className="flex-1 p-4 flex flex-col overflow-hidden min-h-0">{children}</main>
+        <main className="flex-1 p-4 flex flex-col overflow-hidden min-h-0">
+          <div key={location} className="flex-1 flex flex-col animate-scale-in">
+            {children}
+          </div>
+        </main>
       </SidebarInset>
     </>
   );
