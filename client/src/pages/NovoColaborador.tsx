@@ -339,18 +339,18 @@ export default function NovoColaborador() {
                   Continuar <ArrowRight size={16} />
                 </button>
               ) : (
-                <>
+                <div className="flex-1 flex flex-col gap-2">
                   {sendError && (
-                    <p className="text-sm text-red-500 text-center mb-2">{sendError}</p>
+                    <p className="text-sm text-red-500 text-center">{sendError}</p>
                   )}
-                  <button type="button" onClick={handleSubmit} disabled={sending} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 dark:shadow-none text-sm">
+                  <button type="button" onClick={handleSubmit} disabled={sending} className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 dark:shadow-none text-sm">
                     {sending ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> A enviar...</>
                     ) : (
                       <><CheckCircle2 size={16} /> Submeter registo</>
                     )}
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
