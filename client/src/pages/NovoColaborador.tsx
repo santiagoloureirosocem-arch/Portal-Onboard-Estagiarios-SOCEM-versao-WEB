@@ -19,19 +19,19 @@ function InputField({ id, label, value, onChange, type = "text", placeholder, ic
   type?: string; placeholder?: string; icon?: any; required?: boolean; hint?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-xs sm:text-sm font-medium text-slate-700">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <div className="relative">
-        {Icon && <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />}
+        {Icon && <Icon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />}
         <input
           id={id} type={type} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder} required={required}
-          className={`w-full ${Icon ? "pl-10" : "pl-4"} pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-400 transition-all text-sm`}
+          className={`w-full ${Icon ? "pl-10" : "pl-4"} pr-4 py-[10px] sm:py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all text-sm`}
         />
       </div>
-      {hint && <p className="text-xs text-slate-400">{hint}</p>}
+      {hint && <p className="text-[11px] sm:text-xs text-slate-400">{hint}</p>}
     </div>
   );
 }
@@ -43,12 +43,12 @@ function Toggle({ checked, onChange, label, desc }: {
     <label className="flex items-start gap-3 cursor-pointer group">
       <div
         onClick={() => onChange(!checked)}
-        className={`relative w-10 h-6 rounded-full flex-shrink-0 mt-0.5 transition-colors duration-200 ${checked ? "bg-red-600" : "bg-slate-200 dark:bg-slate-700 group-hover:bg-slate-300 dark:group-hover:bg-slate-600"}`}
+        className={`relative w-10 h-6 rounded-full flex-shrink-0 mt-0.5 transition-colors duration-200 ${checked ? "bg-red-600" : "bg-slate-200 group-hover:bg-slate-300"}`}
       >
         <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"}`} />
       </div>
       <div>
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</p>
+        <p className="text-sm font-medium text-slate-700">{label}</p>
         {desc && <p className="text-xs text-slate-400 mt-0.5">{desc}</p>}
       </div>
     </label>
@@ -63,11 +63,11 @@ function CheckBox({ checked, onChange, label }: {
       <div
         onClick={() => onChange(!checked)}
         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
-          ${checked ? "bg-red-600 border-red-600" : "border-slate-300 dark:border-slate-600 group-hover:border-red-400"}`}
+          ${checked ? "bg-red-600 border-red-600" : "border-slate-300 group-hover:border-red-400"}`}
       >
         {checked && <Check size={12} className="text-white" />}
       </div>
-      <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+      <span className="text-sm text-slate-700">{label}</span>
     </label>
   );
 }
@@ -124,64 +124,25 @@ export default function NovoColaborador() {
     }
   };
 
-  const leftPanel = (title: string, subtitle: string) => (
-    <div className="hidden lg:flex lg:w-[52%] bg-gradient-to-br from-red-600 via-red-700 to-red-900 flex-col justify-between p-14 relative overflow-hidden select-none">
-      <div className="absolute inset-0 opacity-[0.07]" style={{
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)`,
-        backgroundSize: "40px 40px"
-      }} />
-      <div className="absolute top-[-80px] right-[-80px] w-[340px] h-[340px] bg-red-400/20 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-[-100px] left-[-60px] w-[300px] h-[300px] bg-red-500/25 rounded-full blur-3xl animate-float" style={{ animationDelay: "-3s" }} />
-
-      <div className="relative z-10 animate-in">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-            <img src="/socem-logo.png" alt="SOCEM" className="w-full h-full object-contain" />
+  const renderSteps = () => (
+    <div className="flex items-center gap-1 mb-3 overflow-x-auto">
+      {STEPS.map((s) => {
+        const Icon = s.icon;
+        const isDone = step > s.id;
+        const isCurrent = step === s.id;
+        return (
+          <div key={s.id} className="flex items-center flex-shrink-0">
+            {s.id > 1 && <div className={`h-0.5 w-4 sm:w-6 ${step >= s.id ? "bg-red-500" : "bg-slate-200"}`} />}
+            <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center transition-all duration-300
+              ${isDone ? "bg-red-500" : isCurrent ? "bg-red-100" : "bg-slate-100"}`}>
+              {isDone
+                ? <Check size={10} className="text-white" />
+                : <Icon size={10} className={isCurrent ? "text-red-600" : "text-slate-400"} />
+              }
+            </div>
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">Portal SOCEM</span>
-        </div>
-      </div>
-
-      <div className="relative z-10 space-y-8">
-        <div>
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 text-red-100 text-xs font-medium px-3 py-1.5 rounded-full mb-5 animate-in delay-3">
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-            Novo Colaborador
-          </div>
-          <h2 className="text-white text-[2.4rem] font-bold leading-[1.15] tracking-tight mb-4 animate-in delay-4">{title}</h2>
-          <p className="text-red-200/80 text-base leading-relaxed max-w-sm animate-in delay-5">{subtitle}</p>
-        </div>
-
-        {!submitted && (
-          <div className="space-y-3 animate-in delay-6">
-            {STEPS.map((s) => {
-              const Icon = s.icon;
-              const isDone = step > s.id;
-              const isCurrent = step === s.id;
-              return (
-                <div key={s.id} className={`flex items-center gap-3 rounded-xl p-3.5 transition-all duration-300
-                  ${isCurrent ? "bg-white/15 border border-white/20" : "bg-white/8 border border-white/5"}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300
-                    ${isDone ? "bg-emerald-500" : isCurrent ? "bg-white" : "bg-white/15"}`}>
-                    {isDone
-                      ? <Check size={15} className="text-white" />
-                      : <Icon size={15} className={isCurrent ? "text-slate-800" : "text-white/60"} />
-                    }
-                  </div>
-                  <div>
-                    <p className={`text-sm font-semibold leading-none ${isCurrent ? "text-white" : isDone ? "text-slate-200" : "text-white/50"}`}>{s.label}</p>
-                    <p className="text-red-200/60 text-xs mt-0.5">Passo {s.id} de {STEPS.length}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="relative z-10 animate-in delay-8">
-        <p className="text-white/50 text-xs tracking-wider">SOCEM © 2026</p>
-      </div>
+        );
+      })}
     </div>
   );
 
@@ -196,35 +157,41 @@ export default function NovoColaborador() {
     ] as [string, string][];
 
     return (
-      <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950">
-        {leftPanel("Novo Colaborador\nregistado!", "O pedido foi submetido com sucesso. A equipa de TI e RH serão notificados para processar o onboarding.")}
-        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-950">
-          <div className="w-full max-w-[400px] text-center animate-in">
-            <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6 animate-in delay-2">
-              <CheckCircle2 size={40} className="text-emerald-600 dark:text-emerald-400" />
+      <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-[440px]">
+          <div className="text-center mb-6 sm:mb-8 animate-in">
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-red-600 shadow-lg shadow-red-200 mb-3 sm:mb-4 overflow-hidden">
+              <img src="/socem-logo.png" alt="SOCEM" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 animate-in delay-3">Pedido submetido!</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 animate-in delay-4">
-              O registo de <strong className="text-slate-700 dark:text-slate-200">{nome}</strong> foi enviado com sucesso para <strong className="text-slate-700 dark:text-slate-200">informatica@socem.pt</strong>.
+            <h1 className="text-slate-900 text-xl sm:text-2xl font-bold tracking-tight">Portal SOCEM</h1>
+          </div>
+
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-5 sm:p-8 shadow-sm animate-in delay-3">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+              <CheckCircle2 size={28} className="text-emerald-600" />
+            </div>
+            <h2 className="text-center text-slate-900 text-lg sm:text-xl font-bold mb-2">Pedido submetido!</h2>
+            <p className="text-center text-slate-500 text-xs sm:text-sm mb-5 sm:mb-6">
+              O registo de <strong className="text-slate-700">{nome}</strong> foi enviado para <strong className="text-slate-700">informatica@socem.pt</strong>.
             </p>
-            <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 text-left space-y-3 mb-8 animate-in delay-5">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-left space-y-2.5 sm:space-y-3 mb-5 sm:mb-6">
               {summary.map(([k, v]) => (
-                <div key={k} className="flex justify-between items-start gap-4">
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex-shrink-0">{k}</span>
-                  <span className="text-xs text-slate-700 dark:text-slate-200 text-right">{v}</span>
+                <div key={k} className="flex justify-between items-start gap-3 sm:gap-4">
+                  <span className="text-[11px] sm:text-xs font-medium text-slate-500 flex-shrink-0">{k}</span>
+                  <span className="text-[11px] sm:text-xs text-slate-700 text-right break-words max-w-[60%]">{v}</span>
                 </div>
               ))}
             </div>
-            <div className="flex gap-3 animate-in delay-6">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => { setSubmitted(false); setStep(1); setNome(""); setNumColaborador(""); setEmpresa(""); setDepartamento(""); setPermissoes(""); setResponsavel(""); setTemComputador(false); setTemOffice(false); setProgramas([]); setOutroPrograma(""); }}
-                className="flex-1 py-3 px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                className="w-full sm:flex-1 py-[11px] sm:py-3 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all min-h-[44px]"
               >
                 Novo registo
               </button>
               <button
                 onClick={() => setLocation("/")}
-                className="flex-1 py-3 px-4 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold hover:from-red-500 hover:to-red-600 transition-all shadow-md shadow-red-200 dark:shadow-red-900/30"
+                className="w-full sm:flex-1 py-[11px] sm:py-3 px-4 rounded-xl text-white text-sm font-semibold bg-red-600 hover:bg-red-500 transition-all shadow-md shadow-red-200 min-h-[44px]"
               >
                 Voltar ao início
               </button>
@@ -236,72 +203,70 @@ export default function NovoColaborador() {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950">
-      {leftPanel("Registo de\nColaborador", "Preenche o formulário para registar um novo colaborador e configurar os seus acessos e equipamento.")}
-
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-950 min-h-screen">
-        <div className="w-full max-w-[420px]">
-          <div className="lg:hidden text-center mb-8 animate-in">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-600 shadow-lg mb-3 overflow-hidden">
-              <img src="/socem-logo.png" alt="SOCEM" className="w-full h-full object-contain" />
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Novo Colaborador</h1>
+    <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-[440px]">
+        <div className="text-center mb-6 sm:mb-8 animate-in">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-red-600 shadow-lg shadow-red-200 mb-3 sm:mb-4 overflow-hidden">
+            <img src="/socem-logo.png" alt="SOCEM" className="w-full h-full object-contain" />
           </div>
+          <h1 className="text-slate-900 text-xl sm:text-2xl font-bold tracking-tight mb-1">Novo Colaborador</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Registo de colaborador</p>
+        </div>
 
-          <button onClick={() => setLocation("/")} className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-sm mb-6 transition-colors group animate-in delay-2">
-            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-5 sm:p-8 shadow-sm animate-in delay-3">
+          <button onClick={() => setLocation("/")} className="flex items-center gap-1.5 text-slate-400 hover:text-slate-600 text-xs sm:text-sm mb-4 sm:mb-6 transition-colors group min-h-[36px]">
+            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
             Voltar à seleção
           </button>
 
-          <div className="mb-8 animate-in delay-3">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h2 className="text-[1.5rem] font-bold text-slate-900 dark:text-white tracking-tight">
-                  {STEPS[step - 1].label}
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Passo {step} de {STEPS.length}</p>
+          <div className="mb-5 sm:mb-6">
+            <div className="flex items-start justify-between mb-2 gap-2">
+              <div className="min-w-0">
+                {renderSteps()}
+                <h2 className="text-slate-900 text-base sm:text-lg font-bold">{STEPS[step - 1].label}</h2>
+                <p className="text-slate-400 text-xs">Passo {step} de {STEPS.length}</p>
               </div>
-              <span className="text-sm font-bold text-slate-400 dark:text-slate-500">{Math.round((step / STEPS.length) * 100)}%</span>
+              <span className="text-sm font-bold text-slate-400 flex-shrink-0 mt-0.5">{Math.round((step / STEPS.length) * 100)}%</span>
             </div>
-            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-red-600 to-red-700 rounded-full transition-all duration-500" style={{ width: `${(step / STEPS.length) * 100}%` }} />
+            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-red-500 rounded-full transition-all duration-500" style={{ width: `${(step / STEPS.length) * 100}%` }} />
             </div>
           </div>
 
-          <div className="animate-in delay-4">
+          <div>
             {step === 1 && (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <InputField id="nome" label="Nome completo" value={nome} onChange={setNome} placeholder="João Silva" icon={User} required />
                 <InputField id="num" label="Número de colaborador" value={numColaborador} onChange={setNumColaborador} icon={Hash} required hint="Atribuído pelo departamento de RH" />
               </div>
             )}
 
             {step === 2 && (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <InputField id="empresa" label="Empresa" value={empresa} onChange={setEmpresa} icon={Building2} required />
                 <InputField id="dept" label="Departamento" value={departamento} onChange={setDepartamento} icon={Briefcase} required />
                 <InputField id="perm" label="Permissões" value={permissoes} onChange={setPermissoes} icon={Shield} required />
-                <InputField id="resp" label="Responsável / Gestor direto" value={responsavel} onChange={setResponsavel} placeholder="Nome do responsável" icon={User} required />
+                <InputField id="resp" label="Responsável" value={responsavel} onChange={setResponsavel} placeholder="Nome do responsável" icon={User} required />
               </div>
             )}
 
             {step === 3 && (
-              <div className="space-y-5">
-                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4">
+              <div className="space-y-4 sm:space-y-5">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-3 sm:space-y-4">
                   <Toggle checked={temComputador} onChange={(v) => { setTemComputador(v); if (!v) { setTemOffice(false); setProgramas([]); } }} label="Precisa de computador" desc="Será atribuído pela equipa de TI" />
 
                   {temComputador && (
-                    <div className="ml-13 pl-3 border-l-2 border-slate-200 dark:border-slate-700 space-y-4">
+                    <div className="ml-10 sm:ml-13 pl-3 border-l-2 border-slate-200 space-y-3 sm:space-y-4">
                       <Toggle checked={temOffice} onChange={setTemOffice} label="Precisa de Microsoft Office" desc="Word, Excel, Outlook, PowerPoint..." />
                       <div>
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Programas adicionais a instalar</p>
-                        <div className="space-y-2.5">
+                        <p className="text-xs sm:text-sm font-medium text-slate-700 mb-2 sm:mb-3">Programas adicionais a instalar</p>
+                        <div className="space-y-2 sm:space-y-2.5">
                           {PROGRAMAS.map(p => (
                             <CheckBox key={p} checked={programas.includes(p)} onChange={() => togglePrograma(p)} label={p} />
                           ))}
                         </div>
                         {programas.includes("Outro") && (
-                          <div className="mt-3">
+                          <div className="mt-2 sm:mt-3">
                             <InputField id="outroPrograma" label="Especificar outro programa" value={outroPrograma} onChange={setOutroPrograma} placeholder="Nome do programa" icon={Package} />
                           </div>
                         )}
@@ -311,47 +276,45 @@ export default function NovoColaborador() {
                 </div>
 
                 {!temComputador && (
-                  <div className="flex items-center gap-2.5 px-4 py-3 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-xl">
-                    <X size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Sem equipamento informático atribuído</p>
+                  <div className="flex items-center gap-2.5 px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <X size={14} className="text-slate-400 flex-shrink-0" />
+                    <p className="text-xs sm:text-sm text-slate-500">Sem equipamento informático atribuído</p>
                   </div>
                 )}
               </div>
             )}
 
-            <div className={`flex gap-3 mt-8 ${step > 1 ? "flex-row" : "flex-col"}`}>
+            <div className={`flex gap-2 sm:gap-3 mt-5 sm:mt-6 ${step > 1 ? "flex-row" : "flex-col"}`}>
               {step > 1 && (
-                <button type="button" onClick={() => setStep(s => s - 1)} className="flex-1 py-3 px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
-                  <ArrowLeft size={16} />
+                <button type="button" onClick={() => setStep(s => s - 1)} className="flex-1 py-[11px] sm:py-3 px-4 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all flex items-center justify-center gap-2 min-h-[44px]">
+                  <ArrowLeft size={15} />
                   Anterior
                 </button>
               )}
               {step < STEPS.length ? (
-                <button type="button" onClick={() => canNext() && setStep(s => s + 1)} disabled={!canNext()} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 dark:shadow-red-900/30 text-sm bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600">
-                  Continuar <ArrowRight size={16} />
+                <button type="button" onClick={() => canNext() && setStep(s => s + 1)} disabled={!canNext()} className="flex-1 flex items-center justify-center gap-2 py-[11px] sm:py-3 px-4 rounded-xl text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 text-sm bg-red-600 hover:bg-red-500 min-h-[44px]">
+                  Continuar <ArrowRight size={15} />
                 </button>
               ) : (
                 <div className="flex-1 flex flex-col gap-2">
                   {sendError && (
-                    <p className="text-sm text-red-500 text-center">{sendError}</p>
+                    <p className="text-xs sm:text-sm text-red-500 text-center">{sendError}</p>
                   )}
-                  <button type="button" onClick={handleSubmit} disabled={sending} className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 dark:shadow-red-900/30 text-sm bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600">
+                  <button type="button" onClick={handleSubmit} disabled={sending} className="w-full flex items-center justify-center gap-2 py-[11px] sm:py-3 px-4 rounded-xl text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-red-200 text-sm bg-red-600 hover:bg-red-500 min-h-[44px]">
                     {sending ? (
                       <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> A enviar...</>
                     ) : (
-                      <><CheckCircle2 size={16} /> Submeter registo</>
+                      <><CheckCircle2 size={15} /> Submeter registo</>
                     )}
                   </button>
                 </div>
               )}
             </div>
           </div>
+        </div>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 animate-in delay-6">
-            <p className="text-center text-xs text-slate-400 dark:text-slate-600">
-              Acesso restrito a membros autorizados da SOCEM
-            </p>
-          </div>
+        <div className="mt-5 sm:mt-6 text-center">
+          <p className="text-[11px] sm:text-xs text-slate-400">Acesso restrito a membros autorizados da SOCEM</p>
         </div>
       </div>
     </div>

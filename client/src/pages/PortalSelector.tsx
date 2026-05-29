@@ -26,84 +26,26 @@ export default function PortalSelector() {
   ];
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950">
-      <div className="hidden lg:flex lg:w-[52%] bg-gradient-to-br from-red-600 via-red-700 to-red-900 flex-col justify-between p-14 relative overflow-hidden select-none">
-        <div className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)`,
-          backgroundSize: "40px 40px"
-        }} />
-        <div className="absolute top-[-80px] right-[-80px] w-[340px] h-[340px] bg-red-400/20 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-[-100px] left-[-60px] w-[300px] h-[300px] bg-red-500/25 rounded-full blur-3xl animate-float" style={{ animationDelay: "-3s" }} />
-
-        <div className="relative z-10 flex items-center gap-3 animate-in">
-          <div className="w-10 h-10 bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+    <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-[520px]">
+        <div className="text-center mb-8 sm:mb-10 animate-in">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-red-600 shadow-lg shadow-red-200 mb-3 sm:mb-4 overflow-hidden">
             <img src="/socem-logo.png" alt="SOCEM" className="w-full h-full object-contain" />
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">Portal SOCEM</span>
+          <h1 className="text-slate-900 text-2xl sm:text-3xl font-bold tracking-tight mb-1 sm:mb-2">Portal SOCEM</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Sistema de Gestão de Pessoas</p>
         </div>
 
-        <div className="relative z-10 space-y-8">
-          <div className="animate-in delay-3">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 text-red-100 text-xs font-medium px-3 py-1.5 rounded-full mb-5">
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-              Sistema activo
-            </div>
-            <h2 className="text-white text-[2.6rem] font-bold leading-[1.15] tracking-tight mb-4">
-              Portal de<br />Gestão de Pessoas
-            </h2>
-            <p className="text-red-200/80 text-base leading-relaxed max-w-sm">
-              Seleciona a área a que pretendes aceder para gerir colaboradores ou acompanhar estágios.
-            </p>
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-5 sm:p-8 shadow-sm animate-in delay-3">
+          <div className="flex items-center gap-2 bg-red-50 text-red-600 text-[11px] sm:text-xs font-medium px-3 py-1.5 rounded-full mb-4 sm:mb-5 w-fit mx-auto">
+            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+            Sistema activo
           </div>
 
-          <div className="space-y-3 animate-in delay-5">
-            {[
-              { icon: UserPlus, label: "Onboarding de colaboradores", desc: "Registo completo" },
-              { icon: Users, label: "Gestão de estagiários", desc: "Planos e progresso" },
-              { icon: Shield, label: "Controlo de acessos", desc: "Permissões por perfil" },
-            ].map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="flex items-center gap-3 bg-white/8 backdrop-blur-sm border border-white/10 rounded-xl p-3.5">
-                <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Icon size={15} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-semibold leading-none">{label}</p>
-                  <p className="text-red-200/70 text-xs mt-0.5">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+          <h2 className="text-center text-slate-900 text-lg sm:text-xl font-bold mb-1">Para onde vais?</h2>
+          <p className="text-center text-slate-400 text-xs sm:text-sm mb-6 sm:mb-8">Seleciona a área que pretendes aceder</p>
 
-        <div className="relative z-10 flex items-center justify-end animate-in delay-7">
-          <div className="flex gap-1.5">
-            {[0, 1, 2].map(i => (
-              <div key={i} className={`rounded-full ${i === 0 ? "w-5 h-1.5 bg-white/50" : "w-1.5 h-1.5 bg-white/20"}`} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-950">
-        <div className="lg:hidden text-center mb-10 animate-in">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-600 shadow-lg mb-3 overflow-hidden">
-            <img src="/socem-logo.png" alt="SOCEM" className="w-full h-full object-contain" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Portal SOCEM</h1>
-          <p className="text-slate-400 text-sm mt-1">Sistema de Gestão de Pessoas</p>
-        </div>
-
-        <div className="w-full max-w-[440px]">
-          <div className="mb-8 animate-in delay-2">
-            <h2 className="text-[1.65rem] font-bold text-slate-900 dark:text-white tracking-tight">
-              Para onde vais?
-            </h2>
-            <p className="text-slate-400 dark:text-slate-500 text-sm mt-1.5">
-              Seleciona a área que pretendes aceder
-            </p>
-          </div>
-
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {options.map((opt, idx) => {
               const Icon = opt.icon;
               const isHovered = hovered === opt.id;
@@ -113,41 +55,34 @@ export default function PortalSelector() {
                   onClick={() => setLocation(opt.href)}
                   onMouseEnter={() => setHovered(opt.id)}
                   onMouseLeave={() => setHovered(null)}
-                  className={`w-full text-left rounded-2xl border p-6 transition-all duration-300 group animate-in ${`delay-${idx * 2 + 3}`}
+                  className={`w-full text-left rounded-xl sm:rounded-2xl border-2 p-4 sm:p-5 transition-all duration-300 group animate-in ${`delay-${idx * 2 + 4}`}
                     ${isHovered
-                      ? "border-red-300 bg-red-50/80 dark:bg-red-950/30 shadow-xl shadow-red-200/20 scale-[1.02]"
-                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-red-200 hover:bg-red-50/30 dark:hover:bg-red-950/20"
+                      ? "border-red-200 bg-red-50 shadow-lg shadow-red-100 scale-[1.02]"
+                      : "border-slate-100 bg-white hover:border-red-100 hover:bg-red-50/30"
                     }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500
-                        ${isHovered ? "bg-red-600 shadow-lg shadow-red-300/30" : "bg-red-50 dark:bg-red-950"}`}>
-                        <Icon size={22} className={isHovered ? "text-white" : "text-red-600 dark:text-red-400"} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className={`font-bold text-lg mb-1.5 transition-colors duration-300 ${isHovered ? "text-red-800 dark:text-red-200" : "text-slate-800 dark:text-slate-200"}`}>
-                          {opt.title}
-                        </h3>
-                        <p className={`text-sm leading-relaxed transition-colors duration-300 ${isHovered ? "text-red-700/70 dark:text-red-300/70" : "text-slate-500 dark:text-slate-400"}`}>{opt.desc}</p>
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {opt.features.map(f => (
-                            <span key={f} className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all duration-300
-                              ${isHovered
-                                ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
-                                : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                              }`}>
-                              {f}
-                            </span>
-                          ))}
-                        </div>
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500
+                      ${isHovered ? "bg-red-600 shadow-lg shadow-red-200" : "bg-red-50"}`}>
+                      <Icon size={20} className={isHovered ? "text-white" : "text-red-600"} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-bold text-sm sm:text-base mb-0.5 transition-colors ${isHovered ? "text-red-800" : "text-slate-800"}`}>
+                        {opt.title}
+                      </h3>
+                      <p className={`text-xs sm:text-sm transition-colors ${isHovered ? "text-red-700/60" : "text-slate-500"}`}>{opt.desc}</p>
+                      <div className="flex flex-wrap gap-1 sm:gap-1.5 mt-1.5 sm:mt-2">
+                        {opt.features.map(f => (
+                          <span key={f} className={`text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium transition-all whitespace-nowrap
+                            ${isHovered ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-500"}`}>
+                            {f}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-300
-                      ${isHovered
-                        ? "bg-red-600 text-white shadow-lg shadow-red-300/30 translate-x-1"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500"}`}>
-                      <ArrowRight size={16} />
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300
+                      ${isHovered ? "bg-red-600 text-white translate-x-1 shadow-lg shadow-red-200" : "bg-slate-100 text-slate-400"}`}>
+                      <ArrowRight size={13} className="sm:size-[15px]" />
                     </div>
                   </div>
                 </button>
@@ -155,10 +90,8 @@ export default function PortalSelector() {
             })}
           </div>
 
-          <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800 animate-in delay-7">
-            <p className="text-center text-xs text-slate-400 dark:text-slate-600">
-              Acesso restrito a membros autorizados da SOCEM
-            </p>
+          <div className="mt-6 sm:mt-8 pt-4 sm:pt-5 border-t border-slate-100 text-center">
+            <p className="text-[11px] sm:text-xs text-slate-400">Acesso restrito a membros autorizados da SOCEM</p>
           </div>
         </div>
       </div>
