@@ -148,8 +148,8 @@ export default function DashboardLayout({
         {children}
       </DashboardLayoutContent>
 
-      {/* Tour de boas-vindas — aparece automaticamente na 1.ª visita */}
-      <OnboardingTour role={user.role as "estagiario" | "tutor" | "admin"} />
+      {/* Tour de boas-vindas — aparece automaticamente na 1.ª visita de cada utilizador */}
+      <OnboardingTour role={user.role as "estagiario" | "tutor" | "admin"} userId={user.id} />
     </SidebarProvider>
   );
 }

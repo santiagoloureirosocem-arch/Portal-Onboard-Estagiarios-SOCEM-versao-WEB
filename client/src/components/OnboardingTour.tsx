@@ -39,6 +39,8 @@ interface TourStep {
 interface OnboardingTourProps {
   /** Role do utilizador atual */
   role: Role;
+  /** ID único do utilizador — garante que o tour aparece a cada utilizador distinto */
+  userId: number | string;
   /** Se true, mostra o tour independentemente do localStorage */
   forceShow?: boolean;
   /** Callback quando o tour termina ou é ignorado */
@@ -160,9 +162,8 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-const STORAGE_KEY = "socem-onboarding-done";
 
-// ─── Utilitários de posicionamento ───────────────────────────────────────────
+// ─── Hook auxiliar para relançar o tour ──────────────────────────────────────
 
 interface Rect { top: number; left: number; width: number; height: number }
 interface TooltipPos { top: number; left: number; arrowSide: "top" | "bottom" | "left" | "right" | null }
@@ -213,13 +214,16 @@ function calcTooltipPos(
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
-export function OnboardingTour({ role, forceShow = false, onComplete }: OnboardingTourProps) {
+export function OnboardingTour({ role, userId, forceShow = false, onComplete }: OnboardingTourProps) {
   const [visible, setVisible] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlightRect, setSpotlightRect] = useState<Rect | null>(null);
   const [tooltipPos, setTooltipPos] = useState<TooltipPos>({ top: 0, left: 0, arrowSide: null });
   const [animating, setAnimating] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Chave única por utilizador — garante que cada pessoa vê o tour na sua 1.ª visita
+  const storageKey = `socem-onboarding-done-${userId}`;
 
   // Filtrar passos para o role atual
   const steps = TOUR_STEPS.filter((s) => !s.roles || s.roles.includes(role));
@@ -234,9 +238,9 @@ export function OnboardingTour({ role, forceShow = false, onComplete }: Onboardi
       setVisible(true);
       return;
     }
-    const done = localStorage.getItem(STORAGE_KEY);
+    const done = localStorage.getItem(storageKey);
     if (!done) setVisible(true);
-  }, [forceShow]);
+  }, [forceShow, storageKey]);
 
   // Actualizar spotlight quando muda o passo
   useEffect(() => {
@@ -288,10 +292,10 @@ export function OnboardingTour({ role, forceShow = false, onComplete }: Onboardi
   }, [visible, stepIndex, currentStep]);
 
   const finish = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "true");
+    localStorage.setItem(storageKey, "true");
     setVisible(false);
     onComplete?.();
-  }, [onComplete]);
+  }, [onComplete, storageKey]);
 
   const goTo = useCallback((idx: number) => {
     if (animating) return;
@@ -507,14 +511,14 @@ export function OnboardingTour({ role, forceShow = false, onComplete }: Onboardi
  * Usa este hook em qualquer página para oferecer o botão "Rever tour".
  *
  * Exemplo:
- *   const { restartTour } = useOnboardingTour();
+ *   const { restartTour } = useOnboardingTour(user.id);
  *   <Button onClick={restartTour}>Rever tour guiado</Button>
  */
-export function useOnboardingTour() {
+export function useOnboardingTour(userId: number | string) {
   const restartTour = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(`socem-onboarding-done-${userId}`);
     window.location.reload();
-  }, []);
+  }, [userId]);
 
   return { restartTour };
 }
