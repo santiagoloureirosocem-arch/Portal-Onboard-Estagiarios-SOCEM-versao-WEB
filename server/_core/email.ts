@@ -1,7 +1,7 @@
-const RESEND_API = "https://api.resend.com/emails";
+const BREVO_API = "https://api.brevo.com/v3/smtp/email";
 
 function getApiKey(): string {
-  return process.env.RESEND_API_KEY ?? "";
+  return process.env.BREVO_API_KEY ?? "";
 }
 
 function getAppUrl(): string {
@@ -66,38 +66,38 @@ export async function sendEmail(options: {
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    const msg = "RESEND_API_KEY not configured";
+    const msg = "BREVO_API_KEY not configured";
     console.warn(`[Email] ${msg}`);
     return { ok: false, error: msg };
   }
 
   try {
-    const response = await fetch(RESEND_API, {
+    const response = await fetch(BREVO_API, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "api-key": apiKey,
       },
       body: JSON.stringify({
-        from: "Portal SOCEM <onboarding@resend.dev>",
-        to: options.to,
+        sender: { name: "Portal SOCEM", email: "noreply@socem.pt" },
+        to: [{ email: options.to, name: options.toName ?? options.to }],
         subject: options.subject,
-        html: buildHtml(options.heading, options.bodyHtml),
+        htmlContent: buildHtml(options.heading, options.bodyHtml),
       }),
     });
 
     if (!response.ok) {
       const error = await response.text().catch(() => "unknown error");
-      const msg = `Resend error (${response.status}): ${error}`;
+      const msg = `Brevo error (${response.status}): ${error}`;
       console.warn(`[Email] ${msg}`);
       return { ok: false, error: msg };
     }
 
     const data = await response.json();
-    console.log(`[Email] Sent "${options.subject}" to ${options.to} (id: ${data.id})`);
+    console.log(`[Email] Sent "${options.subject}" to ${options.to} (messageId: ${data.messageId})`);
     return { ok: true };
   } catch (err) {
-      const msg = `Error sending email: ${err}`;
+    const msg = `Error sending email: ${err}`;
     console.warn(`[Email] ${msg}`);
     return { ok: false, error: msg };
   }
