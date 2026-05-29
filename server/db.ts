@@ -703,14 +703,12 @@ export async function getTeamPanelData(tutorId: number) {
   const allUsers = await getAllUsers();
   const estagiarios = allUsers.filter((u: any) => u.role === 'estagiario');
   const result = [];
-  for (const estag of estagiarios) {
+    for (const estag of estagiarios) {
     const plans = await getPlansAssignedToUser(estag.id);
     let totalTasks = 0;
     let completedTasks = 0;
     let overdueTasks = 0;
-    let activePlanCount = 0;
-    const assignments = await getPlanAssignmentsByUserId(estag.id);
-    activePlanCount = assignments.filter((a: any) => a.status === 'active').length;
+    const activePlans = (plans as any[]).filter((p: any) => p.status === 'active');
     for (const plan of plans) {
       const tasks = await getTasksByPlanId((plan as any).id);
       totalTasks += tasks.length;
@@ -731,7 +729,7 @@ export async function getTeamPanelData(tutorId: number) {
       totalTasks,
       completedTasks,
       overdueTasks,
-      activePlans: activePlanCount,
+      activePlans: activePlans.length,
       completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
       todayCheckin: todayCheckin ?? null,
       latestCheckin: latestCheckin ?? null,

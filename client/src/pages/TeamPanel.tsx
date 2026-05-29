@@ -2,7 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import {
-  Users, CheckCircle2, Clock, AlertTriangle, Smile, Meh, Frown,
+  Users, CheckCircle2, AlertTriangle, Smile, Meh, Frown,
   Loader, Activity, Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -192,9 +192,8 @@ export default function TeamPanel() {
                         <>
                           <MoodIcon size={16} className={moodConfig?.color ?? "text-muted-foreground"} />
                           <span className="text-xs text-muted-foreground">
-                            {member.latestCheckin
-                              ? format(new Date(member.latestCheckin.date), "d MMM", { locale: pt })
-                              : ""}
+                            {moodConfig?.label ?? member.latestCheckin?.mood}
+                            {member.latestCheckin ? ` · ${format(new Date(member.latestCheckin.date), "d MMM", { locale: pt })}` : ""}
                           </span>
                         </>
                       ) : (
