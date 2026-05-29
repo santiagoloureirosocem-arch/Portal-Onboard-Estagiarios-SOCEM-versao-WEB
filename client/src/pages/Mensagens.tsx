@@ -175,7 +175,7 @@ export default function Mensagens() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 flex overflow-hidden -m-4 md:-m-6 bg-[#f0f2f5] dark:bg-[#0b0d10]">
+      <div className="flex-1 flex overflow-hidden -mx-4 md:-mx-6 -mb-4 md:-mb-6 bg-[#f0f2f5] dark:bg-[#0b0d10]">
 
         {/* ══ SIDEBAR ══════════════════════════════════════════════════════════ */}
         <div className={`w-full md:w-[320px] flex-shrink-0 flex flex-col bg-white dark:bg-[#111318] border-r border-slate-200/80 dark:border-slate-800/80 ${selectedUserId ? "hidden md:flex" : "flex"}`}>
@@ -264,8 +264,8 @@ export default function Mensagens() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex min-w-0 overflow-hidden">
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 flex min-w-0">
+            <div className="flex-1 flex flex-col min-w-0">
 
               {/* ── Chat Header ── */}
               <div className="h-[65px] px-5 bg-white dark:bg-[#111318] border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between flex-shrink-0">

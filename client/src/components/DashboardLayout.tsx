@@ -144,7 +144,6 @@ export default function DashboardLayout({
   return (
     <SidebarProvider
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
-      className="overflow-hidden"
     >
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
         {children}
@@ -480,7 +479,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
           <NotificationBell />
         </div>
         <main className="flex-1 p-4 flex flex-col overflow-hidden min-h-0">
-          <div key={location} className="flex-1 flex flex-col animate-scale-in overflow-hidden">
+          <div key={location} className="flex-1 flex flex-col animate-scale-in">
             {children}
           </div>
         </main>
