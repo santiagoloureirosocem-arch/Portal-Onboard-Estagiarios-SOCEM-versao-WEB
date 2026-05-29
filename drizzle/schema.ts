@@ -45,6 +45,8 @@ export const onboardingPlans = mysqlTable("onboarding_plans", {
   endDate: datetime("endDate"),
   status: mysqlEnum("status", ["draft", "active", "completed", "archived"]).default("draft").notNull(),
   createdBy: int("createdBy").notNull(),
+  isTemplate: boolean("isTemplate").default(false).notNull(),
+  templateOriginPlanId: int("templateOriginPlanId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

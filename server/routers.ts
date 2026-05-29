@@ -247,6 +247,38 @@ export const appRouter = router({
       await db.deleteOnboardingPlan(input.id);
       return { success: true };
     }),
+
+    saveTemplate: tutorProcedure.input(z.object({ planId: z.number() })).mutation(async ({ input }) => {
+      await db.savePlanAsTemplate(input.planId);
+      return { success: true };
+    }),
+
+    listTemplates: tutorProcedure.query(async () => {
+      return await db.getTemplatePlans();
+    }),
+
+    createFromTemplate: tutorProcedure.input(z.object({
+      templateId: z.number(),
+      title: z.string().min(1),
+      assignedToUserId: z.number().optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const plan = await db.createPlanFromTemplate(input.templateId, input.title, ctx.user.id);
+      if (input.assignedToUserId) {
+        await db.assignPlanToUser({
+          planId: (plan as any).id,
+          userId: input.assignedToUserId,
+          assignedBy: ctx.user.id,
+          startDate: new Date(),
+        });
+      }
+      return { success: true };
+    }),
+  }),
+
+  teamPanel: router({
+    list: tutorProcedure.query(async ({ ctx }) => {
+      return await db.getTeamPanelData(ctx.user.id);
+    }),
   }),
 
   tasks: router({

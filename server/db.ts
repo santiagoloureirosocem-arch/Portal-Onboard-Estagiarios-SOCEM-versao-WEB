@@ -626,6 +626,116 @@ export async function getDashboardMetrics() {
   };
 }
 
+export async function getTemplatePlans() {
+  const db = await getDb();
+  if (!db) return memPlans.filter(p => (p as any).isTemplate);
+  return await db.select().from(onboardingPlans).where(eq(onboardingPlans.isTemplate, true)).orderBy(desc(onboardingPlans.createdAt));
+}
+
+export async function savePlanAsTemplate(planId: number) {
+  const plan = await getOnboardingPlanById(planId);
+  if (!plan) throw new Error("Plano não encontrado");
+  const db = await getDb();
+  const { id, createdAt, updatedAt, status, isTemplate, ...planData } = plan as any;
+  if (!db) {
+    const template = { ...planData, id: _nextId++, title: `${planData.title} (Template)`, status: 'draft' as const, isTemplate: true, templateOriginPlanId: planId, createdAt: new Date(), updatedAt: new Date() };
+    memPlans.push(template); saveLocalDb();
+    const tasks = memTasks.filter(t => t.planId === planId);
+    for (const t of tasks) {
+      const { id: tid, planId: tpid, createdAt: tc, updatedAt: tu, status: ts, ...taskData } = t;
+      memTasks.push({ ...taskData, id: _nextId++, planId: template.id, status: 'pending' as const, createdAt: new Date(), updatedAt: new Date() });
+    }
+    saveLocalDb();
+    return template;
+  }
+  const values: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(planData)) {
+    if (k !== 'id' && k !== 'createdAt' && k !== 'updatedAt') values[k] = v;
+  }
+  values.title = `${planData.title} (Template)`;
+  values.status = 'draft';
+  values.isTemplate = true;
+  values.templateOriginPlanId = planId;
+  const result = await db.insert(onboardingPlans).values(values as any);
+  const insertId = (result as any).insertId ?? (result as any)[0]?.insertId;
+  const tasks = await getTasksByPlanId(planId);
+  for (const t of tasks) {
+    const { id: tid, planId: tpid, createdAt: tc, updatedAt: tu, status: ts, ...taskData } = t;
+    await db.insert(onboardingTasks).values({ ...taskData, planId: insertId, status: 'pending' });
+  }
+  return { id: insertId, ...values, isTemplate: true };
+}
+
+export async function createPlanFromTemplate(templateId: number, newTitle: string, createdBy: number) {
+  const template = await getOnboardingPlanById(templateId);
+  if (!template) throw new Error("Template não encontrado");
+  const db = await getDb();
+  if (!db) {
+    const plan = { id: _nextId++, title: newTitle, description: (template as any).description, createdBy, status: 'draft' as const, isTemplate: false, templateOriginPlanId: null, startDate: (template as any).startDate, endDate: (template as any).endDate, createdAt: new Date(), updatedAt: new Date() };
+    memPlans.push(plan); saveLocalDb();
+    const tasks = memTasks.filter(t => t.planId === templateId);
+    for (const t of tasks) {
+      const { id: tid, planId: tpid, createdAt: tc, updatedAt: tu, status: ts, ...taskData } = t;
+      memTasks.push({ ...taskData, id: _nextId++, planId: plan.id, status: 'pending' as const, createdAt: new Date(), updatedAt: new Date() });
+    }
+    saveLocalDb();
+    return plan;
+  }
+  const values: Record<string, unknown> = { title: newTitle, description: (template as any).description, createdBy, status: 'draft', isTemplate: false };
+  if ((template as any).startDate) values.startDate = (template as any).startDate;
+  if ((template as any).endDate) values.endDate = (template as any).endDate;
+  const result = await db.insert(onboardingPlans).values(values as any);
+  const insertId = (result as any).insertId ?? (result as any)[0]?.insertId;
+  const tasks = await getTasksByPlanId(templateId);
+  for (const t of tasks) {
+    const { id: tid, planId: tpid, createdAt: tc, updatedAt: tu, status: ts, ...taskData } = t;
+    await db.insert(onboardingTasks).values({ ...taskData, planId: insertId, status: 'pending' });
+  }
+  return { id: insertId, ...values };
+}
+
+export async function getTeamPanelData(tutorId: number) {
+  const db = await getDb();
+  const allUsers = await getAllUsers();
+  const estagiarios = allUsers.filter((u: any) => u.role === 'estagiario');
+  const result = [];
+  for (const estag of estagiarios) {
+    const plans = await getPlansAssignedToUser(estag.id);
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let overdueTasks = 0;
+    let activePlanCount = 0;
+    const assignments = await getPlanAssignmentsByUserId(estag.id);
+    activePlanCount = assignments.filter((a: any) => a.status === 'active').length;
+    for (const plan of plans) {
+      const tasks = await getTasksByPlanId((plan as any).id);
+      totalTasks += tasks.length;
+      completedTasks += tasks.filter((t: any) => t.status === 'completed').length;
+      overdueTasks += tasks.filter((t: any) => t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < new Date()).length;
+    }
+    const todayCheckin = await getTodayCheckin(estag.id);
+    const lastCheckins = await getDailyCheckinsByUserId(estag.id, 5);
+    const latestCheckin = lastCheckins.length > 0 ? lastCheckins[0] : null;
+    result.push({
+      id: estag.id,
+      name: estag.name,
+      email: estag.email,
+      avatar: (estag as any).avatar,
+      department: (estag as any).department,
+      position: (estag as any).position,
+      presence: (estag as any).presence,
+      totalTasks,
+      completedTasks,
+      overdueTasks,
+      activePlans: activePlanCount,
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      todayCheckin: todayCheckin ?? null,
+      latestCheckin: latestCheckin ?? null,
+    });
+  }
+  return result;
+}
+
 export async function deleteOnboardingPlan(id: number) {
   const db = await getDb();
   if (!db) {

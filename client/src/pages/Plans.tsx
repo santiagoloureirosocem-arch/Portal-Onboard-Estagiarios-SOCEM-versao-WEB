@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Plus, Edit2, Eye, Trash2, User, FileSpreadsheet, FileText as FilePDF, Loader, Download } from 'lucide-react';
+import { Plus, Edit2, Eye, Trash2, User, FileSpreadsheet, FileText as FilePDF, Loader, Download, Copy, Layout } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { format } from 'date-fns';
@@ -270,12 +270,17 @@ export default function Plans() {
   const createPlanMutation = trpc.plans.create.useMutation();
   const updatePlanMutation = trpc.plans.update.useMutation();
   const deletePlanMutation = trpc.plans.delete.useMutation();
+  const saveTemplateMutation = trpc.plans.saveTemplate.useMutation();
+  const createFromTemplateMutation = trpc.plans.createFromTemplate.useMutation();
+  const { data: templates, refetch: refetchTemplates } = trpc.plans.listTemplates.useQuery(undefined, { enabled: canEdit });
   const [, setLocation] = useLocation();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [exportingPlanId, setExportingPlanId] = useState<number | null>(null);
+  const [creatingFromTemplate, setCreatingFromTemplate] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const [formData, setFormData] = useState<PlanFormData>({
     title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '',
   });
@@ -344,6 +349,36 @@ export default function Plans() {
     }
   };
 
+  const handleSaveTemplate = async (planId: number) => {
+    try {
+      await saveTemplateMutation.mutateAsync({ planId });
+      toast.success('Plano guardado como template');
+      refetchTemplates();
+    } catch {
+      toast.error('Erro ao guardar template');
+    }
+  };
+
+  const handleCreateFromTemplate = async () => {
+    if (!selectedTemplateId) return;
+    try {
+      const template = templates?.find((t: any) => t.id === selectedTemplateId);
+      await createFromTemplateMutation.mutateAsync({
+        templateId: selectedTemplateId,
+        title: formData.title || `${template?.title ?? 'Novo Plano'} (cópia)`,
+        assignedToUserId: formData.assignedToUserId || undefined,
+      });
+      toast.success('Plano criado a partir do template');
+      setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' });
+      setShowForm(false);
+      setCreatingFromTemplate(false);
+      setSelectedTemplateId(null);
+      refetch();
+    } catch {
+      toast.error('Erro ao criar plano a partir do template');
+    }
+  };
+
   const handleExportSinglePlan = async (planId: number, type: "pdf" | "xlsx") => {
     setExportingPlanId(planId);
     try {
@@ -397,6 +432,14 @@ export default function Plans() {
               </Button>
               <Button onClick={() => {
                 setShowForm(!showForm);
+                setCreatingFromTemplate(true);
+                if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' }); }
+              }} variant="outline" className="gap-2" disabled={!templates || templates.length === 0}>
+                <Copy size={16} /> De Template
+              </Button>
+              <Button onClick={() => {
+                setShowForm(!showForm);
+                setCreatingFromTemplate(false);
                 if (showForm) { setEditingId(null); setFormData({ title: '', description: '', status: 'draft', assignedToUserId: null, startDate: '', endDate: '' }); }
               }} className="gap-2">
                 <Plus size={20} /> Novo Plano
@@ -408,8 +451,32 @@ export default function Plans() {
         {showForm && canEdit && (
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">{editingId ? 'Editar Plano' : 'Criar Novo Plano'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input placeholder="Título do Plano *" name="title" value={formData.title} onChange={handleInputChange} required />
+            <form onSubmit={creatingFromTemplate ? (e) => { e.preventDefault(); handleCreateFromTemplate(); } : handleSubmit} className="space-y-4">
+              {creatingFromTemplate && templates && templates.length > 0 && (
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Layout size={14} />
+                    Template de origem
+                  </label>
+                  <select
+                    value={selectedTemplateId ?? ''}
+                    onChange={e => {
+                      const tid = Number(e.target.value);
+                      setSelectedTemplateId(tid);
+                      const t = templates.find((t: any) => t.id === tid);
+                      if (t) setFormData(prev => ({ ...prev, title: t.title + ' (cópia)' }));
+                    }}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
+                    required
+                  >
+                    <option value="">— Selecionar template —</option>
+                    {templates.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <Input placeholder={creatingFromTemplate ? "Título (opcional — usa o nome do template por predefinição)" : "Título do Plano *"} name="title" value={formData.title} onChange={handleInputChange} required={!creatingFromTemplate} />
               <textarea
                 placeholder="Descrição" name="description" value={formData.description} onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground resize-none"
@@ -554,6 +621,12 @@ export default function Plans() {
                             <FileSpreadsheet size={15} className="text-green-600" />
                             <span>Exportar Excel</span>
                           </DropdownMenuItem>
+                          {canEdit && (
+                            <DropdownMenuItem onClick={() => handleSaveTemplate(plan.id)} className="gap-2 rounded-lg cursor-pointer border-t border-border mt-1 pt-1">
+                              <Copy size={15} className="text-purple-600" />
+                              <span>Guardar como Template</span>
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
 
