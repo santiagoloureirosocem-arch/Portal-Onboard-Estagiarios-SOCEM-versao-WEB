@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import {
   Users,
   FileText,
@@ -8,19 +9,33 @@ import {
   Calendar,
   BarChart3,
   Settings,
+  Sparkles,
 } from "lucide-react";
+import { useOnboardingTour } from "@/components/OnboardingTour";
 
 export default function Help() {
+  const { restartTour } = useOnboardingTour();
+
   return (
     <DashboardLayout title="Ajuda - Portal de Estagiários SOCEM">
       <div className="space-y-6 max-w-4xl">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Guia de Utilização
-          </h1>
-          <p className="text-slate-600">
-            Aprenda como utilizar o Portal de Estagiários SOCEM de forma eficiente
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+              Guia de Utilização
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              Aprenda como utilizar o Portal de Estagiários SOCEM de forma eficiente
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={restartTour}
+            className="gap-2 shrink-0"
+          >
+            <Sparkles className="w-4 h-4 text-blue-500" />
+            Rever tour guiado
+          </Button>
         </div>
 
         <Tabs defaultValue="dashboard" className="w-full">
@@ -53,10 +68,10 @@ export default function Help() {
 
           <TabsContent value="dashboard" className="space-y-4">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Dashboard
               </h2>
-              <div className="space-y-3 text-slate-700">
+              <div className="space-y-3 text-slate-700 dark:text-slate-300">
                 <p>
                   <strong>O que é:</strong> A página inicial que mostra um resumo
                   de toda a atividade do portal.
@@ -92,10 +107,10 @@ export default function Help() {
 
           <TabsContent value="users" className="space-y-4">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Gestão de Utilizadores
               </h2>
-              <div className="space-y-3 text-slate-700">
+              <div className="space-y-3 text-slate-700 dark:text-slate-300">
                 <p>
                   <strong>O que é:</strong> Área onde pode gerir todos os
                   utilizadores do sistema (estagiários, tutores e administradores).
@@ -130,10 +145,10 @@ export default function Help() {
 
           <TabsContent value="plans" className="space-y-4">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Planos de Integração
               </h2>
-              <div className="space-y-3 text-slate-700">
+              <div className="space-y-3 text-slate-700 dark:text-slate-300">
                 <p>
                   <strong>O que é:</strong> Planos estruturados que definem as
                   etapas e tarefas para o onboarding de estagiários.
@@ -169,10 +184,10 @@ export default function Help() {
 
           <TabsContent value="tasks" className="space-y-4">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Gestão de Tarefas
               </h2>
-              <div className="space-y-3 text-slate-700">
+              <div className="space-y-3 text-slate-700 dark:text-slate-300">
                 <p>
                   <strong>O que é:</strong> Tarefas individuais que compõem um
                   plano de integração.
@@ -203,10 +218,10 @@ export default function Help() {
 
           <TabsContent value="calendar" className="space-y-4">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Calendário
               </h2>
-              <div className="space-y-3 text-slate-700">
+              <div className="space-y-3 text-slate-700 dark:text-slate-300">
                 <p>
                   <strong>O que é:</strong> Visualização de todas as datas
                   importantes e prazos dos planos de integração.
@@ -234,10 +249,10 @@ export default function Help() {
 
           <TabsContent value="settings" className="space-y-4">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-4">
                 Definições
               </h2>
-              <div className="space-y-3 text-slate-700">
+              <div className="space-y-3 text-slate-700 dark:text-slate-300">
                 <p>
                   <strong>O que é:</strong> Configurações pessoais e do sistema.
                 </p>
@@ -265,9 +280,9 @@ export default function Help() {
           </TabsContent>
         </Tabs>
 
-        <Card className="p-6 bg-blue-50 border-blue-200">
-          <h3 className="font-semibold text-slate-900 mb-2">💡 Dicas Úteis</h3>
-          <ul className="space-y-2 text-sm text-slate-700">
+        <Card className="p-6 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">💡 Dicas Úteis</h3>
+          <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
             <li>
               • Use a barra de pesquisa para encontrar rapidamente utilizadores
               ou planos
@@ -279,6 +294,7 @@ export default function Help() {
               • A sidebar pode ser redimensionada arrastando a borda direita
             </li>
             <li>• Utilize o menu de perfil para sair ou acessar definições</li>
+            <li>• Clica em <strong>Rever tour guiado</strong> acima para repetir a visita guiada a qualquer momento</li>
           </ul>
         </Card>
       </div>
