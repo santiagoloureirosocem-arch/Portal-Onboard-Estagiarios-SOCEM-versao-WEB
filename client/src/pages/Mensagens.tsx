@@ -293,8 +293,8 @@ export default function Mensagens() {
               </div>
 
               {/* ── Messages ── */}
-              <div className="flex-1 overflow-y-auto px-5 py-4">
-                <div className="flex flex-col justify-end min-h-full space-y-0.5">
+              <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col">
+                <div className="mt-auto space-y-0.5">
                 {messagesQuery.isLoading && (
                   <div className="flex items-center justify-center py-10 gap-2 text-slate-400 text-sm">
                     <div className="w-4 h-4 border-2 border-slate-200 border-t-red-500 rounded-full animate-spin" />

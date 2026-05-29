@@ -479,7 +479,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
           <NotificationBell />
         </div>
         <main className="flex-1 p-4 flex flex-col overflow-hidden min-h-0">
-          <div key={location} className="flex-1 flex flex-col animate-scale-in">
+          <div key={location} className="flex-1 flex flex-col animate-scale-in overflow-hidden">
             {children}
           </div>
         </main>
