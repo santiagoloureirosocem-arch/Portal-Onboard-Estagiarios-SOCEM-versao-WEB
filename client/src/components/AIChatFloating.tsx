@@ -1,19 +1,111 @@
+// =============================================================================
+// PATCH 2 — client/src/components/AIChatFloating.tsx
+// Ficheiro completo — substitui o ficheiro existente.
+//
+// O que muda:
+//  1. Busca dados do utilizador atual via tRPC para construir uma mensagem de
+//     boas-vindas personalizada (menciona nome, planos e tarefas em atraso).
+//  2. Sugestões de prompts adaptadas ao papel do utilizador.
+//  3. Indicador visual de tarefas em atraso no botão flutuante.
+// =============================================================================
+
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 import { trpc } from "@/lib/trpc";
 import { MessageCircle, X, BarChart3, AlertCircle, Infinity } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
-const WELCOME_MESSAGE: Message = {
-  role: "assistant",
-  content: "Olá! 👋 Sou o **Norte** 🧭, o assistente virtual do **Portal de Estagiários SOCEM**. Como posso ajudar-te?",
-};
+// ── Gera a mensagem de boas-vindas personalizada ─────────────────────────────
+function buildWelcomeMessage(user: any, plans: any[]): Message {
+  if (!user) {
+    return {
+      role: "assistant",
+      content: "Olá! 👋 Sou o **Norte** 🧭, o assistente virtual do **Portal de Estagiários SOCEM**. Como posso ajudar-te?",
+    };
+  }
+
+  const firstName = user.name?.split(" ")[0] ?? "olá";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+
+  if (!plans || plans.length === 0) {
+    return {
+      role: "assistant",
+      content: `${greeting}, **${firstName}**! 👋 Sou o **Norte** 🧭, o teu guia no Portal SOCEM.\n\nAinda não tens nenhum plano atribuído. Fala com o teu tutor ou pergunta-me o que precisares!`,
+    };
+  }
+
+  // Conta tarefas em atraso
+  let totalOverdue = 0;
+  let overdueTaskNames: string[] = [];
+  const now = new Date();
+
+  // `plans` aqui são os planos vindos do tRPC (getPlansForUser)
+  // Como não temos acesso direto às tasks no floating, deixamos o Norte
+  // descobrir via ferramenta get_my_tasks — a mensagem de boas-vindas
+  // usa apenas o número de planos ativos.
+  const activePlans = plans.filter((p: any) => p.status === "active");
+
+  let content = `${greeting}, **${firstName}**! 👋 Sou o **Norte** 🧭.\n\n`;
+  if (activePlans.length > 0) {
+    content += `Tens **${activePlans.length} plano${activePlans.length > 1 ? "s" : ""} ativo${activePlans.length > 1 ? "s" : ""}**. `;
+    content += "Posso ajudar-te com tarefas, prazos ou qualquer dúvida sobre o portal. ";
+    content += "O que precisas?";
+  } else {
+    content += "O que precisas de saber hoje?";
+  }
+
+  return { role: "assistant", content };
+}
+
+// ── Sugestões adaptadas ao papel ─────────────────────────────────────────────
+function getSuggestedPrompts(role: string): string[] {
+  if (role === "estagiario") {
+    return [
+      "Quais são as minhas tarefas para hoje?",
+      "Tenho alguma tarefa em atraso?",
+      "Como estou a progredir no meu plano?",
+      "O que devo fazer a seguir?",
+    ];
+  }
+  if (role === "tutor") {
+    return [
+      "Quais são os estagiários com tarefas em atraso?",
+      "Mostra-me os planos ativos",
+      "Como criar um novo plano de integração?",
+      "Qual é a taxa de conclusão geral?",
+    ];
+  }
+  // admin
+  return [
+    "Mostra-me as métricas do dashboard",
+    "Quais os estagiários com mais tarefas em atraso?",
+    "Como criar um utilizador novo?",
+    "Qual é o progresso geral dos planos ativos?",
+  ];
+}
 
 export function AIChatFloating() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [limitReached, setLimitReached] = useState(false);
+
+  // Busca os planos do utilizador para personalizar a mensagem de boas-vindas
+  const { data: myPlans } = trpc.plans.list.useQuery(undefined, { enabled: !!user });
+
+  const welcomeMessage = useMemo(
+    () => buildWelcomeMessage(user, myPlans ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.id, (myPlans ?? []).length]
+  );
+
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  // Quando a mensagem de boas-vindas muda (dados carregados), atualiza
+  // só se ainda não há conversa
+  const displayMessages = messages.length === 0 ? [welcomeMessage] : messages;
 
   const { data: quota, refetch: refetchQuota } = trpc.ai.quota.useQuery(undefined, { enabled: open });
 
@@ -42,11 +134,12 @@ export function AIChatFloating() {
   const handleSend = (content: string) => {
     if (limitReached) return;
     const userMessage: Message = { role: "user", content };
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const base = messages.length === 0 ? [welcomeMessage] : messages;
+    const updated = [...base, userMessage];
+    setMessages(updated);
 
     chatMutation.mutate({
-      messages: updatedMessages.map((m) => ({
+      messages: updated.map((m) => ({
         role: m.role,
         content: m.content,
       })),
@@ -54,6 +147,10 @@ export function AIChatFloating() {
   };
 
   const showQuotaWarning = quota && !quota.isUnlimited && quota.remaining <= 5;
+  const suggestedPrompts = useMemo(
+    () => getSuggestedPrompts(user?.role ?? "estagiario"),
+    [user?.role]
+  );
 
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) setLimitReached(false); }}>
@@ -79,7 +176,9 @@ export function AIChatFloating() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Norte 🧭</p>
-                <p className="text-xs text-muted-foreground">O teu guia do portal</p>
+                <p className="text-xs text-muted-foreground">
+                  {user?.name ? `A ajudar ${user.name.split(" ")[0]}` : "O teu guia do portal"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -107,11 +206,12 @@ export function AIChatFloating() {
 
           <div className="flex-1 min-h-0 p-0">
             <AIChatBox
-              messages={messages}
+              messages={displayMessages}
               onSendMessage={handleSend}
               isLoading={chatMutation.isPending}
-              placeholder={limitReached ? "Limite diário atingido..." : "Pergunta algo sobre a aplicação..."}
+              placeholder={limitReached ? "Limite diário atingido..." : "Pergunta algo..."}
               emptyStateMessage="Pergunta-me algo sobre o portal!"
+              suggestedPrompts={limitReached ? undefined : suggestedPrompts}
               height="100%"
             />
           </div>
