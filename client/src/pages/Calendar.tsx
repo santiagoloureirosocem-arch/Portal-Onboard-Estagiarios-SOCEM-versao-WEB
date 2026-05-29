@@ -477,14 +477,14 @@ export default function Calendar() {
               })}
             </div>
 
-            {/* Legenda */}
-            <div className="mt-4 pt-4 border-t border-border">
-              <MarkerLegend />
-            </div>
           </Card>
 
           {/* Side Panel */}
           <div className="space-y-4">
+            {/* Legenda — sempre visível */}
+            <Card className="p-4">
+              <MarkerLegend />
+            </Card>
             {/* Selected Date Tasks */}
             <Card className="p-5">
               <div className="flex items-center justify-between mb-3">
