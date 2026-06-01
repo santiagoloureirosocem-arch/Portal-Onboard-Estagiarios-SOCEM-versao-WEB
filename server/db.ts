@@ -1,6 +1,6 @@
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage, notifications, dailyCheckins, aiUsage } from "../drizzle/schema";
+import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage, notifications, dailyCheckins, aiUsage, empresas, departamentos } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -190,15 +190,18 @@ async function initTables(db: ReturnType<typeof drizzle>) {
     `);
     // Seed sample data for empresas/departamentos
     try {
-      const existingEmpresas = await db.execute(sql`SELECT COUNT(*) as cnt FROM empresas`);
-      if ((existingEmpresas as any[])?.[0]?.cnt === 0) {
-        await db.execute(sql`INSERT INTO empresas (nome) VALUES ('SOCEM'), ('Socem Steel'), ('Socem Solutions')`);
+      const existingEmpresas = await db.select().from(empresas);
+      if (existingEmpresas.length === 0) {
+        await db.insert(empresas).values([{ nome: "SOCEM" }, { nome: "Socem Steel" }, { nome: "Socem Solutions" }]);
       }
     } catch {}
     try {
-      const existingDepts = await db.execute(sql`SELECT COUNT(*) as cnt FROM departamentos`);
-      if ((existingDepts as any[])?.[0]?.cnt === 0) {
-        await db.execute(sql`INSERT INTO departamentos (nome) VALUES ('Engenharia'), ('Produção'), ('Qualidade'), ('RH'), ('Informática'), ('Manutenção')`);
+      const existingDepts = await db.select().from(departamentos);
+      if (existingDepts.length === 0) {
+        await db.insert(departamentos).values([
+          { nome: "Engenharia" }, { nome: "Produção" }, { nome: "Qualidade" },
+          { nome: "RH" }, { nome: "Informática" }, { nome: "Manutenção" },
+        ]);
       }
     } catch {}
     console.log("[Database] Tables ready");
@@ -1425,8 +1428,7 @@ export async function hasCompletedAllPlans(userId: number) {
 export async function getAllEmpresas(): Promise<any[]> {
   const db = await getDb();
   if (!db) return _memEmpresas;
-  const result = await db.execute(sql`SELECT * FROM empresas ORDER BY nome`);
-  return result as any[];
+  return await db.select().from(empresas).orderBy(empresas.nome);
 }
 
 export async function createEmpresa(nome: string): Promise<any> {
@@ -1437,8 +1439,8 @@ export async function createEmpresa(nome: string): Promise<any> {
     saveLocalDb();
     return item;
   }
-  const result = await db.execute(sql`INSERT INTO empresas (nome) VALUES (${nome})`);
-  const insertId = (result as any).insertId;
+  const result = await db.insert(empresas).values({ nome });
+  const insertId = (result as any).insertId ?? (result as any)[0]?.insertId;
   return { id: insertId, nome };
 }
 
@@ -1460,7 +1462,7 @@ export async function deleteEmpresa(id: number): Promise<void> {
     saveLocalDb();
     return;
   }
-  await db.execute(sql`DELETE FROM empresas WHERE id = ${id}`);
+  await db.delete(empresas).where(eq(empresas.id, id));
 }
 
 // ─── Departamentos ────────────────────────────────────────────────────────────
@@ -1468,8 +1470,7 @@ export async function deleteEmpresa(id: number): Promise<void> {
 export async function getAllDepartamentos(): Promise<any[]> {
   const db = await getDb();
   if (!db) return _memDepartamentos;
-  const result = await db.execute(sql`SELECT * FROM departamentos ORDER BY nome`);
-  return result as any[];
+  return await db.select().from(departamentos).orderBy(departamentos.nome);
 }
 
 export async function createDepartamento(nome: string): Promise<any> {
@@ -1480,8 +1481,8 @@ export async function createDepartamento(nome: string): Promise<any> {
     saveLocalDb();
     return item;
   }
-  const result = await db.execute(sql`INSERT INTO departamentos (nome) VALUES (${nome})`);
-  const insertId = (result as any).insertId;
+  const result = await db.insert(departamentos).values({ nome });
+  const insertId = (result as any).insertId ?? (result as any)[0]?.insertId;
   return { id: insertId, nome };
 }
 
@@ -1493,7 +1494,7 @@ export async function updateDepartamento(id: number, nome: string): Promise<void
     saveLocalDb();
     return;
   }
-  await db.execute(sql`UPDATE departamentos SET nome = ${nome} WHERE id = ${id}`);
+  await db.update(departamentos).set({ nome }).where(eq(departamentos.id, id));
 }
 
 export async function deleteDepartamento(id: number): Promise<void> {
@@ -1503,5 +1504,5 @@ export async function deleteDepartamento(id: number): Promise<void> {
     saveLocalDb();
     return;
   }
-  await db.execute(sql`DELETE FROM departamentos WHERE id = ${id}`);
+  await db.delete(departamentos).where(eq(departamentos.id, id));
 }
