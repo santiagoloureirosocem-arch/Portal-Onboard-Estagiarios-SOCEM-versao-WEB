@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Plus, Edit2, UserX, Search, Eye, EyeOff,
-  Shield, Users as UsersIcon, GraduationCap, X, Check, Camera, User, AlertTriangle
+  Shield, Users as UsersIcon, GraduationCap, X, Check, Camera, User, AlertTriangle, Upload, FileSpreadsheet
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +49,7 @@ export default function Users() {
   const updateUserMutation = trpc.users.update.useMutation();
   const deactivateMutation = trpc.users.deactivate.useMutation();
   const updateUserAvatarMutation = trpc.users.updateUserAvatar.useMutation();
+  const bulkImportMutation = trpc.admin.bulkImportUsers.useMutation();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -62,6 +63,10 @@ export default function Users() {
   const [savingAvatar, setSavingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importData, setImportData] = useState<any[]>([]);
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = me?.role === "admin";
 
@@ -182,6 +187,48 @@ export default function Users() {
     setConfirmDelete({ id: userId, name });
   };
 
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { toast.error("Ficheiro vazio ou inválido"); return; }
+      const headers = lines[0].toLowerCase().split(/[,;\t]/).map(h => h.trim().replace(/"/g, ""));
+      const users = lines.slice(1).map(line => {
+        const cols = line.split(/[,;\t]/).map(c => c.trim().replace(/"/g, ""));
+        const obj: any = {};
+        headers.forEach((h, i) => { if (cols[i]) obj[h] = cols[i]; });
+        return obj;
+      }).filter((u: any) => u.nome || u.name);
+      const mapped = users.map((u: any) => ({
+        name: u.nome || u.name || "",
+        email: u.email || "",
+        username: (u.username || u.utilizador || (u.nome || u.name || "").toLowerCase().replace(/\s+/g, ".").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9._-]/g, "")),
+        password: u.password || u.senha || "socem123",
+        role: (u.role || u.funcao || u.perfil || "estagiario").toLowerCase(),
+        department: u.department || u.departamento || "",
+        position: u.position || u.cargo || u.funcao || "",
+      }));
+      setImportPreview(mapped);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleBulkImport = async () => {
+    if (importPreview.length === 0) return;
+    try {
+      const result = await bulkImportMutation.mutateAsync({ users: importPreview });
+      toast.success(`${result.created} utilizadores importados. ${result.skipped > 0 ? `${result.skipped} ignorados (duplicados).` : ""}`);
+      setShowImport(false);
+      setImportPreview([]);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro na importação");
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!confirmDelete) return;
     try {
@@ -219,13 +266,23 @@ export default function Users() {
             </p>
           </div>
           {isAdmin && (
-            <Button
-              onClick={() => { resetForm(); setShowForm(true); }}
-              className="gap-2 bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus size={18} />
-              Novo Utilizador
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => { resetForm(); setShowForm(true); }}
+                className="gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus size={18} />
+                Novo Utilizador
+              </Button>
+              <Button
+                onClick={() => setShowImport(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Upload size={16} />
+                Importar CSV
+              </Button>
+            </div>
           )}
         </div>
 
@@ -541,6 +598,71 @@ export default function Users() {
                 Eliminar permanentemente
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import CSV Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 max-w-xl w-full mx-4 max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet size={22} className="text-blue-600" />
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Importar Utilizadores</h2>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => { setShowImport(false); setImportPreview([]); }}>
+                <X size={18} />
+              </Button>
+            </div>
+
+            {importPreview.length === 0 ? (
+              <div className="text-center py-12">
+                <Upload size={40} className="text-slate-300 mx-auto mb-3" />
+                <p className="text-sm text-slate-500 mb-4">Carrega um ficheiro CSV com colunas:<br/>
+                <code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">nome, email, username, password, role, department, position</code></p>
+                <input ref={importFileRef} type="file" accept=".csv,.txt" onChange={handleFileImport} className="hidden" />
+                <Button onClick={() => importFileRef.current?.click()} className="gap-2">
+                  <Upload size={16} /> Selecionar Ficheiro
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-500 mb-3">{importPreview.length} utilizadores detetados</p>
+                <div className="max-h-64 overflow-auto border rounded-lg mb-4">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-xs font-medium text-slate-500">Nome</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium text-slate-500">Email</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium text-slate-500">Username</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium text-slate-500">Role</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {importPreview.map((u: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <td className="px-3 py-2">{u.name}</td>
+                          <td className="px-3 py-2 text-slate-500">{u.email}</td>
+                          <td className="px-3 py-2 text-slate-500">{u.username}</td>
+                          <td className="px-3 py-2">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">{u.role}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => { setImportPreview([]); }}>
+                    Cancelar
+                  </Button>
+                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleBulkImport}>
+                    Importar {importPreview.length} Utilizadores
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

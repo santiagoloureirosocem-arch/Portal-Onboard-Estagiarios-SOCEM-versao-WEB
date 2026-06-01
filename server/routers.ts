@@ -1189,6 +1189,116 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
         return { success: true };
       }),
   }),
+
+  admin: router({
+    bulkImportUsers: adminProcedure
+      .input(z.object({
+        users: z.array(z.object({
+          name: z.string().min(1),
+          email: z.string().email(),
+          username: z.string().min(3).regex(/^[a-z0-9._-]+$/),
+          password: z.string().min(4),
+          role: roleSchema.default("estagiario"),
+          department: z.string().optional(),
+          position: z.string().optional(),
+        })),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        let created = 0;
+        let skipped = 0;
+        for (const u of input.users) {
+          const existing = await db.getUserByUsername(u.username);
+          if (existing) { skipped++; continue; }
+          const openId = `local-dyn-${u.username}`;
+          const hashed = await bcrypt.hash(u.password, 12);
+          await db.upsertUser({
+            openId,
+            name: u.name,
+            email: u.email,
+            department: u.department,
+            position: u.position,
+            role: u.role,
+            isActive: true,
+            passwordHash: hashed,
+            loginMethod: "local",
+            avatar: DEFAULT_AVATAR,
+          });
+          created++;
+        }
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "users_bulk_import",
+          description: `Importação em massa: ${created} utilizadores criados, ${skipped} ignorados (duplicados)`,
+          entityType: "user",
+          entityId: null,
+        });
+        return { created, skipped };
+      }),
+
+    broadcastNotification: adminProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        message: z.string().min(1),
+        role: roleSchema.optional(),
+        userIds: z.array(z.number()).optional(),
+        link: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        let users: any[] = [];
+        if (input.userIds && input.userIds.length > 0) {
+          for (const id of input.userIds) {
+            const u = await db.getUserById(id);
+            if (u) users.push(u);
+          }
+        } else {
+          const all = await db.getAllUsers();
+          users = input.role ? all.filter((u: any) => u.role === input.role) : all;
+        }
+        let sent = 0;
+        for (const u of users) {
+          await db.createNotification({
+            userId: u.id,
+            title: input.title,
+            message: input.message,
+            type: "system",
+            link: input.link,
+          });
+          sent++;
+        }
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "broadcast_notification",
+          description: `Notificação em massa enviada para ${sent} utilizadores: "${input.title}"`,
+          entityType: "user",
+          entityId: null,
+        });
+        return { sent };
+      }),
+
+    systemHealth: adminProcedure.query(async () => {
+      const mem = process.memoryUsage();
+      const dbOk = (await db.getDb()) !== null;
+      const allUsers = await db.getAllUsers();
+      const plans = await db.getAllOnboardingPlans();
+      return {
+        uptime: process.uptime(),
+        memoryMB: Math.round(mem.heapUsed / 1024 / 1024),
+        memoryTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+        nodeVersion: process.version,
+        platform: process.platform,
+        databaseConnected: dbOk,
+        totalUsers: allUsers.length,
+        activePlans: plans.filter((p: any) => p.status === 'active').length,
+        totalPlans: plans.length,
+      };
+    }),
+
+    planTemplates: adminProcedure.query(async () => {
+      return await db.getTemplatePlans();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
