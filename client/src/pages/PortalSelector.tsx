@@ -105,8 +105,8 @@ export default function PortalSelector() {
 
           <div className="mt-4 text-center animate-fade delay-6">
             <button onClick={() => setLocation("/admin/config")}
-              className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-300 hover:text-slate-500 transition-all py-1">
-              <Settings size={12} />
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all text-xs font-medium shadow-sm hover:shadow-md">
+              <Settings size={14} />
               Administração
             </button>
           </div>

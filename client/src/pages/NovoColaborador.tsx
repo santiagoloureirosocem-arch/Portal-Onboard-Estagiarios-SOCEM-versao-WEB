@@ -78,28 +78,41 @@ function ComboBox({ id, label, value, onChange, options, icon: Icon, required }:
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value);
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+        && triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  const handleOpen = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+    setOpen(!open);
+  };
+
   const filtered = options.filter(o => o.nome.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="space-y-1 animate-in delay-4" ref={ref}>
+    <div className="space-y-1 animate-in delay-4">
       <label htmlFor={id} className="block text-xs sm:text-sm font-medium text-slate-700">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      <div className="relative">
+      <div className="relative" ref={triggerRef}>
         {Icon && <Icon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />}
         <div
-          onClick={() => setOpen(!open)}
+          onClick={handleOpen}
           className={`w-full ${Icon ? "pl-10" : "pl-4"} pr-10 py-[10px] sm:py-3 rounded-xl border ${open ? "border-red-400 ring-2 ring-red-500/40" : "border-slate-200"} bg-white text-slate-900 cursor-pointer transition-all text-sm flex items-center`}
         >
           <span className={`${value ? "text-slate-900" : "text-slate-400"}`}>
@@ -107,28 +120,30 @@ function ComboBox({ id, label, value, onChange, options, icon: Icon, required }:
           </span>
         </div>
         <ChevronDown size={15} className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
-        {open && (
-          <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-hidden animate-in fade-in-0 zoom-in-95">
-            <div className="p-2 border-b border-slate-100">
-              <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Procurar..."
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
-              />
-            </div>
-            <div className="overflow-y-auto max-h-40">
-              {filtered.length === 0 ? (
-                <p className="text-center text-slate-400 text-xs py-4">Sem resultados</p>
-              ) : filtered.map(o => (
-                <div key={o.id} onClick={() => { onChange(o.nome); setSearch(o.nome); setOpen(false); }}
-                  className={`px-4 py-2.5 text-sm cursor-pointer transition-all hover:bg-red-50 ${value === o.nome ? "bg-red-50 text-red-700 font-medium" : "text-slate-700"}`}
-                >
-                  {o.nome}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+      {open && (
+        <div ref={dropdownRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }}
+          className="z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-hidden animate-in fade-in-0 zoom-in-95">
+          <div className="p-2 border-b border-slate-100">
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Procurar..."
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
+            />
+          </div>
+          <div className="overflow-y-auto max-h-40">
+            {filtered.length === 0 ? (
+              <p className="text-center text-slate-400 text-xs py-4">Sem resultados</p>
+            ) : filtered.map(o => (
+              <div key={o.id} onClick={() => { onChange(o.nome); setSearch(o.nome); setOpen(false); }}
+                className={`px-4 py-2.5 text-sm cursor-pointer transition-all hover:bg-red-50 ${value === o.nome ? "bg-red-50 text-red-700 font-medium" : "text-slate-700"}`}
+              >
+                {o.nome}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
