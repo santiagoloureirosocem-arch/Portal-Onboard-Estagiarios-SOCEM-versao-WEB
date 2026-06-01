@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Shield, ArrowLeft, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, LogOut } from "lucide-react";
+import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, LogOut } from "lucide-react";
 
 const API = (path: string, token: string, init?: RequestInit) =>
   fetch(path, {
@@ -107,12 +107,8 @@ export default function AdminConfig() {
   return (
     <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-red-50 p-4 sm:p-6">
       <div className="max-w-lg mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => setLocation("/")} className="flex items-center gap-1.5 text-slate-400 hover:text-slate-600 text-sm transition-all">
-            <ArrowLeft size={15} />
-            Voltar
-          </button>
-          <button onClick={() => { setAuthed(false); setPass(""); }} className="flex items-center gap-1.5 text-red-400 hover:text-red-600 text-sm transition-all">
+        <div className="flex justify-end mb-6">
+          <button onClick={() => { setAuthed(false); setPass(""); setLocation("/"); }} className="flex items-center gap-1.5 text-slate-400 hover:text-red-600 text-sm transition-all">
             <LogOut size={15} />
             Sair
           </button>
