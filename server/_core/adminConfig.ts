@@ -194,6 +194,17 @@ export function registerAdminConfigRoutes(app: Express) {
       const plans = await db.getAllOnboardingPlans();
       const tasks = await db.getAllTasks();
       const mem = process.memoryUsage();
+      // SMTP connectivity check
+      const net = await import("net");
+      let smtpOk = false;
+      try {
+        smtpOk = await new Promise<boolean>((resolve) => {
+          const socket = net.createConnection({ host: "smtp.office365.com", port: 587, timeout: 5000 });
+          socket.on("connect", () => { socket.destroy(); resolve(true); });
+          socket.on("error", () => resolve(false));
+          socket.on("timeout", () => { socket.destroy(); resolve(false); });
+        });
+      } catch { smtpOk = false; }
       res.json({
         uptime: Math.round(process.uptime()),
         memoryMB: Math.round(mem.heapUsed / 1024 / 1024),
@@ -201,6 +212,7 @@ export function registerAdminConfigRoutes(app: Express) {
         nodeVersion: process.version,
         platform: process.platform,
         databaseConnected: dbOk,
+        smtpReachable: smtpOk,
         totalUsers: allUsers.length,
         activePlans: plans.filter((p: any) => p.status === 'active').length,
         totalPlans: plans.length,

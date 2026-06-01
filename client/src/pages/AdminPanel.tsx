@@ -283,6 +283,7 @@ export default function AdminPanel() {
                     { label: "Node.js", value: health.nodeVersion },
                     { label: "Plataforma", value: health.platform },
                     { label: "Base de Dados", value: health.databaseConnected ? "Conectada" : "Desconectada", color: health.databaseConnected ? "text-emerald-600" : "text-red-600" },
+                    { label: "SMTP (Office 365)", value: (health as any).smtpReachable ? "Acessível" : "Inacessível", color: (health as any).smtpReachable ? "text-emerald-600" : "text-red-600" },
                     { label: "Utilizadores", value: health.totalUsers },
                     { label: "Planos Ativos", value: health.activePlans },
                     { label: "Total Planos", value: health.totalPlans },

@@ -1325,6 +1325,16 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
       const allUsers = await db.getAllUsers();
       const plans = await db.getAllOnboardingPlans();
       const tasks = await db.getAllTasks();
+      let smtpOk = false;
+      try {
+        const net = await import("net");
+        smtpOk = await new Promise<boolean>((resolve) => {
+          const socket = net.createConnection({ host: "smtp.office365.com", port: 587, timeout: 5000 });
+          socket.on("connect", () => { socket.destroy(); resolve(true); });
+          socket.on("error", () => resolve(false));
+          socket.on("timeout", () => { socket.destroy(); resolve(false); });
+        });
+      } catch { smtpOk = false; }
       return {
         uptime: process.uptime(),
         memoryMB: Math.round(mem.heapUsed / 1024 / 1024),
@@ -1332,6 +1342,7 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
         nodeVersion: process.version,
         platform: process.platform,
         databaseConnected: dbOk,
+        smtpReachable: smtpOk,
         totalUsers: allUsers.length,
         activePlans: plans.filter((p: any) => p.status === 'active').length,
         totalPlans: plans.length,

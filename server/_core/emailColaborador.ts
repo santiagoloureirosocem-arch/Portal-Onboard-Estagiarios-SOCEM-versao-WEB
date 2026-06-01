@@ -3,19 +3,22 @@ import { sendEmail } from "./email";
 
 export function registerEmailColaboradorRoute(app: Express) {
   app.post("/api/email/novo-colaborador", async (req: Request, res: Response) => {
-    try {
-      const {
-        nome,
-        numColaborador,
-        empresa,
-        departamento,
-        responsavel,
-        permissoes,
-        temComputador,
-        temOffice,
-        programas,
-      } = req.body;
+    const {
+      nome,
+      numColaborador,
+      empresa,
+      departamento,
+      responsavel,
+      permissoes,
+      temComputador,
+      temOffice,
+      programas,
+    } = req.body;
 
+    // Respond immediately — send email in background
+    res.json({ success: true, message: "Registo submetido. A enviar email..." });
+
+    try {
       const programasLista = Array.isArray(programas) && programas.length > 0
         ? programas.join(", ")
         : "Nenhum";
@@ -24,6 +27,7 @@ export function registerEmailColaboradorRoute(app: Express) {
         nome, numColaborador, empresa, departamento,
         responsavel, permissoes, temComputador, temOffice, programasLista,
       });
+
       const result = await sendEmail({
         to: "informatica@socem.pt",
         toName: "Informática SOCEM",
@@ -33,15 +37,10 @@ export function registerEmailColaboradorRoute(app: Express) {
       });
 
       if (!result.ok) {
-        console.error(`[EmailColaborador] ${result.error}`);
-        res.status(500).json({ error: result.error ?? "Erro ao enviar email" });
-        return;
+        console.error(`[EmailColaborador] Falha ao enviar: ${result.error}`);
       }
-
-      res.json({ success: true });
     } catch (err) {
-      console.error("Email error:", err);
-      res.status(500).json({ error: "Erro interno ao enviar email" });
+      console.error("[EmailColaborador] Erro:", err);
     }
   });
 }
