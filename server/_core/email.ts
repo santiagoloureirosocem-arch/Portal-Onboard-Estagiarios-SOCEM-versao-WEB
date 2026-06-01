@@ -1,14 +1,29 @@
-const BREVO_API = "https://api.brevo.com/v3/smtp/email";
+import nodemailer from "nodemailer";
+import { ENV } from "./env";
 
-function getApiKey(): string {
-  return process.env.BREVO_API_KEY ?? "";
-}
+let _transporter: nodemailer.Transporter | null = null;
 
-function getAppUrl(): string {
-  return process.env.APP_URL
-    ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined)
-    ?? process.env.ORIGIN
-    ?? "http://localhost:3000";
+function getTransporter(): nodemailer.Transporter | null {
+  if (_transporter) return _transporter;
+  if (!ENV.smtpHost || !ENV.smtpUser || !ENV.smtpPass) {
+    console.warn("[Email] SMTP não configurado. Defina SMTP_HOST, SMTP_USER e SMTP_PASS no .env");
+    return null;
+  }
+  _transporter = nodemailer.createTransport({
+    host: ENV.smtpHost,
+    port: ENV.smtpPort,
+    secure: ENV.smtpSecure,
+    auth: {
+      user: ENV.smtpUser,
+      pass: ENV.smtpPass,
+    },
+    tls: {
+      ciphers: "SSLv3",
+      rejectUnauthorized: false,
+    },
+  });
+  console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
+  return _transporter;
 }
 
 function buildHtml(heading: string, bodyHtml: string): string {
@@ -64,41 +79,25 @@ export async function sendEmail(options: {
   heading: string;
   bodyHtml: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    const msg = "BREVO_API_KEY not configured";
-    console.warn(`[Email] ${msg}`);
-    return { ok: false, error: msg };
+  const transporter = getTransporter();
+  if (!transporter) {
+    return { ok: false, error: "SMTP não configurado" };
   }
 
+  const fromEmail = ENV.smtpFrom ?? ENV.smtpUser ?? "report@socem.pt";
+
   try {
-    const response = await fetch(BREVO_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": apiKey,
-      },
-      body: JSON.stringify({
-        sender: { name: "Portal SOCEM", email: "noreply@socem.pt" },
-        to: [{ email: options.to, name: options.toName ?? options.to }],
-        subject: options.subject,
-        htmlContent: buildHtml(options.heading, options.bodyHtml),
-      }),
+    const info = await transporter.sendMail({
+      from: `"Portal SOCEM" <${fromEmail}>`,
+      to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
+      subject: options.subject,
+      html: buildHtml(options.heading, options.bodyHtml),
     });
-
-    if (!response.ok) {
-      const error = await response.text().catch(() => "unknown error");
-      const msg = `Brevo error (${response.status}): ${error}`;
-      console.warn(`[Email] ${msg}`);
-      return { ok: false, error: msg };
-    }
-
-    const data = await response.json();
-    console.log(`[Email] Sent "${options.subject}" to ${options.to} (messageId: ${data.messageId})`);
+    console.log(`[Email] Enviado "${options.subject}" para ${options.to} (messageId: ${info.messageId})`);
     return { ok: true };
-  } catch (err) {
-    const msg = `Error sending email: ${err}`;
-    console.warn(`[Email] ${msg}`);
+  } catch (err: any) {
+    const msg = `Erro SMTP: ${err?.message ?? err}`;
+    console.error(`[Email] ${msg}`);
     return { ok: false, error: msg };
   }
 }
