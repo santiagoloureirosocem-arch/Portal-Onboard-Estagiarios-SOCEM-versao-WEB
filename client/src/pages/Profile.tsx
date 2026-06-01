@@ -57,9 +57,9 @@ async function downloadCertificate(userName: string, department: string, plansCo
     orn(17, pageH - 17, false, true);
     orn(pageW - 17, pageH - 17, true, true);
 
-    // ── Custom SOCEM Badge ──
+    // ── Custom SOCEM Shield Badge ──
     const badgeX = cx;
-    const badgeY = 36;
+    const badgeY = 35;
     const badgeR = 16;
 
     // Outer gold ring
@@ -67,28 +67,38 @@ async function downloadCertificate(userName: string, department: string, plansCo
     doc.setLineWidth(2);
     doc.circle(badgeX, badgeY, badgeR);
 
-    // Inner red fill
+    // Inner ring
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(0.5);
+    doc.circle(badgeX, badgeY, badgeR - 2.5);
+
+    // Red fill
     doc.setFillColor(RED[0], RED[1], RED[2]);
-    doc.circle(badgeX, badgeY, badgeR - 2, "F");
+    doc.circle(badgeX, badgeY, badgeR - 3, "F");
 
-    // SOCEM lettering in badge
+    // Dark red center circle
+    doc.setFillColor(150, 20, 20);
+    doc.circle(badgeX, badgeY, badgeR - 7, "F");
+
+    // SOCEM lettering
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(7);
     doc.setTextColor(255, 255, 255);
-    doc.text("SOCEM", badgeX, badgeY - 1.5, { align: "center" });
+    doc.text("SOCEM", badgeX, badgeY - 0.5, { align: "center" });
 
-    // Star dots flanking
-    doc.setFontSize(6);
-    doc.text("✦", badgeX - 6, badgeY + 5);
-    doc.text("✦", badgeX + 6, badgeY + 5);
+    // Small "★" above and below in gold
+    doc.setFontSize(5);
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.text("★", badgeX, badgeY - badgeR + 4, { align: "center" });
+    doc.text("★", badgeX, badgeY + badgeR - 3, { align: "center" });
 
-    // Small gold dots around badge (simulated with circles)
-    for (let a = 0; a < 8; a++) {
-      const angle = (a / 8) * Math.PI * 2;
-      const dx = Math.cos(angle) * (badgeR + 2);
-      const dy = Math.sin(angle) * (badgeR + 2);
+    // Gold dots around - smaller and evenly spaced
+    for (let a = 0; a < 12; a++) {
+      const angle = (a / 12) * Math.PI * 2;
+      const dx = Math.cos(angle) * (badgeR + 2.5);
+      const dy = Math.sin(angle) * (badgeR + 2.5);
       doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-      doc.circle(badgeX + dx, badgeY + dy, 0.6, "F");
+      doc.circle(badgeX + dx, badgeY + dy, 0.4, "F");
     }
 
     // ── Decorative top rule ──

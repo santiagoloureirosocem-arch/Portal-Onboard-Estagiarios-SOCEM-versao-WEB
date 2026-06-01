@@ -670,14 +670,17 @@ O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo 
 - Cada plano contém tarefas com prazos
 - Estagiários veem apenas os planos que lhes foram atribuídos
 - Tutores e admins podem criar, editar e gerir planos
+- **Auto-completar**: quando todas as tarefas de um plano ativo são concluídas, o plano passa automaticamente a "completed" e a respetiva atribuição também
+- **Reverter**: se uma tarefa concluída voltar a "in_progress" ou "pending", o plano e a atribuição revertem automaticamente para "active"
 
 ### Tarefas (/tasks)
 - Tarefas com título, descrição, status (pending/in_progress/completed), datas, responsável
-- Estagiários podem apenas marcar tarefas como concluídas
+- Estagiários podem marcar tarefas: pendente → concluída, em progresso → concluída, concluída → em progresso
 - Tutores/admins gerem todas as tarefas
+- Reordenação por drag-and-drop disponível na página Tarefas
 
 ### Calendário (/calendar)
-- Visualização de prazos e datas importantes dos planos
+- Visualização de prazos e datas importantes dos planos e tarefas
 
 ### Relatórios (/reports) — apenas admin/tutor
 - Taxa de conclusão global, estagiários concluídos, tempo médio de onboarding
@@ -685,13 +688,25 @@ O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo 
 
 ### Mensagens (/mensagens)
 - Sistema de mensagens diretas entre utilizadores
+- Filtros: por papel (estagiário/tutor/admin) e apenas não-lidas
+- Ordenação: mais recentes primeiro
 - Suporte para envio de ficheiros
 
 ### Perfil (/profile)
-- Visualização do perfil do utilizador e plano de integração atribuído
+- Visualização do perfil do utilizador, planos atribuídos com progresso e datas
+- Secção de Conquistas com distintivos, sequência de check-ins e gráfico de humor
+- Certificado de Conclusão (disponível quando todos os planos estão concluídos)
+- Indicação de "Leiria" na localização
+
+### Check-ins Diários
+- Os estagiários podem fazer check-in diário com o seu humor (great/good/okay/bad/terrible)
+- Cada check-in consecutivo aumenta a streak
+- Distintivos especiais: "7 Dias Seguidos" (streak_7) e "30 Dias Seguidos" (streak_30)
+- O humor é mostrado num gráfico de barras no perfil
 
 ### Definições (/settings)
-- Editar perfil, preferências, notificações, segurança (alterar password)
+- Editar perfil, preferências de notificação, segurança (alterar password)
+- Preferências de email: notificações de prazos, tarefas em atraso, novas mensagens
 
 ### Ajuda (/help)
 - Guia completo de utilização da aplicação
@@ -699,7 +714,7 @@ O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo 
 ## Papéis de Utilizador
 - **Admin**: Acesso total a todas as funcionalidades. Pode gerir utilizadores, planos, tarefas, relatórios.
 - **Tutor**: Pode criar e gerir planos e tarefas, ver relatórios, mas não pode gerir utilizadores (apenas ver).
-- **Estagiário**: Apenas vê o seu dashboard personalizado, os planos que lhe foram atribuídos, e pode marcar tarefas como concluídas.
+- **Estagiário**: Apenas vê o seu dashboard personalizado, os planos que lhe foram atribuídos, e pode marcar tarefas como concluídas. Tem acesso ao chat com IA (limite diário de mensagens).
 
 ## Dicas Úteis
 - Use Ctrl+K (ou ⌘K) para abrir a pesquisa global
@@ -718,7 +733,9 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
 - get_plan_assignments: quem está atribuído a um plano específico
 - get_my_plans: obtém os planos atribuídos ao utilizador que está a falar contigo (não precisas de ID)
 - get_my_tasks: obtém as tarefas do utilizador que está a falar contigo (não precisas de ID)
-- get_my_progress: obtém o progresso do utilizador que está a falar contigo: número de planos, tarefas totais, concluídas, taxa de conclusão`;
+- get_my_progress: obtém o progresso do utilizador que está a falar contigo: número de planos, tarefas totais, concluídas, taxa de conclusão
+- get_my_upcoming_tasks: obtém tarefas com prazo futuro do utilizador que está a falar contigo (ordenadas por data limite)
+- get_my_notifications: obtém as notificações recentes do utilizador que está a falar contigo`;
 
         const { messages } = input;
 
@@ -820,6 +837,22 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
               parameters: { type: "object", properties: {}, required: [] },
             },
           },
+          {
+            type: "function",
+            function: {
+              name: "get_my_upcoming_tasks",
+              description: "Obtém as tarefas com prazo futuro do utilizador que está a falar, ordenadas por data limite (mais próximas primeiro). Não precisa de parâmetros.",
+              parameters: { type: "object", properties: {}, required: [] },
+            },
+          },
+          {
+            type: "function",
+            function: {
+              name: "get_my_notifications",
+              description: "Obtém as notificações recentes do utilizador que está a falar (tarefas atribuídas, prazos próximos, etc). Não precisa de parâmetros.",
+              parameters: { type: "object", properties: {}, required: [] },
+            },
+          },
         ];
 
         // Tool handler: executes the tool and returns a string result
@@ -900,6 +933,31 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
                   completedTasks,
                   completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
                 });
+              }
+              case "get_my_upcoming_tasks": {
+                const upPlans = await db.getPlansAssignedToUser(ctx.user.id);
+                if (upPlans.length === 0) return JSON.stringify([]);
+                const upPlanIds = upPlans.map((p: any) => p.id);
+                const upAllTasks = await db.getAllTasks();
+                const upMyTasks = upAllTasks.filter((t: any) => upPlanIds.includes(t.planId));
+                const now = new Date();
+                const upcoming = upMyTasks
+                  .filter((t: any) => {
+                    if (t.status === "completed") return false;
+                    if (!t.dueDate) return false;
+                    const due = new Date(t.dueDate);
+                    return due >= now;
+                  })
+                  .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+                  .slice(0, 10);
+                return JSON.stringify(upcoming.map((t: any) => ({
+                  id: t.id, title: t.title, status: t.status,
+                  dueDate: t.dueDate, planId: t.planId,
+                })));
+              }
+              case "get_my_notifications": {
+                const notifications = await db.getNotificationsByUserId(ctx.user.id);
+                return JSON.stringify((notifications || []).slice(0, 20));
               }
               default:
                 return JSON.stringify({ error: `Ferramenta desconhecida: ${name}` });
