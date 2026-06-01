@@ -17,10 +17,9 @@ function getTransporter(): nodemailer.Transporter | null {
       user: ENV.smtpUser,
       pass: ENV.smtpPass,
     },
-    tls: {
-      ciphers: "SSLv3",
-      rejectUnauthorized: false,
-    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
   console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
   return _transporter;
@@ -81,19 +80,25 @@ export async function sendEmail(options: {
 }): Promise<{ ok: boolean; error?: string }> {
   const transporter = getTransporter();
   if (!transporter) {
+    console.warn(`[Email] SMTP não configurado — email NÃO enviado para ${options.to}`);
     return { ok: false, error: "SMTP não configurado" };
   }
 
   const fromEmail = ENV.smtpFrom ?? ENV.smtpUser ?? "report@socem.pt";
 
   try {
-    const info = await transporter.sendMail({
-      from: `"Portal SOCEM" <${fromEmail}>`,
-      to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
-      subject: options.subject,
-      html: buildHtml(options.heading, options.bodyHtml),
-    });
-    console.log(`[Email] Enviado "${options.subject}" para ${options.to} (messageId: ${info.messageId})`);
+    const result = await Promise.race([
+      transporter.sendMail({
+        from: `"Portal SOCEM" <${fromEmail}>`,
+        to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
+        subject: options.subject,
+        html: buildHtml(options.heading, options.bodyHtml),
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout ao enviar email (12s)")), 12000)
+      ),
+    ]);
+    console.log(`[Email] Enviado "${options.subject}" para ${options.to} (messageId: ${result.messageId})`);
     return { ok: true };
   } catch (err: any) {
     const msg = `Erro SMTP: ${err?.message ?? err}`;
