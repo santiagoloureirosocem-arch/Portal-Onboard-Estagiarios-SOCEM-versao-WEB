@@ -129,10 +129,6 @@ export default function Mensagens() {
   }, []);
 
   useEffect(() => {
-    if (isAtBottom) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messagesQuery.data, isAtBottom]);
-
-  useEffect(() => {
     if (selectedUserId) {
       setTimeout(() => unreadQuery.refetch(), 500);
       setIsAtBottom(true);
@@ -150,8 +146,9 @@ export default function Mensagens() {
     if (sortMode === "alpha") {
       return (a.name ?? "").localeCompare(b.name ?? "");
     }
-    const aU = unreadCounts[a.id] ?? 0, bU = unreadCounts[b.id] ?? 0;
-    if (aU !== bU) return bU - aU;
+    const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+    const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+    if (aTime !== bTime) return bTime - aTime;
     return (a.name ?? "").localeCompare(b.name ?? "");
   });
   const selectedContact = allContacts.find(c => c.id === selectedUserId);
