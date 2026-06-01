@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight, ArrowLeft, Building2, Hash,
@@ -78,11 +78,21 @@ function ComboBox({ id, label, value, onChange, options, icon: Icon, required }:
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
 
   const filtered = options.filter(o => o.nome.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="space-y-1 animate-in delay-4">
+    <div className="space-y-1 animate-in delay-4" ref={ref}>
       <label htmlFor={id} className="block text-xs sm:text-sm font-medium text-slate-700">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
@@ -98,9 +108,7 @@ function ComboBox({ id, label, value, onChange, options, icon: Icon, required }:
         </div>
         <ChevronDown size={15} className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
         {open && (
-          <>
-            <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-            <div className="absolute z-40 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-hidden animate-in fade-in-0 zoom-in-95">
+          <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-hidden animate-in fade-in-0 zoom-in-95">
             <div className="p-2 border-b border-slate-100">
               <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Procurar..."
@@ -118,8 +126,7 @@ function ComboBox({ id, label, value, onChange, options, icon: Icon, required }:
                 </div>
               ))}
             </div>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </div>
