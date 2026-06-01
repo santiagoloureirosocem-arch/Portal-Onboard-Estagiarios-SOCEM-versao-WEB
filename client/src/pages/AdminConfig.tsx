@@ -101,6 +101,7 @@ export default function AdminConfig() {
   const sendBroadcast = async () => {
     if (!notifTitle.trim() || !notifMsg.trim()) return;
     setNotifSending(true);
+    setError("");
     try {
       const res = await API("/api/admin/broadcast", pass, {
         method: "POST",
@@ -111,12 +112,16 @@ export default function AdminConfig() {
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Erro ao enviar notificação");
+        return;
+      }
       setSuccessMsg(`Notificação enviada para ${data.sent} utilizadores`);
       setNotifTitle("");
       setNotifMsg("");
       setTimeout(() => setSuccessMsg(""), 4000);
     } catch {
-      setError("Erro ao enviar notificação");
+      setError("Erro de rede ao enviar notificação");
     } finally {
       setNotifSending(false);
     }

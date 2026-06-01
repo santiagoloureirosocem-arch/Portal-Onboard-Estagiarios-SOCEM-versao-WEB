@@ -1278,14 +1278,22 @@ export async function deleteAttachment(id: number) {
 
 export async function createNotification(data: { userId: number; title: string; message: string; type?: string; link?: string }) {
   const dbConn = await getDb();
-    const notif = { id: _notificationNextId++, ...data, type: (data.type ?? 'system') as any, isRead: false, createdAt: new Date() };
   if (!dbConn) {
+    const notif = { id: _notificationNextId++, ...data, type: (data.type ?? 'system') as any, isRead: false, createdAt: new Date() };
     _memNotifications.unshift(notif);
     saveLocalDb();
     return notif;
   }
-  await dbConn.insert(notifications).values(notif);
-  return notif;
+  await dbConn.insert(notifications).values({
+    userId: data.userId,
+    title: data.title,
+    message: data.message,
+    type: (data.type ?? 'system') as any,
+    link: data.link ?? null,
+    isRead: false,
+  });
+  const rows = await dbConn.select().from(notifications).orderBy(desc(notifications.id)).limit(1);
+  return rows[0];
 }
 
 export async function getNotificationsByUserId(userId: number, limit = 20) {

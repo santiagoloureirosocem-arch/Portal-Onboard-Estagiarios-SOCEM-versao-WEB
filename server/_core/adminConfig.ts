@@ -165,15 +165,21 @@ export function registerAdminConfigRoutes(app: Express) {
     if (!auth(req, res)) return;
     try {
       const { title, message, role, link } = req.body;
+      if (!title || !message) {
+        res.status(400).json({ error: "Título e mensagem são obrigatórios" });
+        return;
+      }
       const allUsers = await db.getAllUsers();
       const users = role ? allUsers.filter((u: any) => u.role === role) : allUsers;
       let sent = 0;
       for (const u of users) {
-        await db.createNotification({ userId: u.id, title, message, type: "system", link });
+        await db.createNotification({ userId: u.id, title, message, type: "system", link: link || undefined });
         sent++;
       }
+      console.log(`[Broadcast] Sent notification "${title}" to ${sent} users (role filter: ${role || "all"})`);
       res.json({ sent });
     } catch (err) {
+      console.error("[Broadcast] Error:", err);
       res.status(500).json({ error: "Erro ao enviar notificação" });
     }
   });
