@@ -3,6 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
+import BroadcastPopup from "@/components/BroadcastPopup";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -573,6 +574,7 @@ export default function Dashboard() {
   const isIntern = user?.role === "estagiario";
   return (
     <DashboardLayout title="Portal de Estagiários SOCEM">
+      <BroadcastPopup />
       {isIntern ? <InternDashboard /> : <StaffDashboard />}
     </DashboardLayout>
   );

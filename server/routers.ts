@@ -585,6 +585,9 @@ ${input.fileName ? `<p style="font-size:13px;color:#666;">📎 Ficheiro anexado:
     unreadCount: protectedProcedure.query(async ({ ctx }) => {
       return await db.getUnreadNotificationCount(ctx.user.id);
     }),
+    unreadBroadcasts: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUnreadSystemNotifications(ctx.user.id);
+    }),
     markAsRead: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await db.markNotificationAsRead(input.id);
       return { success: true };

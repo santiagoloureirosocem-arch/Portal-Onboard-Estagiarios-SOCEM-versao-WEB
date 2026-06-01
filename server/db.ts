@@ -1330,6 +1330,14 @@ export async function getUnreadNotificationCount(userId: number) {
   return Number(rows[0]?.cnt ?? 0);
 }
 
+export async function getUnreadSystemNotifications(userId: number) {
+  const dbConn = await getDb();
+  if (!dbConn) return _memNotifications.filter((n: any) => n.userId === userId && !n.isRead && n.type === 'system').slice(0, 10);
+  return await dbConn.select().from(notifications).where(
+    and(eq(notifications.userId, userId), eq(notifications.isRead, false), eq(notifications.type, 'system'))
+  ).orderBy(desc(notifications.createdAt)).limit(10);
+}
+
 // ─── Daily Check-ins ──────────────────────────────────────────────────────────
 
 export async function createDailyCheckin(data: { userId: number; date: Date; mood: string; note?: string }) {
