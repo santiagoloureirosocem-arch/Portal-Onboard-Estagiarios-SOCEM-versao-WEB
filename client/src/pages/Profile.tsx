@@ -357,9 +357,6 @@ export default function Profile() {
           )}
         </div>
 
-        {/* Mood Chart - last 30 days */}
-        {user?.role === 'estagiario' && <ProfileMoodChart />}
-
         {/* Certificado */}
         {user?.role === 'estagiario' && certStatus && (
           <Card className={`p-6 border-2 ${certStatus.eligible ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10' : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/10'}`}>
@@ -408,8 +405,7 @@ export default function Profile() {
         )}
 
         {/* Conquistas */}
-        {user?.role === 'estagiario' && (
-          <Card className="p-6">
+        <Card className="p-6">
             <h2 className="text-2xl font-playfair font-bold text-foreground mb-1 flex items-center gap-2">
               <Trophy size={22} className="text-amber-500" />
               Conquistas
@@ -479,7 +475,6 @@ export default function Profile() {
             {/* Mood trend mini-chart */}
             {checkins && checkins.length > 0 && <ProfileMoodChart />}
           </Card>
-        )}
 
         {/* Info Section */}
         <Card className="card-elevated p-6 bg-accent/5 border-accent/20">
