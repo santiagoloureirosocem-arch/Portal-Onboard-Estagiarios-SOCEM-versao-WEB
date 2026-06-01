@@ -176,6 +176,31 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS empresas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS departamentos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL
+      )
+    `);
+    // Seed sample data for empresas/departamentos
+    try {
+      const existingEmpresas = await db.execute(sql`SELECT COUNT(*) as cnt FROM empresas`);
+      if ((existingEmpresas as any[])?.[0]?.cnt === 0) {
+        await db.execute(sql`INSERT INTO empresas (nome) VALUES ('SOCEM'), ('Socem Steel'), ('Socem Solutions')`);
+      }
+    } catch {}
+    try {
+      const existingDepts = await db.execute(sql`SELECT COUNT(*) as cnt FROM departamentos`);
+      if ((existingDepts as any[])?.[0]?.cnt === 0) {
+        await db.execute(sql`INSERT INTO departamentos (nome) VALUES ('Engenharia'), ('Produção'), ('Qualidade'), ('RH'), ('Informática'), ('Manutenção')`);
+      }
+    } catch {}
     console.log("[Database] Tables ready");
   } catch (err) {
     console.warn("[Database] Table init error:", err);
@@ -199,6 +224,8 @@ interface LocalDb {
   dailyCheckins: any[];
   userBadges: any[];
   aiUsage: any[];
+  empresas: any[];
+  departamentos: any[];
 }
 
 function loadLocalDb(): LocalDb {
@@ -239,7 +266,18 @@ function loadLocalDb(): LocalDb {
   } catch (e) {
     console.warn("[LocalDB] Failed to load, starting fresh:", e);
   }
-  return { nextId: 1, users: [], plans: [], tasks: [], assignments: [], completions: [], notifications: [], dailyCheckins: [], userBadges: [], aiUsage: [] };
+  return { nextId: 1, users: [], plans: [], tasks: [], assignments: [], completions: [], notifications: [], dailyCheckins: [], userBadges: [], aiUsage: [], empresas: [
+    { id: 1, nome: "SOCEM" },
+    { id: 2, nome: "Socem Steel" },
+    { id: 3, nome: "Socem Solutions" },
+  ], departamentos: [
+    { id: 1, nome: "Engenharia" },
+    { id: 2, nome: "Produção" },
+    { id: 3, nome: "Qualidade" },
+    { id: 4, nome: "RH" },
+    { id: 5, nome: "Informática" },
+    { id: 6, nome: "Manutenção" },
+  ] };
 }
 
 export function saveLocalDb(): void {
@@ -257,6 +295,8 @@ export function saveLocalDb(): void {
       dailyCheckins: _memDailyCheckins,
       userBadges: _memUserBadges,
       aiUsage: _memAiUsage,
+      empresas: _memEmpresas,
+      departamentos: _memDepartamentos,
     };
     fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch (e) {
@@ -279,6 +319,10 @@ let _memUserBadges: any[] = _localDb.userBadges || [];
 let _badgeNextId = _memUserBadges.length > 0 ? Math.max(..._memUserBadges.map((b: any) => b.id)) + 1 : 1;
 let _memAiUsage: any[] = [];
 let _aiUsageNextId = 1;
+let _memEmpresas: any[] = _localDb.empresas || [];
+let _empresaNextId = _memEmpresas.length > 0 ? Math.max(..._memEmpresas.map((e: any) => e.id)) + 1 : 1;
+let _memDepartamentos: any[] = _localDb.departamentos || [];
+let _deptNextId = _memDepartamentos.length > 0 ? Math.max(..._memDepartamentos.map((d: any) => d.id)) + 1 : 1;
 
 function makeUser(data: InsertUser): User {
   const now = new Date();
@@ -1374,4 +1418,90 @@ export async function hasCompletedAllPlans(userId: number) {
   );
   if (active.length === 0) return false;
   return active.every((a: any) => a.status === 'completed');
+}
+
+// ─── Empresas ─────────────────────────────────────────────────────────────────
+
+export async function getAllEmpresas(): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return _memEmpresas;
+  const result = await db.execute(sql`SELECT * FROM empresas ORDER BY nome`);
+  return result as any[];
+}
+
+export async function createEmpresa(nome: string): Promise<any> {
+  const db = await getDb();
+  if (!db) {
+    const item = { id: _empresaNextId++, nome };
+    _memEmpresas.push(item);
+    saveLocalDb();
+    return item;
+  }
+  const result = await db.execute(sql`INSERT INTO empresas (nome) VALUES (${nome})`);
+  const insertId = (result as any).insertId;
+  return { id: insertId, nome };
+}
+
+export async function updateEmpresa(id: number, nome: string): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    const item = _memEmpresas.find((e: any) => e.id === id);
+    if (item) item.nome = nome;
+    saveLocalDb();
+    return;
+  }
+  await db.execute(sql`UPDATE empresas SET nome = ${nome} WHERE id = ${id}`);
+}
+
+export async function deleteEmpresa(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    _memEmpresas = _memEmpresas.filter((e: any) => e.id !== id);
+    saveLocalDb();
+    return;
+  }
+  await db.execute(sql`DELETE FROM empresas WHERE id = ${id}`);
+}
+
+// ─── Departamentos ────────────────────────────────────────────────────────────
+
+export async function getAllDepartamentos(): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return _memDepartamentos;
+  const result = await db.execute(sql`SELECT * FROM departamentos ORDER BY nome`);
+  return result as any[];
+}
+
+export async function createDepartamento(nome: string): Promise<any> {
+  const db = await getDb();
+  if (!db) {
+    const item = { id: _deptNextId++, nome };
+    _memDepartamentos.push(item);
+    saveLocalDb();
+    return item;
+  }
+  const result = await db.execute(sql`INSERT INTO departamentos (nome) VALUES (${nome})`);
+  const insertId = (result as any).insertId;
+  return { id: insertId, nome };
+}
+
+export async function updateDepartamento(id: number, nome: string): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    const item = _memDepartamentos.find((d: any) => d.id === id);
+    if (item) item.nome = nome;
+    saveLocalDb();
+    return;
+  }
+  await db.execute(sql`UPDATE departamentos SET nome = ${nome} WHERE id = ${id}`);
+}
+
+export async function deleteDepartamento(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    _memDepartamentos = _memDepartamentos.filter((d: any) => d.id !== id);
+    saveLocalDb();
+    return;
+  }
+  await db.execute(sql`DELETE FROM departamentos WHERE id = ${id}`);
 }

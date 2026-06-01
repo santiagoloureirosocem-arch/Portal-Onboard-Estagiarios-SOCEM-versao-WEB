@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight, ArrowLeft, Building2, Hash,
   Briefcase, Shield, Monitor, Package,
-  CheckCircle2, User, Check, X,
+  CheckCircle2, User, Check, X, ChevronDown,
 } from "lucide-react";
 
 const PROGRAMAS = ["AutoCAD", "Adobe Creative Suite", "TopSolid", "CADMOULD", "Tebis", "Inventor", "MouldFLOW", "Outro"];
@@ -72,6 +72,58 @@ function CheckBox({ checked, onChange, label }: {
   );
 }
 
+function ComboBox({ id, label, value, onChange, options, icon: Icon, required }: {
+  id: string; label: string; value: string; onChange: (v: string) => void;
+  options: { id: number; nome: string }[]; icon?: any; required?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+
+  const filtered = options.filter(o => o.nome.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="space-y-1 animate-in delay-4">
+      <label htmlFor={id} className="block text-xs sm:text-sm font-medium text-slate-700">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <div className="relative">
+        {Icon && <Icon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />}
+        <div
+          onClick={() => setOpen(!open)}
+          className={`w-full ${Icon ? "pl-10" : "pl-4"} pr-10 py-[10px] sm:py-3 rounded-xl border ${open ? "border-red-400 ring-2 ring-red-500/40" : "border-slate-200"} bg-white text-slate-900 cursor-pointer transition-all text-sm flex items-center`}
+        >
+          <span className={`${value ? "text-slate-900" : "text-slate-400"}`}>
+            {value || `Selecionar ${label.toLowerCase()}`}
+          </span>
+        </div>
+        <ChevronDown size={15} className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        {open && (
+          <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-hidden animate-in fade-in-0 zoom-in-95">
+            <div className="p-2 border-b border-slate-100">
+              <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Procurar..."
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
+              />
+            </div>
+            <div className="overflow-y-auto max-h-40">
+              {filtered.length === 0 ? (
+                <p className="text-center text-slate-400 text-xs py-4">Sem resultados</p>
+              ) : filtered.map(o => (
+                <div key={o.id} onClick={() => { onChange(o.nome); setSearch(o.nome); setOpen(false); }}
+                  className={`px-4 py-2.5 text-sm cursor-pointer transition-all hover:bg-red-50 ${value === o.nome ? "bg-red-50 text-red-700 font-medium" : "text-slate-700"}`}
+                >
+                  {o.nome}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {open && <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />}
+      </div>
+    </div>
+  );
+}
+
 export default function NovoColaborador() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
@@ -89,6 +141,14 @@ export default function NovoColaborador() {
   const [temOffice, setTemOffice] = useState(false);
   const [programas, setProgramas] = useState<string[]>([]);
   const [outroPrograma, setOutroPrograma] = useState("");
+
+  const [empresasList, setEmpresasList] = useState<{ id: number; nome: string }[]>([]);
+  const [deptosList, setDeptosList] = useState<{ id: number; nome: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/empresas").then(r => r.json()).then(setEmpresasList).catch(() => {});
+    fetch("/api/departamentos").then(r => r.json()).then(setDeptosList).catch(() => {});
+  }, []);
 
   const togglePrograma = (p: string) =>
     setProgramas(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
@@ -255,8 +315,8 @@ export default function NovoColaborador() {
 
             {step === 2 && (
               <div className="space-y-3 sm:space-y-4">
-                <InputField id="empresa" label="Empresa" value={empresa} onChange={setEmpresa} icon={Building2} required />
-                <InputField id="dept" label="Departamento" value={departamento} onChange={setDepartamento} icon={Briefcase} required />
+                <ComboBox id="empresa" label="Empresa" value={empresa} onChange={setEmpresa} options={empresasList} icon={Building2} required />
+                <ComboBox id="dept" label="Departamento" value={departamento} onChange={setDepartamento} options={deptosList} icon={Briefcase} required />
                 <InputField id="perm" label="Permissões" value={permissoes} onChange={setPermissoes} icon={Shield} required />
                 <InputField id="resp" label="Responsável" value={responsavel} onChange={setResponsavel} placeholder="Nome do responsável" icon={User} required />
               </div>

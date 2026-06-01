@@ -210,3 +210,25 @@ export const aiUsage = mysqlTable("ai_usage", {
 
 export type AiUsage = typeof aiUsage.$inferSelect;
 export type InsertAiUsage = typeof aiUsage.$inferInsert;
+
+/**
+ * Companies/empresas for the new colaborador form
+ */
+export const empresas = mysqlTable("empresas", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+});
+
+export type Empresa = typeof empresas.$inferSelect;
+export type InsertEmpresa = typeof empresas.$inferInsert;
+
+/**
+ * Departments/departamentos for the new colaborador form
+ */
+export const departamentos = mysqlTable("departamentos", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+});
+
+export type Departamento = typeof departamentos.$inferSelect;
+export type InsertDepartamento = typeof departamentos.$inferInsert;

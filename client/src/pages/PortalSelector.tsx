@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { UserPlus, Users, ArrowRight, Shield } from "lucide-react";
+import { UserPlus, Users, ArrowRight, Shield, Settings } from "lucide-react";
 
 export default function PortalSelector() {
   const [hovered, setHovered] = useState<string | null>(null);
@@ -103,7 +103,15 @@ export default function PortalSelector() {
             })}
           </div>
 
-          <div className="mt-6 sm:mt-8 pt-4 sm:pt-5 border-t border-slate-100 text-center animate-fade delay-8">
+          <div className="mt-4 text-center animate-fade delay-6">
+            <button onClick={() => setLocation("/admin/config")}
+              className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-300 hover:text-slate-500 transition-all py-1">
+              <Settings size={12} />
+              Administração
+            </button>
+          </div>
+
+          <div className="mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-slate-100 text-center animate-fade delay-8">
             <p className="text-[11px] sm:text-xs text-slate-400">Acesso restrito a membros autorizados da SOCEM</p>
           </div>
         </div>

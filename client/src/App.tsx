@@ -22,6 +22,7 @@ import ActivityLog from "./pages/ActivityLog";
 import ForgotPassword from "./pages/ForgotPassword";
 import PortalSelector from "./pages/PortalSelector";
 import NovoColaborador from "./pages/NovoColaborador";
+import AdminConfig from "./pages/AdminConfig";
 import Mensagens from "./pages/Mensagens";
 import AIChat from "./pages/AIChat";
 import TeamPanel from "./pages/TeamPanel";
@@ -59,6 +60,7 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/colaboradores/novo"} component={NovoColaborador} />
+<Route path={"/admin/config"} component={AdminConfig} />
       <Route path={"/dashboard"} component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path={"/users"} component={() => <ProtectedRoute component={Users} minRole="tutor" />} />
       <Route path={"/plans"} component={() => <ProtectedRoute component={Plans} />} />
