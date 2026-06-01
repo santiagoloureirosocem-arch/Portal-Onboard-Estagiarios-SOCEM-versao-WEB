@@ -612,7 +612,7 @@ export async function assignPlanToUser(data: { planId: number; userId: number; a
 export async function getPlanAssignmentsByUserId(userId: number) {
   const db = await getDb();
   if (!db) {
-    return memAssignments
+    const results = memAssignments
       .filter(a => a.userId === userId)
       .reverse()
       .map(a => {
@@ -621,6 +621,12 @@ export async function getPlanAssignmentsByUserId(userId: number) {
         const completed = tasks.filter(t => t.status === 'completed').length;
         const total = tasks.length;
         const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        // Retroactive fix: if all tasks done, mark assignment completed
+        if (a.status === 'active' && total > 0 && completed === total) {
+          a.status = 'completed';
+          a.updatedAt = new Date();
+          saveLocalDb();
+        }
         return {
           ...a,
           planTitle: plan?.title ?? null,
@@ -631,6 +637,7 @@ export async function getPlanAssignmentsByUserId(userId: number) {
           completedTasks: completed,
         };
       });
+    return results;
   }
   const results = await db
     .select({
@@ -657,6 +664,13 @@ export async function getPlanAssignmentsByUserId(userId: number) {
     const tasks = await getTasksByPlanId(r.planId);
     const completed = tasks.filter((t: any) => t.status === 'completed').length;
     const total = tasks.length;
+    // Retroactive fix: if all tasks done, mark assignment completed
+    if (r.status === 'active' && total > 0 && completed === total) {
+      await db.update(planAssignments)
+        .set({ status: 'completed', updatedAt: new Date() })
+        .where(eq(planAssignments.id, r.id));
+      r.status = 'completed' as any;
+    }
     return {
       ...r,
       progress: total > 0 ? Math.round((completed / total) * 100) : 0,
