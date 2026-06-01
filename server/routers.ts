@@ -75,9 +75,7 @@ export const appRouter = router({
   users: router({
     list: tutorProcedure.query(async () => await db.getAllUsers()),
     listForMessaging: protectedProcedure.query(async ({ ctx }) => {
-      // All authenticated users can see others for messaging (estagiários need to reach tutors)
-      const all = await db.getAllUsers();
-      return all.filter((u: any) => u.id !== ctx.user.id);
+      return await db.getUsersWithLastMessage(ctx.user.id);
     }),
     getById: tutorProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => await db.getUserById(input.id)),
 

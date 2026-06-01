@@ -388,6 +388,62 @@ export async function getAllUsers() {
   return await db.select().from(users).where(eq(users.isActive, true));
 }
 
+export async function getUsersWithLastMessage(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    const allUsers = Array.from(memUsers.values()).filter(u => u.isActive && u.id !== userId);
+    const lastMsgMap: Record<number, string | null> = {};
+    for (const msg of _memMessages) {
+      let contactId: number | null = null;
+      if (msg.senderId === userId) contactId = msg.receiverId;
+      else if (msg.receiverId === userId) contactId = msg.senderId;
+      if (contactId === null) continue;
+      const msgTime = new Date(msg.createdAt).getTime();
+      const existing = lastMsgMap[contactId];
+      if (!existing || msgTime > new Date(existing).getTime()) {
+        lastMsgMap[contactId] = new Date(msg.createdAt).toISOString();
+      }
+    }
+    return allUsers.map(u => ({
+      ...u,
+      lastMessageAt: lastMsgMap[u.id] ?? null,
+    }));
+  }
+
+  const rows = await db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      department: users.department,
+      position: users.position,
+      avatar: users.avatar,
+      presence: users.presence,
+      passwordHash: users.passwordHash,
+      isActive: users.isActive,
+      darkMode: users.darkMode,
+      loginMethod: users.loginMethod,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+      emailTaskDeadline: users.emailTaskDeadline,
+      emailTaskOverdue: users.emailTaskOverdue,
+      emailNewMessage: users.emailNewMessage,
+      lastMessageAt: sql<string | null>`
+        (SELECT MAX(dm.createdAt)
+         FROM direct_messages dm
+         WHERE (dm.senderId = users.id AND dm.receiverId = ${userId})
+            OR (dm.senderId = ${userId} AND dm.receiverId = users.id))
+      `,
+    })
+    .from(users)
+    .where(and(eq(users.isActive, true), sql`${users.id} != ${userId}`));
+
+  return rows;
+}
+
 export async function updateUser(id: number, data: Partial<InsertUser>) {
   const db = await getDb();
   if (!db) {
