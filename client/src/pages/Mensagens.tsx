@@ -104,6 +104,8 @@ export default function Mensagens() {
   const [showInfo, setShowInfo] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
   const [sortMode, setSortMode] = useState<"recent" | "alpha">("recent");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -139,9 +141,12 @@ export default function Mensagens() {
   const unreadCounts = (unreadQuery.data ?? {}) as Record<number, number>;
   const messages = (messagesQuery.data ?? []) as any[];
 
-  const filteredContacts = allContacts.filter(c =>
-    !search || (c.name ?? c.openId ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredContacts = allContacts.filter(c => {
+    if (search && !(c.name ?? c.openId ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+    if (roleFilter !== "all" && c.role !== roleFilter) return false;
+    if (unreadOnly && !(unreadCounts[c.id] ?? 0)) return false;
+    return true;
+  });
   const sortedContacts = [...filteredContacts].sort((a, b) => {
     if (sortMode === "alpha") {
       return (a.name ?? "").localeCompare(b.name ?? "");
@@ -222,27 +227,51 @@ export default function Mensagens() {
                 className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm bg-slate-100 dark:bg-slate-800/80 border-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-all"
               />
             </div>
-            <div className="flex items-center gap-1 mt-3">
-              <button
-                onClick={() => setSortMode("recent")}
+            <div className="flex items-center gap-1 mt-3 flex-wrap">
+              <button onClick={() => setRoleFilter("all")}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  roleFilter === "all"
+                    ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 font-semibold"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}>Todos</button>
+              <button onClick={() => setRoleFilter("estagiario")}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  roleFilter === "estagiario"
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 font-semibold"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}>Estagiários</button>
+              <button onClick={() => setRoleFilter("tutor")}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  roleFilter === "tutor"
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 font-semibold"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}>Tutores</button>
+              <button onClick={() => setRoleFilter("admin")}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  roleFilter === "admin"
+                    ? "bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 font-semibold"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}>Admin</button>
+            </div>
+            <div className="flex items-center gap-1 mt-2">
+              <button onClick={() => setSortMode("recent")}
                 className={`text-xs px-3 py-1.5 rounded-full transition-all ${
                   sortMode === "recent"
                     ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 font-semibold"
                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-              >
-                Recentes
-              </button>
-              <button
-                onClick={() => setSortMode("alpha")}
+                }`}>Recentes</button>
+              <button onClick={() => setSortMode("alpha")}
                 className={`text-xs px-3 py-1.5 rounded-full transition-all ${
                   sortMode === "alpha"
                     ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 font-semibold"
                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-              >
-                A-Z
-              </button>
+                }`}>A-Z</button>
+              <button onClick={() => setUnreadOnly(v => !v)}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  unreadOnly
+                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 font-semibold"
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}>{unreadOnly ? "Por ler" : "Todas"}</button>
             </div>
           </div>
 
