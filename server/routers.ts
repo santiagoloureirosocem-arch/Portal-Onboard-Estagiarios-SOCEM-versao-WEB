@@ -648,7 +648,10 @@ ${input.fileName ? `<p style="font-size:13px;color:#666;">📎 Ficheiro anexado:
           };
         }
 
+        const todayDate = new Date().toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         const SYSTEM_PROMPT = `Tu és o **Norte**, o assistente virtual especializado no **Portal de Estagiários SOCEM**, uma aplicação web para gestão do onboarding de estagiários.
+
+Hoje é **${todayDate}**. Quando falares de "hoje" ou "esta semana", usa esta data como referência.
 
 ## Visão Geral da Aplicação
 O Portal de Estagiários SOCEM é uma plataforma completa para gerir o processo de integração de novos estagiários. Permite criar planos de onboarding, atribuí-los a estagiários, acompanhar tarefas e gerar relatórios de progresso.
