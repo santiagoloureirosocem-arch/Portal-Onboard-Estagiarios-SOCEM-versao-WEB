@@ -94,4 +94,45 @@ export function registerAdminConfigRoutes(app: Express) {
       res.status(500).json({ error: "Erro ao eliminar departamento" });
     }
   });
+
+  // ─── Programas ────────────────────────────────────────────────────────────
+
+  app.get("/api/programas", async (_req: Request, res: Response) => {
+    try {
+      const data = await db.getAllProgramas();
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: "Erro ao carregar programas" });
+    }
+  });
+
+  app.post("/api/programas", async (req: Request, res: Response) => {
+    if (!auth(req, res)) return;
+    try {
+      const item = await db.createPrograma(req.body.nome);
+      res.json(item);
+    } catch (err) {
+      res.status(500).json({ error: "Erro ao criar programa" });
+    }
+  });
+
+  app.put("/api/programas/:id", async (req: Request, res: Response) => {
+    if (!auth(req, res)) return;
+    try {
+      await db.updatePrograma(Number(req.params.id), req.body.nome);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Erro ao atualizar programa" });
+    }
+  });
+
+  app.delete("/api/programas/:id", async (req: Request, res: Response) => {
+    if (!auth(req, res)) return;
+    try {
+      await db.deletePrograma(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Erro ao eliminar programa" });
+    }
+  });
 }

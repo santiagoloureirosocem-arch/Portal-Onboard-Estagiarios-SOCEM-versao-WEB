@@ -232,3 +232,31 @@ export const departamentos = mysqlTable("departamentos", {
 
 export type Departamento = typeof departamentos.$inferSelect;
 export type InsertDepartamento = typeof departamentos.$inferInsert;
+
+/**
+ * Software programs/tools for the new colaborador form
+ */
+export const programas = mysqlTable("programas", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+});
+
+export type Programa = typeof programas.$inferSelect;
+export type InsertPrograma = typeof programas.$inferInsert;
+
+/**
+ * Activity/audit log — persistent record of admin and tutor actions
+ */
+export const activityLog = mysqlTable("activity_log", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }).notNull(),
+  action: varchar("action", { length: 64 }).notNull(),
+  description: text("description").notNull(),
+  entityType: mysqlEnum("entityType", ["task", "plan", "user", "assignment", "empresa", "departamento", "programa"]).notNull(),
+  entityId: int("entityId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivityLogEntry = typeof activityLog.$inferSelect;
+export type InsertActivityLogEntry = typeof activityLog.$inferInsert;

@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import * as db from "./db";
 import { invokeLLM, type Message, type Tool } from "./_core/llm";
 import { sendEmail } from "./_core/email";
@@ -96,6 +97,7 @@ export const appRouter = router({
         throw new TRPCError({ code: "CONFLICT", message: "Username já existe" });
       }
       const openId = `local-dyn-${input.username}`;
+      const hashedPassword = await bcrypt.hash(input.password, 12);
       await db.upsertUser({
         openId,
         name: input.name,
@@ -104,12 +106,12 @@ export const appRouter = router({
         position: input.position,
         role: input.role,
         isActive: true,
-        passwordHash: input.password, // plain text for local dev
+        passwordHash: hashedPassword,
         loginMethod: "local",
         avatar: input.avatar ?? DEFAULT_AVATAR,
       });
       const newUser = await db.getUserByUsername(input.username);
-      db.addActivityLog({
+      await db.addActivityLog({
         userId: newUser?.id ?? 0,
         userName: input.name,
         action: "user_created",
@@ -131,7 +133,7 @@ export const appRouter = router({
     })).mutation(async ({ input }) => {
       const { id, password, ...rest } = input;
       const updateData: Record<string, unknown> = { ...rest };
-      if (password) updateData.passwordHash = password;
+      if (password) updateData.passwordHash = await bcrypt.hash(password, 12);
       await db.updateUser(id, updateData as any);
       return { success: true };
     }),
@@ -171,10 +173,12 @@ export const appRouter = router({
     })).mutation(async ({ ctx, input }) => {
       const user = await db.getUserById(ctx.user.id);
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Utilizador não encontrado" });
-      if (user.passwordHash !== input.currentPassword) {
+      const valid = await bcrypt.compare(input.currentPassword, user.passwordHash ?? "");
+      if (!valid) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Password atual incorreta" });
       }
-      await db.updateUser(ctx.user.id, { passwordHash: input.newPassword } as any);
+      const hashedNew = await bcrypt.hash(input.newPassword, 12);
+      await db.updateUser(ctx.user.id, { passwordHash: hashedNew } as any);
       return { success: true };
     }),
   }),
@@ -218,7 +222,7 @@ export const appRouter = router({
           expectedEndDate: endDate,
         });
         const assignedUser = await db.getUserById(assignedToUserId);
-        db.addActivityLog({
+        await db.addActivityLog({
           userId: ctx.user.id,
           userName: (ctx.user as any).name ?? ctx.user.openId,
           action: "plan_assigned",
@@ -227,7 +231,7 @@ export const appRouter = router({
           entityId: plan.id,
         });
       } else {
-        db.addActivityLog({
+        await db.addActivityLog({
           userId: ctx.user.id,
           userName: (ctx.user as any).name ?? ctx.user.openId,
           action: "plan_created",
@@ -343,7 +347,7 @@ export const appRouter = router({
       }
       if (input.status) {
         const statusLabels: Record<string, string> = { pending: "Pendente", in_progress: "Em Progresso", completed: "Concluída" };
-        db.addActivityLog({
+        await db.addActivityLog({
           userId: ctx.user.id,
           userName: (ctx.user as any).name ?? ctx.user.openId,
           action: "task_status_changed",
@@ -423,7 +427,7 @@ export const appRouter = router({
   dashboard: router({
     metrics: tutorProcedure.query(async () => await db.getDashboardMetrics()),
     activityLog: tutorProcedure.input(z.object({ limit: z.number().min(1).max(100).default(50) }).optional()).query(async ({ input }) => {
-      return db.getActivityLog(input?.limit ?? 50);
+      return await db.getActivityLog(input?.limit ?? 50);
     }),
     myProgress: protectedProcedure.query(async ({ ctx }) => {
       const assignments = await db.getPlanAssignmentsByUserId(ctx.user.id);
@@ -1046,6 +1050,143 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
 
           return { content: "Desculpa, ocorreu um erro ao contactar o assistente. Tenta novamente mais tarde. Se o problema persistir, contacta o administrador do sistema." };
         }
+      }),
+  }),
+
+  catalog: router({
+    // Empresas
+    empresas: adminProcedure.query(async () => await db.getAllEmpresas()),
+    createEmpresa: adminProcedure
+      .input(z.object({ nome: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const item = await db.createEmpresa(input.nome);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "empresa_created",
+          description: `Empresa "${input.nome}" criada`,
+          entityType: "empresa",
+          entityId: item.id,
+        });
+        return item;
+      }),
+    updateEmpresa: adminProcedure
+      .input(z.object({ id: z.number(), nome: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateEmpresa(input.id, input.nome);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "empresa_updated",
+          description: `Empresa #${input.id} renomeada para "${input.nome}"`,
+          entityType: "empresa",
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+    deleteEmpresa: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteEmpresa(input.id);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "empresa_deleted",
+          description: `Empresa #${input.id} eliminada`,
+          entityType: "empresa",
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+
+    // Departamentos
+    departamentos: adminProcedure.query(async () => await db.getAllDepartamentos()),
+    createDepartamento: adminProcedure
+      .input(z.object({ nome: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const item = await db.createDepartamento(input.nome);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "departamento_created",
+          description: `Departamento "${input.nome}" criado`,
+          entityType: "departamento",
+          entityId: item.id,
+        });
+        return item;
+      }),
+    updateDepartamento: adminProcedure
+      .input(z.object({ id: z.number(), nome: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updateDepartamento(input.id, input.nome);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "departamento_updated",
+          description: `Departamento #${input.id} renomeado para "${input.nome}"`,
+          entityType: "departamento",
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+    deleteDepartamento: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deleteDepartamento(input.id);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "departamento_deleted",
+          description: `Departamento #${input.id} eliminado`,
+          entityType: "departamento",
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+
+    // Programas
+    programas: adminProcedure.query(async () => await db.getAllProgramas()),
+    createPrograma: adminProcedure
+      .input(z.object({ nome: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const item = await db.createPrograma(input.nome);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "programa_created",
+          description: `Programa "${input.nome}" criado`,
+          entityType: "programa",
+          entityId: item.id,
+        });
+        return item;
+      }),
+    updatePrograma: adminProcedure
+      .input(z.object({ id: z.number(), nome: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        await db.updatePrograma(input.id, input.nome);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "programa_updated",
+          description: `Programa #${input.id} renomeado para "${input.nome}"`,
+          entityType: "programa",
+          entityId: input.id,
+        });
+        return { success: true };
+      }),
+    deletePrograma: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await db.deletePrograma(input.id);
+        await db.addActivityLog({
+          userId: ctx.user.id,
+          userName: ctx.user.name ?? "admin",
+          action: "programa_deleted",
+          description: `Programa #${input.id} eliminado`,
+          entityType: "programa",
+          entityId: input.id,
+        });
+        return { success: true };
       }),
   }),
 });

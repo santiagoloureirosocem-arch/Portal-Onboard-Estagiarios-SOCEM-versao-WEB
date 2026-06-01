@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, LogOut } from "lucide-react";
+import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, Monitor, LogOut } from "lucide-react";
 
 const API = (path: string, token: string, init?: RequestInit) =>
   fetch(path, {
@@ -12,9 +12,10 @@ export default function AdminConfig() {
   const [, setLocation] = useLocation();
   const [pass, setPass] = useState("");
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState<"empresas" | "departamentos">("empresas");
+  const [tab, setTab] = useState<"empresas" | "departamentos" | "programas">("empresas");
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [departamentos, setDepartamentos] = useState<any[]>([]);
+  const [programas, setProgramas] = useState<any[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
   const [editNome, setEditNome] = useState("");
   const [newNome, setNewNome] = useState("");
@@ -25,6 +26,7 @@ export default function AdminConfig() {
     Promise.all([
       API("/api/empresas", pass).then(r => r.json()).then(setEmpresas),
       API("/api/departamentos", pass).then(r => r.json()).then(setDepartamentos),
+      API("/api/programas", pass).then(r => r.json()).then(setProgramas),
     ]);
   }, [authed, pass]);
 
@@ -39,38 +41,41 @@ export default function AdminConfig() {
 
   const addItem = async () => {
     if (!newNome.trim()) return;
-    const ep = tab === "empresas" ? "/api/empresas" : "/api/departamentos";
+    const ep = tab === "empresas" ? "/api/empresas" : tab === "departamentos" ? "/api/departamentos" : "/api/programas";
     const res = await API(ep, pass, { method: "POST", body: JSON.stringify({ nome: newNome.trim() }) });
     if (res.ok) {
       const item = await res.json();
       if (tab === "empresas") setEmpresas(prev => [...prev, item]);
-      else setDepartamentos(prev => [...prev, item]);
+      else if (tab === "departamentos") setDepartamentos(prev => [...prev, item]);
+      else setProgramas(prev => [...prev, item]);
       setNewNome("");
     }
   };
 
   const saveEdit = async (id: number) => {
     if (!editNome.trim()) return;
-    const ep = tab === "empresas" ? `/api/empresas/${id}` : `/api/departamentos/${id}`;
+    const ep = tab === "empresas" ? `/api/empresas/${id}` : tab === "departamentos" ? `/api/departamentos/${id}` : `/api/programas/${id}`;
     const res = await API(ep, pass, { method: "PUT", body: JSON.stringify({ nome: editNome.trim() }) });
     if (res.ok) {
-      const setter = tab === "empresas" ? setEmpresas : setDepartamentos;
+      const setter = tab === "empresas" ? setEmpresas : tab === "departamentos" ? setDepartamentos : setProgramas;
       setter((prev: any[]) => prev.map((e: any) => e.id === id ? { ...e, nome: editNome.trim() } : e));
       setEditId(null);
     }
   };
 
   const deleteItem = async (id: number) => {
-    const ep = tab === "empresas" ? `/api/empresas/${id}` : `/api/departamentos/${id}`;
+    const ep = tab === "empresas" ? `/api/empresas/${id}` : tab === "departamentos" ? `/api/departamentos/${id}` : `/api/programas/${id}`;
     const res = await API(ep, pass, { method: "DELETE" });
     if (res.ok) {
-      const setter = tab === "empresas" ? setEmpresas : setDepartamentos;
+      const setter = tab === "empresas" ? setEmpresas : tab === "departamentos" ? setDepartamentos : setProgramas;
       setter((prev: any[]) => prev.filter((e: any) => e.id !== id));
     }
   };
 
-  const items = tab === "empresas" ? empresas : departamentos;
-  const icons = { empresas: Building2, departamentos: Briefcase };
+  const items = tab === "empresas" ? empresas : tab === "departamentos" ? departamentos : programas;
+  const icons = { empresas: Building2, departamentos: Briefcase, programas: Monitor };
+  const labels = { empresas: "empresa", departamentos: "departamento", programas: "programa" };
+  const articles = { empresas: "a", departamentos: "", programas: "" };
 
   if (!authed) {
     return (
@@ -105,6 +110,7 @@ export default function AdminConfig() {
     );
   }
 
+  const activeLabel = labels[tab];
   const Icon = icons[tab];
 
   return (
@@ -127,12 +133,16 @@ export default function AdminConfig() {
               className={`flex-1 py-3 text-sm font-semibold transition-all ${tab === "departamentos" ? "text-red-600 border-b-2 border-red-600" : "text-slate-400 hover:text-slate-600"}`}>
               Departamentos
             </button>
+            <button onClick={() => setTab("programas")}
+              className={`flex-1 py-3 text-sm font-semibold transition-all ${tab === "programas" ? "text-red-600 border-b-2 border-red-600" : "text-slate-400 hover:text-slate-600"}`}>
+              Programas
+            </button>
           </div>
 
           <div className="p-4">
             <div className="flex gap-2 mb-4">
               <input value={newNome} onChange={e => setNewNome(e.target.value)}
-                placeholder={`Nov${tab === "empresas" ? "a" : "o"} ${tab === "empresas" ? "empresa" : "departamento"}`}
+                placeholder={`Nov${articles[tab]} ${activeLabel}`}
                 onKeyDown={e => e.key === "Enter" && addItem()}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-400"
               />
@@ -143,7 +153,7 @@ export default function AdminConfig() {
 
             <div className="space-y-2">
               {items.length === 0 && (
-                <p className="text-center text-slate-400 text-sm py-8">Nenhum{tab === "empresas" ? "a" : ""} {tab === "empresas" ? "empresa" : "departamento"} encontrado{tab === "empresas" ? "a" : ""}</p>
+                <p className="text-center text-slate-400 text-sm py-8">Nenhum{articles[tab]} {activeLabel} encontrado{articles[tab]}</p>
               )}
               {items.map((item: any) => (
                 <div key={item.id} className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5 group hover:bg-slate-100 transition-all">

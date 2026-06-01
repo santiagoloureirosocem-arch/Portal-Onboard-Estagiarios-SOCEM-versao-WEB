@@ -1,6 +1,6 @@
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage, notifications, dailyCheckins, aiUsage, empresas, departamentos } from "../drizzle/schema";
+import { InsertUser, User, users, onboardingPlans, onboardingTasks, planAssignments, taskCompletions, taskComments, taskAttachments, directMessages, DirectMessage, InsertDirectMessage, notifications, dailyCheckins, aiUsage, empresas, departamentos, programas, activityLog } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -188,6 +188,24 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         nome VARCHAR(255) NOT NULL
       )
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS programas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS activity_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        userId INT NOT NULL,
+        userName VARCHAR(255) NOT NULL,
+        action VARCHAR(64) NOT NULL,
+        description TEXT NOT NULL,
+        entityType ENUM('task','plan','user','assignment','empresa','departamento','programa') NOT NULL,
+        entityId INT,
+        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     // Seed sample data for empresas/departamentos
     try {
       const existingEmpresas = await db.select().from(empresas);
@@ -201,6 +219,16 @@ async function initTables(db: ReturnType<typeof drizzle>) {
         await db.insert(departamentos).values([
           { nome: "Engenharia" }, { nome: "Produção" }, { nome: "Qualidade" },
           { nome: "RH" }, { nome: "Informática" }, { nome: "Manutenção" },
+        ]);
+      }
+    } catch {}
+    try {
+      const existingProgs = await db.select().from(programas);
+      if (existingProgs.length === 0) {
+        await db.insert(programas).values([
+          { nome: "AutoCAD" }, { nome: "Adobe Creative Suite" }, { nome: "TopSolid" },
+          { nome: "CADMOULD" }, { nome: "Tebis" }, { nome: "Inventor" },
+          { nome: "MouldFLOW" },
         ]);
       }
     } catch {}
@@ -229,6 +257,7 @@ interface LocalDb {
   aiUsage: any[];
   empresas: any[];
   departamentos: any[];
+  programas: any[];
 }
 
 function loadLocalDb(): LocalDb {
@@ -280,6 +309,14 @@ function loadLocalDb(): LocalDb {
     { id: 4, nome: "RH" },
     { id: 5, nome: "Informática" },
     { id: 6, nome: "Manutenção" },
+  ], programas: [
+    { id: 1, nome: "AutoCAD" },
+    { id: 2, nome: "Adobe Creative Suite" },
+    { id: 3, nome: "TopSolid" },
+    { id: 4, nome: "CADMOULD" },
+    { id: 5, nome: "Tebis" },
+    { id: 6, nome: "Inventor" },
+    { id: 7, nome: "MouldFLOW" },
   ] };
 }
 
@@ -300,6 +337,7 @@ export function saveLocalDb(): void {
       aiUsage: _memAiUsage,
       empresas: _memEmpresas,
       departamentos: _memDepartamentos,
+      programas: _memProgramas,
     };
     fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch (e) {
@@ -326,6 +364,8 @@ let _memEmpresas: any[] = _localDb.empresas || [];
 let _empresaNextId = _memEmpresas.length > 0 ? Math.max(..._memEmpresas.map((e: any) => e.id)) + 1 : 1;
 let _memDepartamentos: any[] = _localDb.departamentos || [];
 let _deptNextId = _memDepartamentos.length > 0 ? Math.max(..._memDepartamentos.map((d: any) => d.id)) + 1 : 1;
+let _memProgramas: any[] = _localDb.programas || [];
+let _programaNextId = _memProgramas.length > 0 ? Math.max(..._memProgramas.map((p: any) => p.id)) + 1 : 1;
 
 function makeUser(data: InsertUser): User {
   const now = new Date();
@@ -1041,16 +1081,16 @@ export interface ActivityLogEntry {
   userName: string;
   action: string;       // e.g. "task_completed", "plan_created", "user_created"
   description: string;  // human-readable, e.g. "Concluiu a tarefa 'Reunião inicial'"
-  entityType: 'task' | 'plan' | 'user' | 'assignment';
+  entityType: 'task' | 'plan' | 'user' | 'assignment' | 'empresa' | 'departamento' | 'programa';
   entityId: number | null;
   createdAt: Date;
 }
 
-const MAX_LOG_ENTRIES = 200;
+const MAX_LOG_ENTRIES = 2000;
 let _activityLog: ActivityLogEntry[] = [];
 let _activityLogNextId = 1;
 
-export function addActivityLog(entry: Omit<ActivityLogEntry, 'id' | 'createdAt'>): void {
+export async function addActivityLog(entry: Omit<ActivityLogEntry, 'id' | 'createdAt'>): Promise<void> {
   const newEntry: ActivityLogEntry = {
     ...entry,
     id: _activityLogNextId++,
@@ -1060,9 +1100,38 @@ export function addActivityLog(entry: Omit<ActivityLogEntry, 'id' | 'createdAt'>
   if (_activityLog.length > MAX_LOG_ENTRIES) {
     _activityLog = _activityLog.slice(0, MAX_LOG_ENTRIES);
   }
+
+  // Persist to database
+  const dbConn = await getDb();
+  if (dbConn) {
+    try {
+      await dbConn.insert(activityLog).values({
+        userId: newEntry.userId,
+        userName: newEntry.userName,
+        action: newEntry.action,
+        description: newEntry.description,
+        entityType: newEntry.entityType,
+        entityId: newEntry.entityId ?? null,
+        createdAt: newEntry.createdAt,
+      });
+    } catch (e) {
+      console.warn("[ActivityLog] Failed to persist to DB:", e);
+    }
+  }
 }
 
-export function getActivityLog(limit = 50): ActivityLogEntry[] {
+export async function getActivityLog(limit = 50): Promise<ActivityLogEntry[]> {
+  const dbConn = await getDb();
+  if (dbConn) {
+    try {
+      const rows = await dbConn
+        .select()
+        .from(activityLog)
+        .orderBy(desc(activityLog.createdAt))
+        .limit(limit);
+      if (rows.length > 0) return rows as ActivityLogEntry[];
+    } catch {}
+  }
   return _activityLog.slice(0, limit);
 }
 
@@ -1505,4 +1574,46 @@ export async function deleteDepartamento(id: number): Promise<void> {
     return;
   }
   await db.delete(departamentos).where(eq(departamentos.id, id));
+}
+
+// ─── Programas ────────────────────────────────────────────────────────────────
+
+export async function getAllProgramas(): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return _memProgramas;
+  return await db.select().from(programas).orderBy(programas.nome);
+}
+
+export async function createPrograma(nome: string): Promise<any> {
+  const db = await getDb();
+  if (!db) {
+    const item = { id: _programaNextId++, nome };
+    _memProgramas.push(item);
+    saveLocalDb();
+    return item;
+  }
+  const result = await db.insert(programas).values({ nome });
+  const insertId = (result as any).insertId ?? (result as any)[0]?.insertId;
+  return { id: insertId, nome };
+}
+
+export async function updatePrograma(id: number, nome: string): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    const item = _memProgramas.find((p: any) => p.id === id);
+    if (item) item.nome = nome;
+    saveLocalDb();
+    return;
+  }
+  await db.update(programas).set({ nome }).where(eq(programas.id, id));
+}
+
+export async function deletePrograma(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    _memProgramas = _memProgramas.filter((p: any) => p.id !== id);
+    saveLocalDb();
+    return;
+  }
+  await db.delete(programas).where(eq(programas.id, id));
 }
