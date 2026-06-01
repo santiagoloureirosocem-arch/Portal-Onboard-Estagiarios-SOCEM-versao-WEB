@@ -1,7 +1,18 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { ENV } from "./env";
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
+let _resend: Resend | null = null;
 let _transporter: nodemailer.Transporter | null = null;
+
+function getResend(): Resend | null {
+  if (_resend) return _resend;
+  if (!RESEND_API_KEY) return null;
+  _resend = new Resend(RESEND_API_KEY);
+  console.log("[Email] Resend configurado como fallback");
+  return _resend;
+}
 
 function getTransporter(): nodemailer.Transporter | null {
   if (_transporter) return _transporter;
@@ -17,9 +28,9 @@ function getTransporter(): nodemailer.Transporter | null {
       user: ENV.smtpUser,
       pass: ENV.smtpPass,
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
   });
   console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
   return _transporter;
@@ -71,6 +82,75 @@ function buildHtml(heading: string, bodyHtml: string): string {
 </html>`;
 }
 
+async function sendViaSmtp(options: {
+  to: string;
+  toName?: string;
+  subject: string;
+  heading: string;
+  bodyHtml: string;
+  fromEmail: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const transporter = getTransporter();
+  if (!transporter) return { ok: false, error: "SMTP não configurado" };
+
+  try {
+    const result = await Promise.race([
+      transporter.sendMail({
+        from: `"Portal SOCEM" <${options.fromEmail}>`,
+        to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
+        subject: options.subject,
+        html: buildHtml(options.heading, options.bodyHtml),
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout ao enviar email (30s)")), 30000)
+      ),
+    ]);
+    console.log(`[Email] Enviado via SMTP "${options.subject}" para ${options.to} (messageId: ${result.messageId})`);
+    return { ok: true };
+  } catch (err: any) {
+    const msg = `Erro SMTP: ${err?.message ?? err}`;
+    console.error(`[Email] ${msg}`);
+    return { ok: false, error: msg };
+  }
+}
+
+async function sendViaResend(options: {
+  to: string;
+  toName?: string;
+  subject: string;
+  heading: string;
+  bodyHtml: string;
+  fromEmail: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const resend = getResend();
+  if (!resend) return { ok: false, error: "Resend não configurado" };
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `Portal SOCEM <${options.fromEmail}>`,
+      to: options.to,
+      subject: options.subject,
+      html: buildHtml(options.heading, options.bodyHtml),
+    });
+
+    if (error) {
+      console.error(`[Email] Erro Resend: ${error.message}`);
+      return { ok: false, error: error.message };
+    }
+
+    console.log(`[Email] Enviado via Resend "${options.subject}" para ${options.to} (id: ${data?.id})`);
+    return { ok: true };
+  } catch (err: any) {
+    const msg = `Erro Resend: ${err?.message ?? err}`;
+    console.error(`[Email] ${msg}`);
+    return { ok: false, error: msg };
+  }
+}
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function sendEmail(options: {
   to: string;
   toName?: string;
@@ -78,31 +158,41 @@ export async function sendEmail(options: {
   heading: string;
   bodyHtml: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.warn(`[Email] SMTP não configurado — email NÃO enviado para ${options.to}`);
-    return { ok: false, error: "SMTP não configurado" };
-  }
-
   const fromEmail = ENV.smtpFrom ?? ENV.smtpUser ?? "report@socem.pt";
+  const merged = { ...options, fromEmail };
 
-  try {
-    const result = await Promise.race([
-      transporter.sendMail({
-        from: `"Portal SOCEM" <${fromEmail}>`,
-        to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
-        subject: options.subject,
-        html: buildHtml(options.heading, options.bodyHtml),
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout ao enviar email (12s)")), 12000)
-      ),
-    ]);
-    console.log(`[Email] Enviado "${options.subject}" para ${options.to} (messageId: ${result.messageId})`);
-    return { ok: true };
-  } catch (err: any) {
-    const msg = `Erro SMTP: ${err?.message ?? err}`;
-    console.error(`[Email] ${msg}`);
-    return { ok: false, error: msg };
+  const transporter = getTransporter();
+  const resend = getResend();
+  if (!transporter && !resend) {
+    console.warn(`[Email] Nenhum serviço configurado — email NÃO enviado para ${options.to}`);
+    return { ok: false, error: "Nenhum serviço de email configurado (SMTP ou Resend)" };
   }
+
+  // Try SMTP first, with up to 3 retries on transient errors
+  if (transporter) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const result = await sendViaSmtp(merged);
+      if (result.ok) return result;
+      const isTransient = result.error?.includes("Timeout") ||
+        result.error?.includes("ETIMEDOUT") ||
+        result.error?.includes("ECONNRESET") ||
+        result.error?.includes("ECONNREFUSED");
+      if (!isTransient) break; // Auth/hard errors, don't retry
+      if (attempt < 3) {
+        const delay = attempt * 3000;
+        console.log(`[Email] Tentativa ${attempt} falhou (${result.error}), a tentar novamente em ${delay / 1000}s...`);
+        await sleep(delay);
+      }
+    }
+  }
+
+  // Fallback to Resend if SMTP failed
+  if (resend) {
+    console.log(`[Email] SMTP falhou, a tentar via Resend...`);
+    const result = await sendViaResend(merged);
+    if (result.ok) return result;
+  }
+
+  console.error(`[Email] Falha definitiva ao enviar "${options.subject}" para ${options.to}`);
+  return { ok: false, error: "Todos os métodos de envio falharam" };
 }
