@@ -4,7 +4,7 @@ import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Briefcase, Calendar, CheckCircle, Clock, Settings, Award, Download, FileText, Heart } from 'lucide-react';
+import { User, Mail, Briefcase, Calendar, CheckCircle, Clock, Settings, Award, Download, FileText, Heart, Star, Flame, Trophy, Zap, BadgeCheck } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
@@ -175,6 +175,9 @@ export default function Profile() {
     { enabled: !!user?.id }
   );
   const { data: certStatus } = trpc.dashboard.certificateStatus.useQuery();
+  const { data: badges } = trpc.dashboard.myBadges.useQuery();
+  const { data: streak } = trpc.dashboard.myStreak.useQuery();
+  const { data: checkins } = trpc.dailyCheckins.history.useQuery({ limit: 30 });
   const [downloading, setDownloading] = useState(false);
 
   const getProgressColor = (progress: number) => {
@@ -401,6 +404,80 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+          </Card>
+        )}
+
+        {/* Conquistas */}
+        {user?.role === 'estagiario' && (
+          <Card className="p-6">
+            <h2 className="text-2xl font-playfair font-bold text-foreground mb-1 flex items-center gap-2">
+              <Trophy size={22} className="text-amber-500" />
+              Conquistas
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">As tuas conquistas, sequência de check-ins e estado de humor.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Badges */}
+              <div className="space-y-3">
+                <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <Award size={16} className="text-amber-500" />
+                  Distintivos
+                </h3>
+                {badges && badges.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {badges.map((b: any) => (
+                      <div key={b.id} className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800/50">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                          <Star size={18} className="text-white fill-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-amber-800 dark:text-amber-300 truncate">{b.label}</p>
+                          {b.description && <p className="text-[11px] text-amber-600/70 dark:text-amber-400/70 truncate">{b.description}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700">
+                    <Award size={32} className="text-slate-300 dark:text-slate-600 mb-2" />
+                    <p className="text-sm text-slate-400">Nenhum distintivo ainda</p>
+                    <p className="text-xs text-slate-400 mt-1">Faz check-ins diários para ganhares distintivos!</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Streak + Check-in Stats */}
+              <div className="space-y-3">
+                <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <Flame size={16} className="text-orange-500" />
+                  Sequência
+                </h3>
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 border border-orange-200 dark:border-orange-800/50">
+                  <div className="relative shrink-0">
+                    <Flame size={48} className="text-orange-500" />
+                    <span className="absolute -top-1 -right-1 text-sm font-bold text-orange-600 dark:text-orange-400">{streak?.currentStreak || 0}</span>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-orange-800 dark:text-orange-300">{streak?.currentStreak || 0} dias</p>
+                    <p className="text-xs text-orange-600/70 dark:text-orange-400/70">sequência atual</p>
+                    <p className="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">Recorde: {streak?.longestStreak || 0} dias</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800/50">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
+                    <Zap size={22} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{checkins?.length || 0}</p>
+                    <p className="text-xs text-blue-600/70 dark:text-blue-400/70">check-ins registados no total</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mood trend mini-chart */}
+            {checkins && checkins.length > 0 && <ProfileMoodChart />}
           </Card>
         )}
 
