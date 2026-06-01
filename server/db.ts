@@ -213,6 +213,27 @@ function loadLocalDb(): LocalDb {
         lastSignedIn: new Date(u.lastSignedIn),
         passwordHash: u.passwordHash ?? null,
       }));
+      parsed.plans = (parsed.plans || []).map((p: any) => ({
+        ...p,
+        startDate: p.startDate ? new Date(p.startDate) : null,
+        endDate: p.endDate ? new Date(p.endDate) : null,
+        createdAt: new Date(p.createdAt),
+        updatedAt: new Date(p.updatedAt),
+      }));
+      parsed.tasks = (parsed.tasks || []).map((t: any) => ({
+        ...t,
+        startDate: t.startDate ? new Date(t.startDate) : null,
+        dueDate: t.dueDate ? new Date(t.dueDate) : null,
+        createdAt: new Date(t.createdAt),
+        updatedAt: new Date(t.updatedAt),
+      }));
+      parsed.assignments = (parsed.assignments || []).map((a: any) => ({
+        ...a,
+        startDate: new Date(a.startDate),
+        expectedEndDate: a.expectedEndDate ? new Date(a.expectedEndDate) : null,
+        createdAt: new Date(a.createdAt),
+        updatedAt: new Date(a.updatedAt),
+      }));
       return parsed;
     }
   } catch (e) {
