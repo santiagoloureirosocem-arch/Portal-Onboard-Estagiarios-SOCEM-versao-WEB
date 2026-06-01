@@ -120,9 +120,10 @@ export const appRouter = router({
         entityId: newUser?.id ?? null,
       });
       // Send email notification for new interns
+      let emailSent = false;
       if (input.role === "estagiario") {
         const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
-        sendEmail({
+        const result = await sendEmail({
           to: "informatica@socem.pt",
           toName: "Informática SOCEM",
           subject: `Novo Estagiário Registado — ${input.name}`,
@@ -138,9 +139,10 @@ export const appRouter = router({
   ${input.position ? `<tr style="background:#fafafa;"><td style="padding:10px 16px;font-size:13px;color:#777;">Cargo</td><td style="padding:10px 16px;font-size:13px;font-weight:600;color:#1a1a1a;">${input.position}</td></tr>` : ""}
 </table>
 <p style="margin-top:20px;"><a href="${appUrl}/dashboard" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Aceder ao Portal</a></p>`,
-        }).catch(() => {});
+        }).catch(() => ({ ok: false }));
+        emailSent = result?.ok ?? false;
       }
-      return { success: true };
+      return { success: true, emailSent };
     }),
 
     update: adminProcedure.input(z.object({
@@ -1340,6 +1342,19 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
 
     planTemplates: adminProcedure.query(async () => {
       return await db.getTemplatePlans();
+    }),
+
+    testEmail: adminProcedure.mutation(async () => {
+      const result = await sendEmail({
+        to: "informatica@socem.pt",
+        toName: "Informática SOCEM",
+        subject: "Teste de Email — Portal SOCEM",
+        heading: "Teste de Conectividade",
+        bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal de Estagiários SOCEM</strong>.</p>
+<p style="color:#666;font-size:13px;">Se recebeu este email, a configuração do Brevo está a funcionar corretamente.</p>
+<p style="color:#999;font-size:12px;">Enviado em: ${new Date().toLocaleString("pt-PT")}</p>`,
+      });
+      return { ok: result.ok, error: result.error ?? null };
     }),
   }),
 });

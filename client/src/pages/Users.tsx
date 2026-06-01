@@ -145,7 +145,7 @@ export default function Users() {
         await updateUserMutation.mutateAsync(updatePayload);
         toast.success("Utilizador atualizado com sucesso");
       } else {
-        await createUserMutation.mutateAsync({
+        const result = await createUserMutation.mutateAsync({
           name: formData.name,
           email: formData.email,
           username: formData.username,
@@ -155,7 +155,11 @@ export default function Users() {
           position: formData.position || undefined,
           avatar: avatarPreview || undefined,
         });
-        toast.success("Utilizador criado com sucesso");
+        if (result.emailSent) {
+          toast.success("Utilizador criado. Email enviado para informatica@socem.pt");
+        } else {
+          toast.success("Utilizador criado com sucesso");
+        }
       }
       resetForm();
       refetch();

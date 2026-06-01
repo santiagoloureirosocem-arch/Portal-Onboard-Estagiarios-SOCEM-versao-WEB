@@ -45,6 +45,7 @@ export default function AdminPanel() {
   const updatePrograma = trpc.catalog.updatePrograma.useMutation();
   const deletePrograma = trpc.catalog.deletePrograma.useMutation();
   const broadcast = trpc.admin.broadcastNotification.useMutation();
+  const testEmail = trpc.admin.testEmail.useMutation();
 
   // Local state
   const [newNome, setNewNome] = useState("");
@@ -297,6 +298,23 @@ export default function AdminPanel() {
               ) : (
                 <p className="text-center text-slate-400 text-sm py-8">A carregar informações do sistema...</p>
               )}
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={async () => {
+                    try {
+                      const result = await testEmail.mutateAsync();
+                      if (result.ok) toast.success("Email de teste enviado! Verifica informatica@socem.pt");
+                      else toast.error(`Falha: ${result.error || "Erro desconhecido"}`);
+                    } catch (err: any) {
+                      toast.error(err?.message || "Erro ao testar email");
+                    }
+                  }}
+                  disabled={testEmail.isPending}
+                  className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium disabled:opacity-50"
+                >
+                  {testEmail.isPending ? "A testar..." : "Testar envio de email"}
+                </button>
+              </div>
             </div>
           )}
         </Card>
