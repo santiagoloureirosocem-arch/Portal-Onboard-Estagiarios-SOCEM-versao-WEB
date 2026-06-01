@@ -98,7 +98,9 @@ function ComboBox({ id, label, value, onChange, options, icon: Icon, required }:
         </div>
         <ChevronDown size={15} className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
         {open && (
-          <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-hidden animate-in fade-in-0 zoom-in-95">
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+            <div className="absolute z-40 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-hidden animate-in fade-in-0 zoom-in-95">
             <div className="p-2 border-b border-slate-100">
               <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Procurar..."
@@ -116,9 +118,9 @@ function ComboBox({ id, label, value, onChange, options, icon: Icon, required }:
                 </div>
               ))}
             </div>
-          </div>
+            </div>
+          </>
         )}
-        {open && <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />}
       </div>
     </div>
   );
