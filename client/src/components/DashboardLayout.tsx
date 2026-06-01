@@ -31,8 +31,8 @@ import GlobalSearch from "./GlobalSearch";
 import { AIChatFloating } from "./AIChatFloating";
 import { OnboardingTour } from "./OnboardingTour";
 
-// ── Modal de lembrete de logout ──────────────────────────────────────────────
-function LogoutReminderModal({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
+// ── Modal de confirmação de logout ──────────────────────────────────────────
+function LogoutConfirmModal({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -41,27 +41,31 @@ function LogoutReminderModal({ onClose, onLogout }: { onClose: () => void; onLog
       {/* Modal */}
       <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-sm p-6 animate-in fade-in-0 zoom-in-95 duration-200">
         <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-            <AlertTriangle className="w-7 h-7 text-amber-500" />
+          <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+            <LogOut className="w-7 h-7 text-red-500" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              Não se esqueça de terminar sessão!
+              Terminar sessão
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-              Ainda tem sessão iniciada. Recomendamos que termine a sessão antes de sair para proteger a sua conta.
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Tem a certeza que deseja terminar a sessão?
             </p>
           </div>
-          <div className="flex gap-2 w-full mt-1">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
-              Sair mesmo assim
+          <div className="flex gap-3 w-full mt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={onClose}
+            >
+              Cancelar
             </Button>
             <Button
-              className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700"
+              variant="destructive"
+              className="flex-1"
               onClick={onLogout}
             >
-              <LogOut className="w-4 h-4" />
-              Terminar sessão
+              Sim, terminar sessão
             </Button>
           </div>
         </div>
@@ -257,7 +261,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const allMenuItems = [...visibleMenuItems, ...footerItems];
   const activeMenuItem = allMenuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
-  const [showLogoutReminder, setShowLogoutReminder] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Aviso ao fechar/recarregar o separador com sessão ativa
   useEffect(() => {
@@ -298,10 +302,10 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
 
   return (
     <>
-      {showLogoutReminder && (
-        <LogoutReminderModal
-          onClose={() => setShowLogoutReminder(false)}
-          onLogout={() => { setShowLogoutReminder(false); logout(); }}
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onClose={() => setShowLogoutConfirm(false)}
+          onLogout={() => { setShowLogoutConfirm(false); logout(); }}
         />
       )}
       <div className="relative" ref={sidebarRef}>
@@ -450,7 +454,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                   <span>Perfil</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={logout}
+                  onClick={() => setShowLogoutConfirm(true)}
                   className="cursor-pointer text-destructive focus:text-destructive rounded-lg gap-2 mt-0.5"
                 >
                   <LogOut className="h-4 w-4" />

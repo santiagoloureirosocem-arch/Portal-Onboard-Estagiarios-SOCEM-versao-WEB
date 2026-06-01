@@ -9,6 +9,22 @@ import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 
+async function loadLogoBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      c.getContext("2d")!.drawImage(img, 0, 0);
+      resolve(c.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 async function downloadCertificate(userName: string, department: string, plansCompleted: number) {
   try {
     const { default: jsPDF } = await import("jspdf");
@@ -20,6 +36,12 @@ async function downloadCertificate(userName: string, department: string, plansCo
     const RED = [180, 30, 30];
     const GOLD = [184, 150, 60];
     const DARK = [26, 26, 26];
+
+    const logoData = await loadLogoBase64('/socem-logo.png');
+    const logoW = 30;
+    const logoH = 30;
+    const logoX = cx - logoW / 2;
+    const logoY = 18;
 
     // ── Background: warm ivory ──
     doc.setFillColor(252, 248, 238);
@@ -57,54 +79,13 @@ async function downloadCertificate(userName: string, department: string, plansCo
     orn(17, pageH - 17, false, true);
     orn(pageW - 17, pageH - 17, true, true);
 
-    // ── Custom SOCEM Shield Badge ──
-    const badgeX = cx;
-    const badgeY = 35;
-    const badgeR = 16;
-
-    // Outer gold ring
-    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.setLineWidth(2);
-    doc.circle(badgeX, badgeY, badgeR);
-
-    // Inner ring
-    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.setLineWidth(0.5);
-    doc.circle(badgeX, badgeY, badgeR - 2.5);
-
-    // Red fill
-    doc.setFillColor(RED[0], RED[1], RED[2]);
-    doc.circle(badgeX, badgeY, badgeR - 3, "F");
-
-    // Dark red center circle
-    doc.setFillColor(150, 20, 20);
-    doc.circle(badgeX, badgeY, badgeR - 7, "F");
-
-    // SOCEM lettering
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    doc.setTextColor(255, 255, 255);
-    doc.text("SOCEM", badgeX, badgeY - 0.5, { align: "center" });
-
-    // Small "★" above and below in gold
-    doc.setFontSize(5);
-    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.text("★", badgeX, badgeY - badgeR + 4, { align: "center" });
-    doc.text("★", badgeX, badgeY + badgeR - 3, { align: "center" });
-
-    // Gold dots around - smaller and evenly spaced
-    for (let a = 0; a < 12; a++) {
-      const angle = (a / 12) * Math.PI * 2;
-      const dx = Math.cos(angle) * (badgeR + 2.5);
-      const dy = Math.sin(angle) * (badgeR + 2.5);
-      doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-      doc.circle(badgeX + dx, badgeY + dy, 0.4, "F");
-    }
+    // ── SOCEM Logo Badge ──
+    doc.addImage(logoData, 'PNG', logoX, logoY, logoW, logoH);
 
     // ── Decorative top rule ──
     doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
     doc.setLineWidth(0.3);
-    const ruleY = badgeY + badgeR + 7;
+    const ruleY = logoY + logoH + 7;
     doc.line(50, ruleY, cx - 30, ruleY);
     doc.line(cx + 30, ruleY, pageW - 50, ruleY);
 
