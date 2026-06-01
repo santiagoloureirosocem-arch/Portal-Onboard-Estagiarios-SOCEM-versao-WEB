@@ -782,7 +782,6 @@ export async function checkAndAutoCompletePlan(planId: number) {
     }
   }
 }
-}
 
 export async function getAllTasks() {
   const db = await getDb();
