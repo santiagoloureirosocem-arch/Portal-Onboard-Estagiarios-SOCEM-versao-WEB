@@ -343,32 +343,34 @@ export default function PlanDetail() {
                 <MarkdownRenderer content={plan.description} />
               </div>
             )}
-            <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+          </div>
+        </div>
+
+        {/* Duração do Plano */}
+        <Card className="p-5">
+          <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <Clock size={16} className="text-primary" />
+            Duração do Plano
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className={`p-4 rounded-xl border ${plan.startDate ? 'bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-800' : 'bg-slate-50 dark:bg-slate-800/40 border-dashed border-slate-200 dark:border-slate-700'}`}>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Início</p>
               {plan.startDate ? (
-                <span className="flex items-center gap-1.5">
-                  <Clock size={14} />
-                  Início: {new Date(plan.startDate).toLocaleDateString('pt-PT')}
-                </span>
+                <p className="text-lg font-bold text-foreground">{new Date(plan.startDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
               ) : (
-                <span className="flex items-center gap-1.5 text-slate-400">
-                  <Clock size={14} />
-                  Sem data de início
-                </span>
+                <p className="text-sm text-slate-400 italic">Não definida</p>
               )}
+            </div>
+            <div className={`p-4 rounded-xl border ${plan.endDate ? 'bg-blue-50/50 dark:bg-blue-950/10 border-blue-200 dark:border-blue-800' : 'bg-slate-50 dark:bg-slate-800/40 border-dashed border-slate-200 dark:border-slate-700'}`}>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Fim</p>
               {plan.endDate ? (
-                <span className="flex items-center gap-1.5">
-                  <Clock size={14} />
-                  Fim: {new Date(plan.endDate).toLocaleDateString('pt-PT')}
-                </span>
+                <p className="text-lg font-bold text-foreground">{new Date(plan.endDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
               ) : (
-                <span className="flex items-center gap-1.5 text-slate-400">
-                  <Clock size={14} />
-                  Sem data de fim
-                </span>
+                <p className="text-sm text-slate-400 italic">Não definida</p>
               )}
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Progress bar */}
         <Card className="p-5">

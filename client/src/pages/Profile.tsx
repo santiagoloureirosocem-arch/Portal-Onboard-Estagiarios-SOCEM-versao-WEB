@@ -253,9 +253,9 @@ export default function Profile() {
             Meus Planos de Integração
           </h2>
 
-          {assignments && assignments.filter((a: any) => a.status === 'active' || a.status === 'completed').length > 0 ? (
+          {assignments && assignments.filter((a: any) => (a.status === 'active' || a.status === 'completed') && a.planTitle).length > 0 ? (
             <div className="space-y-4">
-              {assignments.filter((a: any) => a.status === 'active' || a.status === 'completed').map((assignment: any) => (
+              {assignments.filter((a: any) => (a.status === 'active' || a.status === 'completed') && a.planTitle).map((assignment: any) => (
                 <Card key={assignment.id} className="card-elevated p-6">
                   <div className="space-y-4">
                     {/* Header */}

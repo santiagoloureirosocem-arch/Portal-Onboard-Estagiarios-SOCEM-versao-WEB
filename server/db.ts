@@ -846,8 +846,16 @@ export async function deleteOnboardingPlan(id: number) {
   if (!db) {
     const idx = memPlans.findIndex(p => p.id === id);
     if (idx >= 0) { memPlans.splice(idx, 1); saveLocalDb(); }
+    for (let i = memAssignments.length - 1; i >= 0; i--) {
+      if (memAssignments[i].planId === id) memAssignments.splice(i, 1);
+    }
+    for (let i = memTasks.length - 1; i >= 0; i--) {
+      if (memTasks[i].planId === id) memTasks.splice(i, 1);
+    }
     return;
   }
+  await db.delete(planAssignments).where(eq(planAssignments.planId, id));
+  await db.delete(onboardingTasks).where(eq(onboardingTasks.planId, id));
   await db.delete(onboardingPlans).where(eq(onboardingPlans.id, id));
 }
 
