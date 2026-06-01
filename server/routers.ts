@@ -327,11 +327,11 @@ export const appRouter = router({
       dueDate: z.date().optional(),
       order: z.number().optional(),
     })).mutation(async ({ input, ctx }) => {
-      // Estagiários podem atualizar o status entre todos os estados
+      // Estagiários podem atualizar o status e a ordem das tarefas
       if (ctx.user.role === "estagiario") {
         const allowed = Object.keys(input).filter(k => k !== "id");
-        if (allowed.some(k => k !== "status") || (input.status && !["pending", "in_progress", "completed"].includes(input.status))) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Estagiários só podem alterar o estado das tarefas" });
+        if (allowed.some(k => k !== "status" && k !== "order") || (input.status && !["pending", "in_progress", "completed"].includes(input.status))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Estagiários só podem alterar o estado e a ordem das tarefas" });
         }
       }
       const { id, ...updateData } = input;
