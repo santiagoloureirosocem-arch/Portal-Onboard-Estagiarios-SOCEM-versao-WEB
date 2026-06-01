@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, Monitor, LogOut, Bell, LayoutTemplate, Cpu, Send, Copy } from "lucide-react";
+import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, Monitor, LogOut, Bell, LayoutTemplate, Cpu, Send, Copy, ChevronRight, GraduationCap } from "lucide-react";
 
 const API = (path: string, token: string, init?: RequestInit) =>
   fetch(path, {
@@ -33,6 +33,7 @@ export default function AdminConfig() {
   const [newNome, setNewNome] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [showSelector, setShowSelector] = useState(false);
 
   // Broadcast
   const [notifTitle, setNotifTitle] = useState("");
@@ -58,7 +59,7 @@ export default function AdminConfig() {
 
   const handleLogin = () => {
     if (pass === "socem2026") {
-      setAuthed(true);
+      setShowSelector(true);
       setError("");
     } else {
       setError("Password incorreta");
@@ -154,7 +155,7 @@ export default function AdminConfig() {
   const catArt: Record<string, string> = { empresas: "a", departamentos: "", programas: "" };
   const Icon = catIcon[tab] ?? Building2;
 
-  if (!authed) {
+  if (!authed && !showSelector) {
     return (
       <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-red-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 p-6 shadow-xl">
@@ -187,6 +188,63 @@ export default function AdminConfig() {
     );
   }
 
+  if (showSelector && !authed) {
+    return (
+      <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-red-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-red-600 flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Painel de Administração</h1>
+            <p className="text-sm text-slate-500 mt-1">Seleciona o portal que pretendes gerir</p>
+          </div>
+
+          <div className="grid gap-3">
+            <button
+              onClick={() => { setAuthed(true); setShowSelector(false); }}
+              className="group bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 p-5 shadow-lg hover:shadow-xl hover:border-red-300 transition-all text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center group-hover:bg-red-600 transition-colors">
+                  <Briefcase size={22} className="text-red-600 group-hover:text-white transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-semibold text-slate-800 text-base">Portal de Novos Colaboradores</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Gerir empresas, departamentos, programas, templates, notificações e sistema</p>
+                </div>
+                <ChevronRight size={18} className="text-slate-300 group-hover:text-red-500 transition-colors" />
+              </div>
+            </button>
+
+            <button
+              onClick={() => setLocation("/dashboard")}
+              className="group bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 p-5 shadow-lg hover:shadow-xl hover:border-red-300 transition-all text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center group-hover:bg-red-600 transition-colors">
+                  <GraduationCap size={22} className="text-red-600 group-hover:text-white transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-semibold text-slate-800 text-base">Portal de Estagiários</h2>
+                  <p className="text-sm text-slate-500 mt-0.5">Dashboard, utilizadores, planos, tarefas, calendário e relatórios</p>
+                </div>
+                <ChevronRight size={18} className="text-slate-300 group-hover:text-red-500 transition-colors" />
+              </div>
+            </button>
+          </div>
+
+          <button
+            onClick={() => { setShowSelector(false); setPass(""); }}
+            className="w-full mt-4 py-3 rounded-xl text-sm text-slate-400 hover:text-slate-600 transition-colors font-medium"
+          >
+            ← Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-red-50 p-4 sm:p-6">
       <div className="max-w-2xl mx-auto">
@@ -195,7 +253,7 @@ export default function AdminConfig() {
             <Shield size={20} className="text-red-600" />
             <h1 className="text-lg font-bold text-slate-900">Painel de Administração</h1>
           </div>
-          <button onClick={() => { setAuthed(false); setPass(""); setLocation("/"); }} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all text-sm font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5">
+          <button onClick={() => { setAuthed(false); setShowSelector(false); setPass(""); setLocation("/"); }} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all text-sm font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5">
             <LogOut size={15} />
             Sair
           </button>
