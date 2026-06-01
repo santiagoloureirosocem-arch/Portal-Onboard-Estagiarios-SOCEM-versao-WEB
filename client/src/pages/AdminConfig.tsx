@@ -76,6 +76,9 @@ export default function AdminConfig() {
     return (
       <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-red-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 p-6 shadow-xl">
+          <button onClick={() => setLocation("/")} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 mb-4 transition-all">
+            ← Voltar ao portal
+          </button>
           <div className="text-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-red-600 flex items-center justify-center mx-auto mb-3 overflow-hidden">
               <Shield className="w-7 h-7 text-white" />
