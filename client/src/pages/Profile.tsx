@@ -69,7 +69,7 @@ async function downloadCertificate(userName: string, department: string, plansCo
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Lisboa, ${dateStr}`, pageW / 2, 155, { align: "center" });
+    doc.text(`${department || 'Lisboa'}, ${dateStr}`, pageW / 2, 155, { align: "center" });
 
     // Linha de assinatura
     doc.setDrawColor(150);

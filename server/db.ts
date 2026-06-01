@@ -627,6 +627,12 @@ export async function getPlanAssignmentsByUserId(userId: number) {
           a.updatedAt = new Date();
           saveLocalDb();
         }
+        // Retroactive fix: if tasks undone, revert assignment to active
+        if (a.status === 'completed' && total > 0 && completed !== total) {
+          a.status = 'active';
+          a.updatedAt = new Date();
+          saveLocalDb();
+        }
         return {
           ...a,
           planTitle: plan?.title ?? null,
@@ -670,6 +676,13 @@ export async function getPlanAssignmentsByUserId(userId: number) {
         .set({ status: 'completed', updatedAt: new Date() })
         .where(eq(planAssignments.id, r.id));
       r.status = 'completed' as any;
+    }
+    // Retroactive fix: if tasks undone, revert assignment to active
+    if (r.status === 'completed' && total > 0 && completed !== total) {
+      await db.update(planAssignments)
+        .set({ status: 'active', updatedAt: new Date() })
+        .where(eq(planAssignments.id, r.id));
+      r.status = 'active' as any;
     }
     return {
       ...r,
@@ -757,16 +770,17 @@ export async function updateTaskCompletion(id: number, data: Partial<{ status: '
   return await db.select().from(taskCompletions).where(eq(taskCompletions.id, id)).limit(1);
 }
 
-// Auto-complete a plan if all its tasks are completed (or it has no tasks)
+// Auto-complete or auto-revert a plan based on task completion
 export async function checkAndAutoCompletePlan(planId: number) {
   const plan = await getOnboardingPlanById(planId);
-  if (!plan || plan.status !== 'active') return;
+  if (!plan) return;
   const tasks = await getTasksByPlanId(planId);
-  const allDone = tasks.length === 0 || tasks.every((t: any) => t.status === 'completed');
-  if (allDone) {
+  const allDone = tasks.length > 0 && tasks.every((t: any) => t.status === 'completed');
+
+  const db = await getDb();
+
+  if (allDone && plan.status === 'active') {
     await updateOnboardingPlan(planId, { status: 'completed' });
-    // Update all active assignments for this plan to completed
-    const db = await getDb();
     if (!db) {
       for (const a of memAssignments) {
         if (a.planId === planId && a.status === 'active') {
@@ -779,6 +793,24 @@ export async function checkAndAutoCompletePlan(planId: number) {
       await db.update(planAssignments)
         .set({ status: 'completed', updatedAt: new Date() })
         .where(and(eq(planAssignments.planId, planId), eq(planAssignments.status, 'active')));
+    }
+  } else if (tasks.length > 0 && plan.status === 'completed') {
+    const hasPending = tasks.some((t: any) => t.status !== 'completed');
+    if (hasPending) {
+      await updateOnboardingPlan(planId, { status: 'active' });
+      if (!db) {
+        for (const a of memAssignments) {
+          if (a.planId === planId && a.status === 'completed') {
+            a.status = 'active';
+            a.updatedAt = new Date();
+          }
+        }
+        saveLocalDb();
+      } else {
+        await db.update(planAssignments)
+          .set({ status: 'active', updatedAt: new Date() })
+          .where(and(eq(planAssignments.planId, planId), eq(planAssignments.status, 'completed')));
+      }
     }
   }
 }
