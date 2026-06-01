@@ -452,7 +452,9 @@ export const appRouter = router({
     certificateStatus: protectedProcedure.query(async ({ ctx }) => {
       const allCompleted = await db.hasCompletedAllPlans(ctx.user.id);
       const assignments = await db.getPlanAssignmentsByUserId(ctx.user.id);
-      const active = assignments.filter((a: any) => a.status === 'active' || a.status === 'completed');
+      const active = assignments.filter((a: any) =>
+        (a.status === 'active' || a.status === 'completed') && a.planTitle
+      );
       const totalPlans = active.length;
       const completedPlans = active.filter((a: any) => a.status === 'completed').length;
       return { eligible: totalPlans > 0 && allCompleted, totalPlans, completedPlans };

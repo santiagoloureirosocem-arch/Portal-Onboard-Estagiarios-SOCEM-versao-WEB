@@ -746,12 +746,28 @@ export async function updateTaskCompletion(id: number, data: Partial<{ status: '
 // Auto-complete a plan if all its tasks are completed (or it has no tasks)
 export async function checkAndAutoCompletePlan(planId: number) {
   const plan = await getOnboardingPlanById(planId);
-  if (!plan || plan.status !== 'active') return; // only auto-complete active plans
+  if (!plan || plan.status !== 'active') return;
   const tasks = await getTasksByPlanId(planId);
   const allDone = tasks.length === 0 || tasks.every((t: any) => t.status === 'completed');
   if (allDone) {
     await updateOnboardingPlan(planId, { status: 'completed' });
+    // Update all active assignments for this plan to completed
+    const db = await getDb();
+    if (!db) {
+      for (const a of memAssignments) {
+        if (a.planId === planId && a.status === 'active') {
+          a.status = 'completed';
+          a.updatedAt = new Date();
+        }
+      }
+      saveLocalDb();
+    } else {
+      await db.update(planAssignments)
+        .set({ status: 'completed', updatedAt: new Date() })
+        .where(and(eq(planAssignments.planId, planId), eq(planAssignments.status, 'active')));
+    }
   }
+}
 }
 
 export async function getAllTasks() {
@@ -1308,7 +1324,9 @@ export async function getAiQuota(userId: number, role: string) {
 
 export async function hasCompletedAllPlans(userId: number) {
   const assignments = await getPlanAssignmentsByUserId(userId);
-  const active = assignments.filter((a: any) => a.status === 'active' || a.status === 'completed');
+  const active = assignments.filter((a: any) =>
+    (a.status === 'active' || a.status === 'completed') && a.planTitle
+  );
   if (active.length === 0) return false;
   return active.every((a: any) => a.status === 'completed');
 }
