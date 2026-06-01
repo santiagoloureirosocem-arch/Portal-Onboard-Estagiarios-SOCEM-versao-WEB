@@ -23,6 +23,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import PortalSelector from "./pages/PortalSelector";
 import NovoColaborador from "./pages/NovoColaborador";
 import AdminConfig from "./pages/AdminConfig";
+import AdminPanel from "./pages/AdminPanel";
 import Mensagens from "./pages/Mensagens";
 import AIChat from "./pages/AIChat";
 import TeamPanel from "./pages/TeamPanel";
@@ -75,6 +76,7 @@ function Router() {
       <Route path={"/equipa"} component={() => <ProtectedRoute component={TeamPanel} minRole="tutor" />} />
       <Route path={"/activity-log"} component={() => <ProtectedRoute component={ActivityLog} minRole="tutor" />} />
       <Route path={"/mensagens"} component={() => <ProtectedRoute component={Mensagens} />} />
+      <Route path={"/admin"} component={() => <ProtectedRoute component={AdminPanel} minRole="admin" />} />
       <Route path={"/ai-assist"} component={() => <ProtectedRoute component={AIChat} />} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

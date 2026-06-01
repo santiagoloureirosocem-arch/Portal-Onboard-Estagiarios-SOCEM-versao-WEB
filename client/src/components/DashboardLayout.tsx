@@ -87,6 +87,7 @@ const menuItems: { icon: any; label: string; path: string; roles: MenuRole[]; to
   { icon: Users,           label: "Equipa",       path: "/equipa",      roles: ["tutor", "admin"],               tourId: "nav-equipa" },
   { icon: Activity,        label: "Atividade",    path: "/activity-log",roles: ["tutor", "admin"],               tourId: "nav-activity-log" },
   { icon: MessageCircle,   label: "Mensagens",    path: "/mensagens",   roles: ["estagiario", "tutor", "admin"], tourId: "nav-mensagens" },
+  { icon: Shield,          label: "Administração", path: "/admin",      roles: ["admin"],                        tourId: "nav-admin" },
 ];
 
 const footerItems: { icon: any; label: string; path: string; tourId: string }[] = [

@@ -1285,6 +1285,7 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
       const dbOk = (await db.getDb()) !== null;
       const allUsers = await db.getAllUsers();
       const plans = await db.getAllOnboardingPlans();
+      const tasks = await db.getAllTasks();
       return {
         uptime: process.uptime(),
         memoryMB: Math.round(mem.heapUsed / 1024 / 1024),
@@ -1295,6 +1296,8 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
         totalUsers: allUsers.length,
         activePlans: plans.filter((p: any) => p.status === 'active').length,
         totalPlans: plans.length,
+        totalTasks: tasks.length,
+        completedTasks: tasks.filter((t: any) => t.status === 'completed').length,
       };
     }),
 
