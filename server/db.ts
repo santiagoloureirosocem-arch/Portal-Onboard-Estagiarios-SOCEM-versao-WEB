@@ -581,8 +581,34 @@ export async function assignPlanToUser(data: { planId: number; userId: number; a
 
 export async function getPlanAssignmentsByUserId(userId: number) {
   const db = await getDb();
-  if (!db) return memAssignments.filter(a => a.userId === userId).reverse();
-  return await db.select().from(planAssignments).where(eq(planAssignments.userId, userId)).orderBy(desc(planAssignments.createdAt));
+  if (!db) {
+    return memAssignments
+      .filter(a => a.userId === userId)
+      .reverse()
+      .map(a => {
+        const plan = memPlans.find(p => p.id === a.planId);
+        return { ...a, planTitle: plan?.title ?? null };
+      });
+  }
+  const results = await db
+    .select({
+      id: planAssignments.id,
+      planId: planAssignments.planId,
+      userId: planAssignments.userId,
+      assignedBy: planAssignments.assignedBy,
+      startDate: planAssignments.startDate,
+      expectedEndDate: planAssignments.expectedEndDate,
+      status: planAssignments.status,
+      progress: planAssignments.progress,
+      createdAt: planAssignments.createdAt,
+      updatedAt: planAssignments.updatedAt,
+      planTitle: onboardingPlans.title,
+    })
+    .from(planAssignments)
+    .leftJoin(onboardingPlans, eq(planAssignments.planId, onboardingPlans.id))
+    .where(eq(planAssignments.userId, userId))
+    .orderBy(desc(planAssignments.createdAt));
+  return results;
 }
 
 export async function getPlanAssignmentsByPlanId(planId: number) {
