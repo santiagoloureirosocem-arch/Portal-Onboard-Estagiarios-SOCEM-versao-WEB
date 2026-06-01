@@ -194,12 +194,12 @@ export default function NovoColaborador() {
         const isCurrent = step === s.id;
         return (
           <div key={s.id} className="flex items-center flex-shrink-0">
-            {s.id > 1 && <div className={`h-0.5 w-4 sm:w-6 transition-all duration-700 ${step >= s.id ? "bg-red-500" : "bg-slate-200"}`} />}
-            <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center transition-all duration-500
+            {s.id > 1 && <div className={`h-0.5 w-5 sm:w-8 transition-all duration-700 ${step >= s.id ? "bg-red-500" : "bg-slate-200"}`} />}
+            <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all duration-500
               ${isDone ? "bg-red-500 scale-110 shadow-md shadow-red-200" : isCurrent ? "bg-red-100 ring-2 ring-red-300" : "bg-slate-100"}`}>
               {isDone
-                ? <Check size={10} className="text-white draw-check" />
-                : <Icon size={10} className={isCurrent ? "text-red-600" : "text-slate-400"} />
+                ? <Check size={14} className="text-white draw-check" />
+                : <Icon size={14} className={isCurrent ? "text-red-600" : "text-slate-400"} />
               }
             </div>
           </div>
