@@ -15,68 +15,163 @@ async function downloadCertificate(userName: string, department: string, plansCo
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
+    const cx = pageW / 2;
 
-    // Border decorativa
-    doc.setDrawColor(204, 0, 0);
-    doc.setLineWidth(3);
-    doc.rect(10, 10, pageW - 20, pageH - 20);
-    doc.setDrawColor(26, 26, 26);
-    doc.setLineWidth(0.5);
-    doc.rect(13, 13, pageW - 26, pageH - 26);
+    const RED = [180, 30, 30];
+    const GOLD = [184, 150, 60];
+    const DARK = [26, 26, 26];
 
-    // Título
+    // ── Background: warm ivory ──
+    doc.setFillColor(252, 248, 238);
+    doc.rect(0, 0, pageW, pageH, "F");
+
+    // ── Outer border: gold ──
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(2);
+    doc.rect(8, 8, pageW - 16, pageH - 16);
+
+    // ── Middle border: red ──
+    doc.setDrawColor(RED[0], RED[1], RED[2]);
+    doc.setLineWidth(0.8);
+    doc.rect(12, 12, pageW - 24, pageH - 24);
+
+    // ── Inner border: gold thin ──
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(0.4);
+    doc.rect(15, 15, pageW - 30, pageH - 30);
+
+    // ── Corner ornaments ──
+    const orn = (x: number, y: number, flipX: boolean, flipY: boolean) => {
+      doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+      doc.setLineWidth(1.2);
+      const dirX = flipX ? -1 : 1;
+      const dirY = flipY ? -1 : 1;
+      doc.line(x, y + dirY * 10, x, y);
+      doc.line(x, y, x + dirX * 10, y);
+      doc.setLineWidth(0.4);
+      doc.line(x, y + dirY * 14, x, y + dirY * 10);
+      doc.line(x + dirX * 14, y, x + dirX * 10, y);
+    };
+    orn(17, 17, false, false);
+    orn(pageW - 17, 17, true, false);
+    orn(17, pageH - 17, false, true);
+    orn(pageW - 17, pageH - 17, true, true);
+
+    // ── Custom SOCEM Badge ──
+    const badgeX = cx;
+    const badgeY = 36;
+    const badgeR = 16;
+
+    // Outer gold ring
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(2);
+    doc.circle(badgeX, badgeY, badgeR);
+
+    // Inner red fill
+    doc.setFillColor(RED[0], RED[1], RED[2]);
+    doc.circle(badgeX, badgeY, badgeR - 2, "F");
+
+    // SOCEM lettering in badge
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(36);
-    doc.setTextColor(204, 0, 0);
-    doc.text("SOCEM", pageW / 2, 50, { align: "center" });
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text("SOCEM", badgeX, badgeY - 1.5, { align: "center" });
 
-    doc.setFontSize(16);
-    doc.setTextColor(80);
-    doc.text("Certificado de Conclusão", pageW / 2, 65, { align: "center" });
+    // Star dots flanking
+    doc.setFontSize(6);
+    doc.text("✦", badgeX - 6, badgeY + 5);
+    doc.text("✦", badgeX + 6, badgeY + 5);
 
-    // Texto principal
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(13);
-    doc.setTextColor(60);
-    const textLines = [
-      "Certificamos que",
-    ];
-    textLines.forEach((line, i) => {
-      doc.text(line, pageW / 2, 85 + i * 8, { align: "center" });
-    });
+    // Small gold dots around badge (simulated with circles)
+    for (let a = 0; a < 8; a++) {
+      const angle = (a / 8) * Math.PI * 2;
+      const dx = Math.cos(angle) * (badgeR + 2);
+      const dy = Math.sin(angle) * (badgeR + 2);
+      doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+      doc.circle(badgeX + dx, badgeY + dy, 0.6, "F");
+    }
 
-    // Nome do estagiário
+    // ── Decorative top rule ──
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(0.3);
+    const ruleY = badgeY + badgeR + 7;
+    doc.line(50, ruleY, cx - 30, ruleY);
+    doc.line(cx + 30, ruleY, pageW - 50, ruleY);
+
+    // ── "CERTIFICADO" ──
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(28);
-    doc.setTextColor(26, 26, 26);
-    doc.text(userName || "Estagiário", pageW / 2, 100, { align: "center" });
+    doc.setFontSize(11);
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.text("CERTIFICADO DE CONCLUSÃO", cx, ruleY + 10, { align: "center" });
 
+    // ── Gold underline ──
+    const certW = doc.getTextWidth("CERTIFICADO DE CONCLUSÃO");
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(0.3);
+    doc.line(cx - certW / 2 - 2, ruleY + 12, cx + certW / 2 + 2, ruleY + 12);
+
+    // ── Body ──
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(13);
-    doc.setTextColor(60);
-    const moreLines = [
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    const bodyY = ruleY + 22;
+    doc.text("Certificamos que", cx, bodyY, { align: "center" });
+
+    // ── Name ──
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(26);
+    doc.setTextColor(DARK[0], DARK[1], DARK[2]);
+    const nameY = bodyY + 12;
+    doc.text(userName || "Estagiário", cx, nameY, { align: "center" });
+
+    // ── Completion text ──
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    const compY = nameY + 14;
+    const lines = [
       `concluiu com sucesso ${plansCompleted} plano(s) de integração no`,
-      "departamento de " + (department || "Integração"),
-      "da SOCEM, demonstrando dedicação e competência.",
+      `departamento de ${department || "Integração"}`,
+      "da SOCEM, demonstrando dedicação e competência profissional.",
     ];
-    moreLines.forEach((line, i) => {
-      doc.text(line, pageW / 2, 118 + i * 8, { align: "center" });
-    });
+    let ly = compY;
+    lines.forEach((l) => { doc.text(l, cx, ly, { align: "center" }); ly += 7; });
 
-    // Data
+    // ── Gold rule ──
+    const midRuleY = ly + 6;
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(0.3);
+    doc.line(70, midRuleY, pageW - 70, midRuleY);
+
+    // ── Date + location ──
     const today = new Date();
     const dateStr = today.toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`${department || 'Lisboa'}, ${dateStr}`, pageW / 2, 155, { align: "center" });
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Leiria, ${dateStr}`, cx, midRuleY + 10, { align: "center" });
 
-    // Linha de assinatura
-    doc.setDrawColor(150);
+    // ── Signature line ──
+    const sigY = midRuleY + 22;
+    doc.setDrawColor(160, 160, 160);
     doc.setLineWidth(0.5);
-    doc.line(pageW / 2 - 40, 175, pageW / 2 + 40, 175);
+    doc.line(cx - 35, sigY, cx + 35, sigY);
+
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("Direção SOCEM", pageW / 2, 182, { align: "center" });
+    doc.setTextColor(RED[0], RED[1], RED[2]);
+    doc.text("Direção SOCEM", cx, sigY + 7, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(170, 170, 170);
+    doc.text("Portal de Onboarding de Estagiários", cx, sigY + 13, { align: "center" });
+
+    // ── Bottom footer ──
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7);
+    doc.setTextColor(190, 185, 175);
+    doc.text("Documento gerado automaticamente · SOCEM — Leiria", cx, pageH - 12, { align: "center" });
 
     doc.save(`Certificado_SOCEM_${(userName || "Estagiario").replace(/\s+/g, "_")}.pdf`);
   } catch {
