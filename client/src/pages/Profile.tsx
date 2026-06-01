@@ -264,18 +264,18 @@ export default function Profile() {
                         <h3 className="text-xl font-semibold text-foreground">
                           {assignment.planTitle ?? `Plano #${assignment.planId}`}
                         </h3>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
                           <div className="flex items-center gap-1">
                             <Calendar size={16} />
                             <span>
-                              Início: {new Date(assignment.startDate).toLocaleDateString('pt-PT')}
+                              Início: {new Date(assignment.planStartDate ?? assignment.startDate).toLocaleDateString('pt-PT')}
                             </span>
                           </div>
-                          {assignment.expectedEndDate && (
+                          {(assignment.planEndDate ?? assignment.expectedEndDate) && (
                             <div className="flex items-center gap-1">
                               <Calendar size={16} />
                               <span>
-                                Fim: {new Date(assignment.expectedEndDate).toLocaleDateString('pt-PT')}
+                                Fim: {new Date(assignment.planEndDate ?? assignment.expectedEndDate).toLocaleDateString('pt-PT')}
                               </span>
                             </div>
                           )}
@@ -322,28 +322,28 @@ export default function Profile() {
 
                     {/* Stats */}
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                          <CheckCircle size={20} className="text-green-600" />
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                            <CheckCircle size={20} className="text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Tarefas Concluídas</p>
+                            <p className="text-lg font-semibold text-foreground">
+                              {assignment.completedTasks ?? 0}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Tarefas Concluídas</p>
-                          <p className="text-lg font-semibold text-foreground">
-                            {Math.floor((assignment.progress / 100) * 10)}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                            <Clock size={20} className="text-yellow-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Tarefas Pendentes</p>
+                            <p className="text-lg font-semibold text-foreground">
+                              {(assignment.totalTasks ?? 0) - (assignment.completedTasks ?? 0)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                          <Clock size={20} className="text-yellow-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Tarefas Pendentes</p>
-                          <p className="text-lg font-semibold text-foreground">
-                            {Math.ceil((100 - assignment.progress) / 100 * 10)}
-                          </p>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </Card>

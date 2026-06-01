@@ -617,7 +617,19 @@ export async function getPlanAssignmentsByUserId(userId: number) {
       .reverse()
       .map(a => {
         const plan = memPlans.find(p => p.id === a.planId);
-        return { ...a, planTitle: plan?.title ?? null };
+        const tasks = memTasks.filter(t => t.planId === a.planId);
+        const completed = tasks.filter(t => t.status === 'completed').length;
+        const total = tasks.length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return {
+          ...a,
+          planTitle: plan?.title ?? null,
+          planStartDate: plan?.startDate ?? null,
+          planEndDate: plan?.endDate ?? null,
+          progress,
+          totalTasks: total,
+          completedTasks: completed,
+        };
       });
   }
   const results = await db
@@ -633,12 +645,26 @@ export async function getPlanAssignmentsByUserId(userId: number) {
       createdAt: planAssignments.createdAt,
       updatedAt: planAssignments.updatedAt,
       planTitle: onboardingPlans.title,
+      planStartDate: onboardingPlans.startDate,
+      planEndDate: onboardingPlans.endDate,
     })
     .from(planAssignments)
     .leftJoin(onboardingPlans, eq(planAssignments.planId, onboardingPlans.id))
     .where(eq(planAssignments.userId, userId))
     .orderBy(desc(planAssignments.createdAt));
-  return results;
+  // Recalculate progress and task counts from actual task statuses
+  const enriched = await Promise.all(results.map(async (r) => {
+    const tasks = await getTasksByPlanId(r.planId);
+    const completed = tasks.filter((t: any) => t.status === 'completed').length;
+    const total = tasks.length;
+    return {
+      ...r,
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      totalTasks: total,
+      completedTasks: completed,
+    };
+  }));
+  return enriched;
 }
 
 export async function getPlanAssignmentsByPlanId(planId: number) {
