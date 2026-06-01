@@ -513,11 +513,20 @@ export async function getAllOnboardingPlans() {
 export async function getPlansAssignedToUser(userId: number) {
   const db = await getDb();
   if (!db) {
-    const assignedPlanIds = new Set(memAssignments.filter(a => a.userId === userId).map(a => a.planId));
+    const assignedPlanIds = new Set(
+      memAssignments
+        .filter(a => a.userId === userId && (a.status === 'active' || a.status === 'completed'))
+        .map(a => a.planId)
+    );
     return memPlans.filter(p => assignedPlanIds.has(p.id));
   }
-  // Join plan_assignments with onboarding_plans to get plans for this user
-  const assignments = await db.select().from(planAssignments).where(eq(planAssignments.userId, userId));
+  const assignments = await db
+    .select()
+    .from(planAssignments)
+    .where(and(
+      eq(planAssignments.userId, userId),
+      or(eq(planAssignments.status, 'active'), eq(planAssignments.status, 'completed'))
+    ));
   if (assignments.length === 0) return [];
   const planIds = assignments.map(a => a.planId);
   const plans = await db.select().from(onboardingPlans).orderBy(desc(onboardingPlans.createdAt));
