@@ -343,6 +343,30 @@ export default function PlanDetail() {
                 <MarkdownRenderer content={plan.description} />
               </div>
             )}
+            <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+              {plan.startDate ? (
+                <span className="flex items-center gap-1.5">
+                  <Clock size={14} />
+                  Início: {new Date(plan.startDate).toLocaleDateString('pt-PT')}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <Clock size={14} />
+                  Sem data de início
+                </span>
+              )}
+              {plan.endDate ? (
+                <span className="flex items-center gap-1.5">
+                  <Clock size={14} />
+                  Fim: {new Date(plan.endDate).toLocaleDateString('pt-PT')}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <Clock size={14} />
+                  Sem data de fim
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
