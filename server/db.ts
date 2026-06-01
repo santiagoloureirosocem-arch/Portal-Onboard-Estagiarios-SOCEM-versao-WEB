@@ -1308,6 +1308,7 @@ export async function getAiQuota(userId: number, role: string) {
 
 export async function hasCompletedAllPlans(userId: number) {
   const assignments = await getPlanAssignmentsByUserId(userId);
-  if (assignments.length === 0) return false;
-  return assignments.every((a: any) => a.status === 'completed');
+  const active = assignments.filter((a: any) => a.status === 'active' || a.status === 'completed');
+  if (active.length === 0) return false;
+  return active.every((a: any) => a.status === 'completed');
 }
