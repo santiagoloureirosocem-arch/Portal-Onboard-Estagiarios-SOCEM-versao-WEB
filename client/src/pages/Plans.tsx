@@ -35,28 +35,40 @@ async function addPageFooter(doc: any, pageW: number, pageH: number, margin: num
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFillColor(245, 245, 245);
-    doc.rect(0, pageH - 12, pageW, 12, "F");
-    doc.setDrawColor(220, 220, 220);
-    doc.line(0, pageH - 12, pageW, pageH - 12);
-    doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
+    doc.setFillColor(245, 243, 240);
+    doc.rect(0, pageH - 14, pageW, 14, "F");
+    doc.setDrawColor(200, 180, 160);
+    doc.line(0, pageH - 14, pageW, pageH - 14);
+    doc.setFontSize(7.5);
+    doc.setTextColor(160, 150, 140);
     doc.setFont("helvetica", "normal");
-    doc.text("SOCEM — Portal de Onboarding de Estagiários", margin, pageH - 5);
-    doc.text(`Pág. ${i} / ${pageCount}`, pageW - margin, pageH - 5, { align: "right" });
+    doc.text("SOCEM — Portal de Onboarding de Estagiários", margin, pageH - 5.5);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Pág. ${i} / ${pageCount}`, pageW - margin, pageH - 5.5, { align: "right" });
   }
 }
 
 async function addDocHeader(doc: any, pageW: number, margin: number) {
-  doc.setFillColor(SOCEM_RED);
-  doc.rect(0, 0, pageW, 30, "F");
+  // Red header band
+  doc.setFillColor(180, 30, 30);
+  doc.rect(0, 0, pageW, 28, "F");
+  // Subtle bottom border on header
+  doc.setFillColor(150, 20, 20);
+  doc.rect(0, 28, pageW, 1.5, "F");
+
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("SOCEM — Portal de Estagiários", margin, 13);
-  doc.setFontSize(9);
+  doc.text("SOCEM", margin, 12);
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
-  doc.text(`Planos de Integração — ${format(new Date(), "d 'de' MMMM yyyy", { locale: pt })}`, margin, 22);
+  doc.text("Portal de Onboarding de Estagiários", margin, 18.5);
+
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  const dateStr = format(new Date(), "d 'de' MMMM yyyy", { locale: pt });
+  doc.text(`Gerado em ${dateStr}`, pageW - margin, 12, { align: "right" });
+  doc.text("Planos de Integração", pageW - margin, 18.5, { align: "right" });
 }
 
 // ── Single plan export (com tasks) ──
@@ -76,22 +88,38 @@ async function exportSinglePlanPDF(plan: any) {
 
   let y = 42;
 
-  // ── Plan title and status ──
+  // ── Plan title ──
   doc.setTextColor(SOCEM_DARK);
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
   doc.text(plan.title, margin, y);
-  doc.setFontSize(9);
+  y += 9;
+
+  // ── Plan meta row ──
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(120, 120, 120);
+  doc.setTextColor(140, 140, 140);
+  let metaX = margin;
   const statusStr = STATUS_LABELS[plan.status] ?? plan.status;
-  doc.text(`Estado: ${statusStr}`, margin + doc.getTextWidth(plan.title) + 6, y);
+  doc.text(`Estado: ${statusStr}`, metaX, y);
+  metaX += 40;
+  if (plan.startDate) {
+    doc.text(`Início: ${format(new Date(plan.startDate), "d MMM yyyy", { locale: pt })}`, metaX, y);
+    metaX += 45;
+  }
+  if (plan.endDate) {
+    doc.text(`Conclusão: ${format(new Date(plan.endDate), "d MMM yyyy", { locale: pt })}`, metaX, y);
+  }
+  y += 5;
+  const tasks = plan.tasks ?? [];
+  doc.text(`Tarefas: ${tasks.length}`, margin, y);
   y += 8;
 
   // ── Description ──
   if (plan.description) {
     doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont("helvetica", "normal");
     const descLines = doc.splitTextToSize(plan.description.replace(/[#*_`>\-]/g, ""), pageWContent);
     descLines.forEach((line: string) => {
       if (y > pageH - 30) { doc.addPage(); y = 20; }
@@ -101,24 +129,14 @@ async function exportSinglePlanPDF(plan: any) {
     y += 4;
   }
 
-  // ── Plan dates ──
-  if (plan.startDate || plan.endDate) {
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.setFont("helvetica", "normal");
-    if (plan.startDate) doc.text(`Início: ${format(new Date(plan.startDate), "d MMM yyyy", { locale: pt })}`, margin, y);
-    if (plan.endDate) doc.text(`Conclusão: ${format(new Date(plan.endDate), "d MMM yyyy", { locale: pt })}`, margin + 60, y);
-    y += 7;
-  }
-
-  // ── Separator ──
-  doc.setDrawColor(220, 220, 220);
+  // ── Divider ──
+  doc.setDrawColor(220, 215, 210);
+  doc.setLineWidth(0.3);
   doc.line(margin, y, pageW - margin, y);
   y += 6;
 
   // ── Tasks section ──
-  const tasks = plan.tasks ?? [];
-  doc.setFontSize(12);
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(SOCEM_DARK);
   doc.text(`Tarefas (${tasks.length})`, margin, y);
@@ -127,13 +145,14 @@ async function exportSinglePlanPDF(plan: any) {
   if (tasks.length > 0) {
     const tCols = [
       { label: "#", w: 10 },
-      { label: "Título", w: 68 },
-      { label: "Estado", w: 28 },
-      { label: "Prazo", w: 22 },
-      { label: "Descrição", w: 42 },
+      { label: "Título", w: 70 },
+      { label: "Estado", w: 26 },
+      { label: "Prazo", w: 24 },
+      { label: "Descrição", w: 40 },
     ];
 
-    doc.setFillColor(SOCEM_RED);
+    // Table header
+    doc.setFillColor(180, 30, 30);
     doc.rect(margin, y, pageWContent, 8, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(7.5);
@@ -145,32 +164,42 @@ async function exportSinglePlanPDF(plan: any) {
     tasks.forEach((task: any, idx: number) => {
       if (y > pageH - 25) { doc.addPage(); y = 20; }
 
-      const bg = idx % 2 === 0 ? [255, 255, 255] : [250, 250, 252];
+      const bg = idx % 2 === 0 ? [255, 255, 255] : [249, 247, 245];
       doc.setFillColor(bg[0], bg[1], bg[2]);
       doc.rect(margin, y, pageWContent, 7.5, "F");
-      doc.setDrawColor(230, 230, 230);
+      doc.setDrawColor(235, 232, 228);
       doc.rect(margin, y, pageWContent, 7.5, "S");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(SOCEM_DARK);
+
+      // Status color
+      let statusColor: [number, number, number];
+      if (task.status === 'completed') statusColor = [34, 170, 50];
+      else if (task.status === 'in_progress') statusColor = [30, 100, 220];
+      else statusColor = [200, 170, 0];
 
       const cells = [
-        String(task.id),
-        task.title,
-        TASK_STATUS_LABELS[task.status] ?? task.status,
-        task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—",
-        task.description ? (doc.splitTextToSize(task.description.replace(/[#*_`>\-]/g, ""), tCols[4].w - 4)[0] ?? "") : "—",
+        { text: String(task.id), bold: false, color: null },
+        { text: task.title, bold: false, color: null },
+        { text: TASK_STATUS_LABELS[task.status] ?? task.status, bold: true, color: statusColor },
+        { text: task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—", bold: false, color: null },
+        { text: task.description ? (doc.splitTextToSize(task.description.replace(/[#*_`>\-]/g, ""), tCols[4].w - 4)[0] ?? "") : "—", bold: false, color: null },
       ];
       cx = margin;
-      cells.forEach((txt, ci) => {
-        doc.text(txt, cx + 2, y + 5);
+      cells.forEach((cell, ci) => {
+        doc.setFont("helvetica", cell.bold ? "bold" : "normal");
+        doc.setFontSize(7.5);
+        if (cell.color) {
+          doc.setTextColor(cell.color[0], cell.color[1], cell.color[2]);
+        } else {
+          doc.setTextColor(60, 60, 60);
+        }
+        doc.text(cell.text, cx + 2, y + 5);
         cx += tCols[ci].w;
       });
       y += 7.5;
     });
   } else {
     doc.setFontSize(9);
-    doc.setTextColor(150, 150, 150);
+    doc.setTextColor(160, 160, 160);
     doc.setFont("helvetica", "normal");
     doc.text("Este plano ainda não tem tarefas.", margin, y + 5);
   }
@@ -184,9 +213,13 @@ async function exportSinglePlanPDF(plan: any) {
 async function exportSinglePlanExcel(plan: any) {
   const XLSX = await import("xlsx").catch(() => { throw new Error("xlsx não disponível"); });
 
-  const HEADER_FILL = { fgColor: { rgb: "CC0000" } };
+  const SOCEM_RED_HEX = "B41E1E";
+  const SOCEM_GOLD_HEX = "B48C3C";
+  const HEADER_FILL = { fgColor: { rgb: SOCEM_RED_HEX } };
   const HEADER_FONT = { bold: true, color: { rgb: "FFFFFF" }, sz: 10, name: "Calibri" };
-  const BORDER_ALL = { style: "thin", color: { rgb: "D0D0D0" } };
+  const GOLD_FILL = { fgColor: { rgb: "F5F0E0" } };
+  const BORDER_ALL = { style: "thin", color: { rgb: "C0B8A8" } };
+  const BORDER_BOTTOM = { style: "medium", color: { rgb: SOCEM_RED_HEX } };
 
   function applyStyle(ws: any, ref: string, style: any) {
     const cell = ws[ref];
@@ -194,17 +227,16 @@ async function exportSinglePlanExcel(plan: any) {
   }
 
   function applyHeader(ws: any, refs: string[]) {
-    refs.forEach(ref => applyStyle(ws, ref, { font: HEADER_FONT, fill: HEADER_FILL, border: { top: BORDER_ALL, bottom: BORDER_ALL, left: BORDER_ALL, right: BORDER_ALL }, alignment: { horizontal: "center", vertical: "center" } }));
+    refs.forEach(ref => applyStyle(ws, ref, { font: HEADER_FONT, fill: HEADER_FILL, border: { top: BORDER_ALL, bottom: BORDER_BOTTOM, left: BORDER_ALL, right: BORDER_ALL }, alignment: { horizontal: "center", vertical: "center" } }));
   }
 
-  function applyRow(ws: any, rowNum: number, colCount: number) {
-    const isEven = rowNum % 2 === 0;
+  function applyRow(ws: any, rowNum: number, colCount: number, isEven: boolean) {
     for (let c = 0; c < colCount; c++) {
       const ref = XLSX.utils.encode_cell({ r: rowNum, c });
       applyStyle(ws, ref, {
-        font: { sz: 9, name: "Calibri", color: { rgb: SOCEM_DARK.slice(1) } },
+        font: { sz: 9.5, name: "Calibri", color: { rgb: "3C3C3C" } },
         border: { top: BORDER_ALL, bottom: BORDER_ALL, left: BORDER_ALL, right: BORDER_ALL },
-        fill: isEven ? { fgColor: { rgb: "F8F8FA" } } : { fgColor: { rgb: "FFFFFF" } },
+        fill: isEven ? { fgColor: { rgb: "F8F6F2" } } : { fgColor: { rgb: "FFFFFF" } },
       });
     }
   }
@@ -213,33 +245,58 @@ async function exportSinglePlanExcel(plan: any) {
 
   // Sheet 1: Plano
   const planData = [
-    ["SOCEM — Portal de Estagiários", null, null, null],
-    ["Plano de Integração", null, null, null],
-    [null, null, null, null],
-    ["Título", plan.title, null, null],
-    ["Estado", STATUS_LABELS[plan.status] ?? plan.status, null, null],
-    ["Descrição", plan.description?.replace(/[#*_`>\-]/g, "").replace(/\n+/g, " ").trim() ?? "", null, null],
-    ["Data de Início", plan.startDate ? format(new Date(plan.startDate), "dd/MM/yyyy") : "—", null, null],
-    ["Data de Conclusão", plan.endDate ? format(new Date(plan.endDate), "dd/MM/yyyy") : "—", null, null],
+    ["SOCEM — Portal de Onboarding de Estagiários"],
+    ["Plano de Integração"],
+    [],
+    ["Título", plan.title],
+    ["Estado", STATUS_LABELS[plan.status] ?? plan.status],
+    ["Descrição", plan.description?.replace(/[#*_`>\-]/g, "").replace(/\n+/g, " ").trim() ?? ""],
+    ["Data de Início", plan.startDate ? format(new Date(plan.startDate), "dd/MM/yyyy") : "—"],
+    ["Data de Conclusão", plan.endDate ? format(new Date(plan.endDate), "dd/MM/yyyy") : "—"],
   ];
   const wsPlan = XLSX.utils.aoa_to_sheet(planData);
-  wsPlan["!cols"] = [{ wch: 22 }, { wch: 60 }, { wch: 20 }, { wch: 20 }];
+  wsPlan["!cols"] = [{ wch: 24 }, { wch: 70 }];
   wsPlan["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
   ];
-  applyStyle(wsPlan, "A1", { font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } }, fill: HEADER_FILL, alignment: { horizontal: "left" } });
-  applyStyle(wsPlan, "A2", { font: { bold: true, sz: 12, color: { rgb: SOCEM_DARK.slice(1) } }, alignment: { horizontal: "left" } });
+  // Title row
+  applyStyle(wsPlan, "A1", {
+    font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
+    fill: HEADER_FILL,
+    alignment: { horizontal: "left", vertical: "center" },
+  });
+  wsPlan["!rows"] = wsPlan["!rows"] || [];
+  wsPlan["!rows"][0] = { hpx: 30 };
+  // Subtitle row
+  applyStyle(wsPlan, "A2", {
+    font: { bold: true, sz: 12, color: { rgb: SOCEM_RED_HEX } },
+    fill: GOLD_FILL,
+    alignment: { horizontal: "left", vertical: "center" },
+  });
+  wsPlan["!rows"][1] = { hpx: 24 };
+  // Data rows
   for (let r = 3; r < planData.length; r++) {
-    applyStyle(wsPlan, XLSX.utils.encode_cell({ r, c: 0 }), { font: { bold: true, sz: 9, name: "Calibri" }, border: BORDER_ALL, fill: { fgColor: { rgb: "F0F0F0" } } });
-    applyStyle(wsPlan, XLSX.utils.encode_cell({ r, c: 1 }), { font: { sz: 9, name: "Calibri" }, border: BORDER_ALL });
+    const labelRef = XLSX.utils.encode_cell({ r, c: 0 });
+    const valRef = XLSX.utils.encode_cell({ r, c: 1 });
+    applyStyle(wsPlan, labelRef, {
+      font: { bold: true, sz: 9.5, name: "Calibri", color: { rgb: SOCEM_RED_HEX } },
+      border: BORDER_ALL,
+      fill: { fgColor: { rgb: "F5F0E8" } },
+      alignment: { horizontal: "left", vertical: "center" },
+    });
+    applyStyle(wsPlan, valRef, {
+      font: { sz: 9.5, name: "Calibri", color: { rgb: "3C3C3C" } },
+      border: BORDER_ALL,
+      alignment: { horizontal: "left", vertical: "center", wrapText: true },
+    });
   }
   XLSX.utils.book_append_sheet(wb, wsPlan, "Plano");
 
   // Sheet 2: Tarefas
   const tasks = plan.tasks ?? [];
   if (tasks.length > 0) {
-    const taskHeader = [["ID", "Título", "Estado", "Descrição", "Data Início", "Data Limite"]];
+    const taskHeader = [["#", "Título", "Estado", "Descrição", "Data Início", "Data Limite"]];
     const taskRows = tasks.map((t: any) => [
       t.id,
       t.title,
@@ -249,9 +306,37 @@ async function exportSinglePlanExcel(plan: any) {
       t.dueDate ? format(new Date(t.dueDate), "dd/MM/yyyy") : "",
     ]);
     const wsTasks = XLSX.utils.aoa_to_sheet([...taskHeader, ...taskRows]);
-    wsTasks["!cols"] = [{ wch: 8 }, { wch: 45 }, { wch: 16 }, { wch: 50 }, { wch: 14 }, { wch: 14 }];
+    wsTasks["!cols"] = [{ wch: 8 }, { wch: 48 }, { wch: 16 }, { wch: 50 }, { wch: 14 }, { wch: 14 }];
     applyHeader(wsTasks, ["A1", "B1", "C1", "D1", "E1", "F1"]);
-    for (let i = 0; i < taskRows.length; i++) applyRow(wsTasks, i + 1, 6);
+    // Row height
+    wsTasks["!rows"] = wsTasks["!rows"] || [];
+    wsTasks["!rows"][0] = { hpx: 26 };
+    for (let i = 0; i < taskRows.length; i++) {
+      applyRow(wsTasks, i + 1, 6, i % 2 === 0);
+    }
+    // Conditional status color
+    taskRows.forEach((row: any[], idx: number) => {
+      const cellRef = XLSX.utils.encode_cell({ r: idx + 1, c: 2 });
+      const status = row[2];
+      let statusFill;
+      let statusColor;
+      if (status === "Concluída") {
+        statusFill = { fgColor: { rgb: "E8F5E9" } };
+        statusColor = { rgb: "2E7D32" };
+      } else if (status === "Em Progresso") {
+        statusFill = { fgColor: { rgb: "E3F2FD" } };
+        statusColor = { rgb: "1565C0" };
+      } else {
+        statusFill = { fgColor: { rgb: "FFF8E1" } };
+        statusColor = { rgb: "F57F17" };
+      }
+      applyStyle(wsTasks, cellRef, {
+        font: { bold: true, sz: 9.5, name: "Calibri", color: statusColor },
+        fill: statusFill,
+        border: { top: BORDER_ALL, bottom: BORDER_ALL, left: BORDER_ALL, right: BORDER_ALL },
+        alignment: { horizontal: "center", vertical: "center" },
+      });
+    });
     XLSX.utils.book_append_sheet(wb, wsTasks, "Tarefas");
   }
 
