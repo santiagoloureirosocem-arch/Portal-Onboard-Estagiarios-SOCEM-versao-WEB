@@ -119,6 +119,27 @@ export const appRouter = router({
         entityType: "user",
         entityId: newUser?.id ?? null,
       });
+      // Send email notification for new interns
+      if (input.role === "estagiario") {
+        const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
+        sendEmail({
+          to: "informatica@socem.pt",
+          toName: "Informática SOCEM",
+          subject: `Novo Estagiário Registado — ${input.name}`,
+          heading: "Novo Estagiário Registado",
+          bodyHtml: `<p>Foi criado um novo estagiário no Portal SOCEM:</p>
+<div style="background:#fdf2f2;border:1px solid #f5c6c6;border-radius:10px;padding:20px 24px;margin:20px 0;">
+  <p style="margin:0;font-size:20px;font-weight:800;color:#1a1a1a;">${input.name}</p>
+</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+  <tr><td style="padding:10px 16px;font-size:13px;color:#777;border-bottom:1px solid #f5f5f5;">Email</td><td style="padding:10px 16px;font-size:13px;font-weight:600;color:#1a1a1a;border-bottom:1px solid #f5f5f5;">${input.email}</td></tr>
+  <tr style="background:#fafafa;"><td style="padding:10px 16px;font-size:13px;color:#777;border-bottom:1px solid #f5f5f5;">Username</td><td style="padding:10px 16px;font-size:13px;font-weight:600;color:#1a1a1a;border-bottom:1px solid #f5f5f5;">${input.username}</td></tr>
+  ${input.department ? `<tr><td style="padding:10px 16px;font-size:13px;color:#777;border-bottom:1px solid #f5f5f5;">Departamento</td><td style="padding:10px 16px;font-size:13px;font-weight:600;color:#1a1a1a;border-bottom:1px solid #f5f5f5;">${input.department}</td></tr>` : ""}
+  ${input.position ? `<tr style="background:#fafafa;"><td style="padding:10px 16px;font-size:13px;color:#777;">Cargo</td><td style="padding:10px 16px;font-size:13px;font-weight:600;color:#1a1a1a;">${input.position}</td></tr>` : ""}
+</table>
+<p style="margin-top:20px;"><a href="${appUrl}/dashboard" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Aceder ao Portal</a></p>`,
+        }).catch(() => {});
+      }
       return { success: true };
     }),
 
@@ -1236,6 +1257,22 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
           entityType: "user",
           entityId: null,
         });
+        if (created > 0) {
+          const internsImported = input.users.filter(u => u.role === "estagiario");
+          if (internsImported.length > 0) {
+            const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
+            const namesList = internsImported.map(u => u.name).join(", ");
+            sendEmail({
+              to: "informatica@socem.pt",
+              toName: "Informática SOCEM",
+              subject: `${created} Novos Estagiários Registados via Importação`,
+              heading: "Novos Estagiários Registados",
+              bodyHtml: `<p>Foram criados <strong>${created}</strong> novos utilizadores via importação em massa. Destes, <strong>${internsImported.length}</strong> são estagiários:</p>
+<div style="background:#f5f5f5;border-radius:8px;padding:14px 18px;margin:16px 0;font-size:13px;color:#333;">${namesList}</div>
+<p style="margin-top:20px;"><a href="${appUrl}/dashboard" style="background:#c0392b;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Aceder ao Portal</a></p>`,
+            }).catch(() => {});
+          }
+        }
         return { created, skipped };
       }),
 
