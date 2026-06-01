@@ -76,9 +76,8 @@ export default function AdminConfig() {
     return (
       <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-red-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 p-6 shadow-xl">
-          <button onClick={() => setLocation("/")} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600 mb-5 transition-all group font-medium">
-            <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
-            Voltar
+          <button onClick={() => setLocation("/")} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all text-sm font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5">
+            ← Voltar
           </button>
           <div className="text-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-red-600 flex items-center justify-center mx-auto mb-3 overflow-hidden">
@@ -112,8 +111,8 @@ export default function AdminConfig() {
     <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-red-50 p-4 sm:p-6">
       <div className="max-w-lg mx-auto">
         <div className="flex justify-end mb-6">
-          <button onClick={() => { setAuthed(false); setPass(""); setLocation("/"); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
-            <LogOut size={14} />
+          <button onClick={() => { setAuthed(false); setPass(""); setLocation("/"); }} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all text-sm font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5">
+            <LogOut size={15} />
             Sair
           </button>
         </div>
