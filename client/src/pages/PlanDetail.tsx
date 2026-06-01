@@ -145,7 +145,7 @@ function ListView({ tasks, onStatusChange, onDelete, canEdit, onFileUpload, uplo
           className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors group"
         >
           <button
-            onClick={e => { e.stopPropagation(); onStatusChange(task, task.status === 'completed' ? 'pending' : canEdit ? (task.status === 'pending' ? 'in_progress' : 'completed') : 'completed'); }}
+            onClick={e => { e.stopPropagation(); onStatusChange(task, task.status === 'completed' ? (canEdit ? 'pending' : 'in_progress') : canEdit ? (task.status === 'pending' ? 'in_progress' : 'completed') : 'completed'); }}
             className="flex-shrink-0 hover:scale-110 transition-transform"
           >
             {task.status === 'completed'
