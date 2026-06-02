@@ -1,3 +1,13 @@
+export function checkEmailConfig(): void {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const senderEmail = process.env.SENDGRID_SENDER_EMAIL;
+  if (apiKey && senderEmail) {
+    console.log(`[Email] SendGrid configurado (${senderEmail})`);
+  } else {
+    console.warn("[Email] AVISO: SendGrid não configurado. Os emails NÃO serão enviados.");
+  }
+}
+
 function buildHtml(heading: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="pt">
