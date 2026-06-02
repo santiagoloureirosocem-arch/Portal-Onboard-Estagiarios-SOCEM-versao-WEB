@@ -1373,23 +1373,13 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
       }),
 
     emailConfig: adminProcedure.query(() => {
-      const hasResend = !!process.env.RESEND_API_KEY;
       const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
       const smtpUser = ENV.smtpUser || null;
       const smtpPass = ENV.smtpPass || null;
       const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
       const maskedPass = smtpPass ? smtpPass.slice(0, 3) + "***" : null;
-      const maskedResendKey = process.env.RESEND_API_KEY
-        ? process.env.RESEND_API_KEY.slice(0, 6) + "***"
-        : null;
-
-      let activeProvider = "Nenhum";
-      if (hasResend) activeProvider = "Resend";
-      else if (hasSmtp) activeProvider = "SMTP";
 
       return {
-        resendConfigured: hasResend,
-        resendKeyMasked: maskedResendKey,
         smtpConfigured: hasSmtp,
         smtpHost: ENV.smtpHost || null,
         smtpPort: ENV.smtpPort,
@@ -1397,7 +1387,7 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
         smtpUserMasked: maskedUser,
         smtpPassMasked: maskedPass,
         smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
-        activeProvider,
+        activeProvider: hasSmtp ? "SMTP" : "Nenhum",
       };
     }),
   }),

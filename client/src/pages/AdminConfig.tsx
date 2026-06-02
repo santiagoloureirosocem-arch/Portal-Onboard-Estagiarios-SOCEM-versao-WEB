@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, Monitor, LogOut, Bell, LayoutTemplate, Cpu, Send, Copy, ChevronRight, GraduationCap } from "lucide-react";
+import { Shield, Plus, Pencil, Trash2, X, Check, Lock, Building2, Briefcase, Monitor, LogOut, Bell, LayoutTemplate, Cpu, Send, Copy, ChevronRight, GraduationCap, Mail, Loader2, RefreshCw } from "lucide-react";
 
 const API = (path: string, token: string, init?: RequestInit) =>
   fetch(path, {
@@ -8,7 +8,7 @@ const API = (path: string, token: string, init?: RequestInit) =>
     headers: { "Content-Type": "application/json", "x-admin-pass": token, ...init?.headers },
   });
 
-type Tab = "empresas" | "departamentos" | "programas" | "templates" | "notifications" | "system";
+type Tab = "empresas" | "departamentos" | "programas" | "templates" | "notifications" | "email" | "system";
 
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: "empresas", label: "Empresas", icon: Building2 },
@@ -16,6 +16,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: "programas", label: "Programas", icon: Monitor },
   { key: "templates", label: "Templates", icon: LayoutTemplate },
   { key: "notifications", label: "Notificações", icon: Bell },
+  { key: "email", label: "Email", icon: Mail },
   { key: "system", label: "Sistema", icon: Cpu },
 ];
 
@@ -44,6 +45,12 @@ export default function AdminConfig() {
   // System
   const [health, setHealth] = useState<any>(null);
 
+  // Email
+  const [emailConfig, setEmailConfig] = useState<any>(null);
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; error?: string | null } | null>(null);
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+
   // Template plan creation
   const [templateTitle, setTemplateTitle] = useState("");
   const [creatingPlan, setCreatingPlan] = useState<number | null>(null);
@@ -55,6 +62,7 @@ export default function AdminConfig() {
     API("/api/programas", pass).then(r => r.json()).then(setProgramas);
     API("/api/templates", pass).then(r => r.json()).then(setTemplates);
     API("/api/admin/health", pass).then(r => r.json()).then(setHealth);
+    API("/api/admin/email-config", pass).then(r => r.json()).then(setEmailConfig);
   }, [authed, pass]);
 
   const handleLogin = () => {
@@ -399,6 +407,79 @@ export default function AdminConfig() {
                   className="w-full py-3 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-all flex items-center justify-center gap-2 shadow-md disabled:opacity-50">
                   <Send size={16} /> {notifSending ? "A enviar..." : "Enviar Notificação"}
                 </button>
+              </div>
+            )}
+
+            {/* Email tab */}
+            {tab === "email" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Servidor SMTP", value: emailConfig?.smtpHost ? `${emailConfig.smtpHost}:${emailConfig.smtpPort}` : "—" },
+                    { label: "Conectividade", value: emailConfig?.smtpReachable ? "Acessível" : "Inacessível", color: emailConfig?.smtpReachable ? "text-emerald-600" : "text-red-600" },
+                    { label: "Configurado", value: emailConfig?.smtpConfigured ? "Sim" : "Não", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-red-600" },
+                    { label: "Utilizador", value: emailConfig?.smtpUserMasked ?? "—" },
+                    { label: "Password", value: emailConfig?.smtpPassMasked ?? "—" },
+                    { label: "Remetente", value: emailConfig?.smtpFrom ?? "—" },
+                    { label: "Segurança", value: emailConfig?.smtpSecure ? "TLS" : "STARTTLS" },
+                    { label: "Porta", value: emailConfig?.smtpPort ?? "—" },
+                  ].map(item => (
+                    <div key={item.label} className="bg-slate-50 rounded-xl p-3">
+                      <p className="text-xs text-slate-400">{item.label}</p>
+                      <p className={`text-sm font-semibold ${item.color ?? "text-slate-700"}`}>{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-slate-200 pt-4">
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Testar envio de email</p>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      value={testEmailTo}
+                      onChange={e => setTestEmailTo(e.target.value)}
+                      placeholder="Destinatário (ex: email@socem.pt)"
+                      type="email"
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                    />
+                    <button
+                      onClick={async () => {
+                        setTestEmailLoading(true);
+                        setTestEmailResult(null);
+                        try {
+                          const res = await API("/api/admin/test-email", pass, {
+                            method: "POST",
+                            body: JSON.stringify({ to: testEmailTo || undefined }),
+                          });
+                          const data = await res.json();
+                          setTestEmailResult(data);
+                        } catch {
+                          setTestEmailResult({ ok: false, error: "Erro de rede" });
+                        } finally {
+                          setTestEmailLoading(false);
+                        }
+                      }}
+                      disabled={testEmailLoading}
+                      className="px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-all flex items-center gap-1.5 disabled:opacity-50 flex-shrink-0"
+                    >
+                      {testEmailLoading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                      {testEmailLoading ? "A enviar..." : "Testar"}
+                    </button>
+                  </div>
+                  {testEmailResult && (
+                    <div className={`p-3 rounded-xl text-sm ${testEmailResult.ok ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+                      {testEmailResult.ok ? "Email enviado com sucesso!" : `Erro: ${testEmailResult.error}`}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-slate-200 pt-4">
+                  <button
+                    onClick={() => API("/api/admin/email-config", pass).then(r => r.json()).then(setEmailConfig)}
+                    className="w-full py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw size={14} /> Atualizar estado
+                  </button>
+                </div>
               </div>
             )}
 

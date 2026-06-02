@@ -1,5 +1,7 @@
 import { Express, Request, Response } from "express";
 import * as db from "../db";
+import { sendEmail } from "./email";
+import { ENV } from "./env";
 
 export function registerAdminConfigRoutes(app: Express) {
   const ADMIN_PASS = "socem2026";
@@ -181,6 +183,58 @@ export function registerAdminConfigRoutes(app: Express) {
     } catch (err) {
       console.error("[Broadcast] Error:", err);
       res.status(500).json({ error: "Erro ao enviar notificação" });
+    }
+  });
+
+  // ─── Email Config ─────────────────────────────────────────────────────────
+
+  app.get("/api/admin/email-config", async (req: Request, res: Response) => {
+    if (!auth(req, res)) return;
+    const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
+    const smtpUser = ENV.smtpUser || null;
+    const smtpPass = ENV.smtpPass || null;
+    const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
+    const maskedPass = smtpPass ? smtpPass.slice(0, 3) + "***" : null;
+
+    let smtpOk = false;
+    try {
+      const net = await import("net");
+      smtpOk = await new Promise<boolean>((resolve) => {
+        const socket = net.createConnection({ host: ENV.smtpHost || "smtp.office365.com", port: ENV.smtpPort || 587, timeout: 5000 });
+        socket.on("connect", () => { socket.destroy(); resolve(true); });
+        socket.on("error", () => resolve(false));
+        socket.on("timeout", () => { socket.destroy(); resolve(false); });
+      });
+    } catch { smtpOk = false; }
+
+    res.json({
+      smtpConfigured: hasSmtp,
+      smtpReachable: smtpOk,
+      smtpHost: ENV.smtpHost || "smtp.office365.com",
+      smtpPort: ENV.smtpPort || 587,
+      smtpSecure: ENV.smtpSecure,
+      smtpUserMasked: maskedUser,
+      smtpPassMasked: maskedPass,
+      smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
+    });
+  });
+
+  app.post("/api/admin/test-email", async (req: Request, res: Response) => {
+    if (!auth(req, res)) return;
+    try {
+      const to = req.body.to || "informatica@socem.pt";
+      const result = await sendEmail({
+        to,
+        toName: to === "informatica@socem.pt" ? "Informática SOCEM" : undefined,
+        subject: "Teste de Email — Portal SOCEM",
+        heading: "Teste SMTP",
+        bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong>.</p>
+<p style="color:#666;font-size:13px;">Se recebeu este email, o servidor SMTP está a funcionar corretamente.</p>
+<p style="color:#999;font-size:12px;">Enviado em: ${new Date().toLocaleString("pt-PT")}</p>`,
+      });
+      res.json({ ok: result.ok, error: result.error ?? null });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err?.message || "Erro interno" });
     }
   });
 
