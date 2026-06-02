@@ -190,32 +190,26 @@ export function registerAdminConfigRoutes(app: Express) {
 
   app.get("/api/admin/email-config", async (req: Request, res: Response) => {
     if (!auth(req, res)) return;
+    const brevoKey = process.env.BREVO_API_KEY;
+    const hasBrevo = !!brevoKey;
     const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
+    const maskedBrevoKey = brevoKey ? brevoKey.slice(0, 10) + "***" : null;
     const smtpUser = ENV.smtpUser || null;
-    const smtpPass = ENV.smtpPass || null;
     const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
-    const maskedPass = smtpPass ? smtpPass.slice(0, 3) + "***" : null;
 
-    let smtpOk = false;
-    try {
-      const net = await import("net");
-      smtpOk = await new Promise<boolean>((resolve) => {
-        const socket = net.createConnection({ host: ENV.smtpHost || "smtp.office365.com", port: ENV.smtpPort || 587, timeout: 5000 });
-        socket.on("connect", () => { socket.destroy(); resolve(true); });
-        socket.on("error", () => resolve(false));
-        socket.on("timeout", () => { socket.destroy(); resolve(false); });
-      });
-    } catch { smtpOk = false; }
+    let activeProvider = "Nenhum";
+    if (hasBrevo) activeProvider = "Brevo";
+    else if (hasSmtp) activeProvider = "SMTP";
 
     res.json({
+      brevoConfigured: hasBrevo,
+      brevoKeyMasked: maskedBrevoKey,
       smtpConfigured: hasSmtp,
-      smtpReachable: smtpOk,
-      smtpHost: ENV.smtpHost || "smtp.office365.com",
-      smtpPort: ENV.smtpPort || 587,
-      smtpSecure: ENV.smtpSecure,
+      smtpHost: ENV.smtpHost || null,
+      smtpPort: ENV.smtpPort,
       smtpUserMasked: maskedUser,
-      smtpPassMasked: maskedPass,
       smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
+      activeProvider,
     });
   });
 

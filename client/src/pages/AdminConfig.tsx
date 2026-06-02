@@ -415,14 +415,12 @@ export default function AdminConfig() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   {[
+                    { label: "Provider ativo", value: emailConfig?.activeProvider ?? "—", color: emailConfig?.activeProvider !== "Nenhum" ? "text-emerald-600" : "text-red-600" },
+                    { label: "Brevo", value: emailConfig?.brevoConfigured ? `Configurado (${emailConfig.brevoKeyMasked})` : "Não configurado", color: emailConfig?.brevoConfigured ? "text-emerald-600" : "text-slate-400" },
+                    { label: "SMTP", value: emailConfig?.smtpConfigured ? "Configurado (fallback)" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-slate-400" },
                     { label: "Servidor SMTP", value: emailConfig?.smtpHost ? `${emailConfig.smtpHost}:${emailConfig.smtpPort}` : "—" },
-                    { label: "Conectividade", value: emailConfig?.smtpReachable ? "Acessível" : "Inacessível", color: emailConfig?.smtpReachable ? "text-emerald-600" : "text-red-600" },
-                    { label: "Configurado", value: emailConfig?.smtpConfigured ? "Sim" : "Não", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-red-600" },
-                    { label: "Utilizador", value: emailConfig?.smtpUserMasked ?? "—" },
-                    { label: "Password", value: emailConfig?.smtpPassMasked ?? "—" },
+                    { label: "Utilizador SMTP", value: emailConfig?.smtpUserMasked ?? "—" },
                     { label: "Remetente", value: emailConfig?.smtpFrom ?? "—" },
-                    { label: "Segurança", value: emailConfig?.smtpSecure ? "TLS" : "STARTTLS" },
-                    { label: "Porta", value: emailConfig?.smtpPort ?? "—" },
                   ].map(item => (
                     <div key={item.label} className="bg-slate-50 rounded-xl p-3">
                       <p className="text-xs text-slate-400">{item.label}</p>

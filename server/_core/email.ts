@@ -16,31 +16,30 @@ function getTransporter(): nodemailer.Transporter | null {
       user: ENV.smtpUser,
       pass: ENV.smtpPass,
     },
-    connectionTimeout: 15000,
+    connectionTimeout: 10000,
     greetingTimeout: 10000,
-    socketTimeout: 15000,
-    tls: {
-      ciphers: "SSLv3",
-      rejectUnauthorized: false,
-    },
+    socketTimeout: 10000,
+    tls: { rejectUnauthorized: false },
   });
   console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
   return _transporter;
 }
 
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
 export function checkEmailConfig(): void {
+  const brevoKey = process.env.BREVO_API_KEY;
   const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
 
-  if (!hasSmtp) {
-    console.warn("╔═══════════════════════════════════════════════════╗");
-    console.warn("║  [Email] AVISO: SMTP não configurado               ║");
-    console.warn("║  Configure SMTP_HOST + SMTP_USER + SMTP_PASS       ║");
-    console.warn("║  Os emails NÃO serão enviados!                     ║");
-    console.warn("╚═══════════════════════════════════════════════════╝");
-    return;
+  if (brevoKey) {
+    console.log(`[Email] Brevo configurado (primário)`);
   }
-
-  console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
+  if (hasSmtp) {
+    console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser}) (fallback)`);
+  }
+  if (!brevoKey && !hasSmtp) {
+    console.warn("[Email] AVISO: Brevo e SMTP não configurados. Os emails NÃO serão enviados.");
+  }
 }
 
 function buildHtml(heading: string, bodyHtml: string): string {
@@ -89,6 +88,71 @@ function buildHtml(heading: string, bodyHtml: string): string {
 </html>`;
 }
 
+async function sendViaBrevo(fromEmail: string, to: string, toName: string | undefined, subject: string, html: string, timeoutMs: number): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) return { ok: false };
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const res = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "Portal SOCEM", email: fromEmail },
+        to: [{ email: to, name: toName || undefined }],
+        subject,
+        htmlContent: html,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[Email] Erro Brevo (${res.status}): ${body}`);
+      return { ok: false, error: `Brevo: ${res.status} - ${body.slice(0, 200)}` };
+    }
+
+    const data = await res.json() as any;
+    console.log(`[Email] Enviado via Brevo "${subject}" para ${to} (id: ${data?.messageId})`);
+    return { ok: true };
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      return { ok: false, error: `Brevo: timeout (${timeoutMs / 1000}s)` };
+    }
+    return { ok: false, error: `Brevo: ${err?.message ?? err}` };
+  }
+}
+
+async function sendViaSmtp(fromEmail: string, to: string, toName: string | undefined, subject: string, html: string, timeoutMs: number): Promise<{ ok: boolean; error?: string }> {
+  const transporter = getTransporter();
+  if (!transporter) return { ok: false };
+
+  try {
+    const result = await Promise.race([
+      transporter.sendMail({
+        from: `"Portal SOCEM" <${fromEmail}>`,
+        to: toName ? `"${toName}" <${to}>` : to,
+        subject,
+        html,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout (${timeoutMs / 1000}s)`)), timeoutMs)
+      ),
+    ]);
+    console.log(`[Email] Enviado via SMTP "${subject}" para ${to} (messageId: ${result.messageId})`);
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: `SMTP: ${err?.message ?? err}` };
+  }
+}
+
 export async function sendEmail(options: {
   to: string;
   toName?: string;
@@ -101,45 +165,25 @@ export async function sendEmail(options: {
   const html = buildHtml(options.heading, options.bodyHtml);
   const timeoutMs = (options.timeoutSeconds ?? 15) * 1000;
 
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.warn(`[Email] SMTP não configurado — email NÃO enviado para ${options.to}`);
-    return { ok: false, error: "SMTP não configurado (SMTP_HOST, SMTP_USER, SMTP_PASS)" };
+  // 1. Brevo (HTTPS, funciona no Railway)
+  const brevoResult = await sendViaBrevo(fromEmail, options.to, options.toName, options.subject, html, timeoutMs);
+  if (brevoResult.ok) return brevoResult;
+  if (brevoResult.error && !brevoResult.error.includes("timeout")) {
+    console.log(`[Email] Brevo falhou, a tentar SMTP...`);
   }
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const result = await Promise.race([
-        transporter.sendMail({
-          from: `"Portal SOCEM" <${fromEmail}>`,
-          to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
-          subject: options.subject,
-          html,
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout (${options.timeoutSeconds ?? 15}s)`)), timeoutMs)
-        ),
-      ]);
-      console.log(`[Email] Enviado via SMTP "${options.subject}" para ${options.to} (messageId: ${result.messageId})`);
-      return { ok: true };
-    } catch (err: any) {
-      const msg = `Erro SMTP: ${err?.message ?? err}`;
-      console.error(`[Email] Tentativa ${attempt}/2: ${msg}`);
+  // 2. SMTP (fallback para dev local)
+  const smtpResult = await sendViaSmtp(fromEmail, options.to, options.toName, options.subject, html, timeoutMs);
+  if (smtpResult.ok) return smtpResult;
 
-      const isTransient =
-        msg.includes("Timeout") ||
-        msg.includes("ETIMEDOUT") ||
-        msg.includes("ECONNRESET") ||
-        msg.includes("ECONNREFUSED") ||
-        msg.includes("ESOCKET");
+  const hadBrevo = !!process.env.BREVO_API_KEY;
+  const hadSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
 
-      if (!isTransient || attempt >= 2) {
-        return { ok: false, error: msg };
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
+  if (!hadBrevo && !hadSmtp) {
+    console.warn(`[Email] Nenhum serviço configurado — email NÃO enviado para ${options.to}`);
+    return { ok: false, error: "Nenhum serviço de email configurado (BREVO_API_KEY ou SMTP)" };
   }
 
-  return { ok: false, error: "Todas as tentativas falharam" };
+  console.error(`[Email] Todos os serviços falharam para ${options.to}`);
+  return { ok: false, error: `Falhou: ${brevoResult.error ?? "Brevo não configurado"} | ${smtpResult.error ?? "SMTP não configurado"}` };
 }

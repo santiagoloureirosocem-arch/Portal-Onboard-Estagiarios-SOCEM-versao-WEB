@@ -1373,21 +1373,26 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
       }),
 
     emailConfig: adminProcedure.query(() => {
+      const brevoKey = process.env.BREVO_API_KEY;
+      const hasBrevo = !!brevoKey;
       const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
+      const maskedBrevoKey = brevoKey ? brevoKey.slice(0, 10) + "***" : null;
       const smtpUser = ENV.smtpUser || null;
-      const smtpPass = ENV.smtpPass || null;
       const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
-      const maskedPass = smtpPass ? smtpPass.slice(0, 3) + "***" : null;
+
+      let activeProvider = "Nenhum";
+      if (hasBrevo) activeProvider = "Brevo";
+      else if (hasSmtp) activeProvider = "SMTP";
 
       return {
+        brevoConfigured: hasBrevo,
+        brevoKeyMasked: maskedBrevoKey,
         smtpConfigured: hasSmtp,
         smtpHost: ENV.smtpHost || null,
         smtpPort: ENV.smtpPort,
-        smtpSecure: ENV.smtpSecure,
         smtpUserMasked: maskedUser,
-        smtpPassMasked: maskedPass,
         smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
-        activeProvider: hasSmtp ? "SMTP" : "Nenhum",
+        activeProvider,
       };
     }),
   }),
