@@ -415,8 +415,8 @@ export default function AdminConfig() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: "Provider ativo", value: emailConfig?.activeProvider ?? "—", color: emailConfig?.activeProvider !== "Nenhum" ? "text-emerald-600" : "text-red-600" },
-                    { label: "Brevo SMTP", value: emailConfig?.brevoSmtpConfigured ? `Configurado (${emailConfig.brevoSmtpUserMasked})` : "Não configurado", color: emailConfig?.brevoSmtpConfigured ? "text-emerald-600" : "text-slate-400" },
+                    { label: "Provider", value: emailConfig?.activeProvider ?? "—", color: emailConfig?.activeProvider !== "Nenhum" ? "text-emerald-600" : "text-red-600" },
+                    { label: "Resend", value: emailConfig?.resendConfigured ? `Configurado (${emailConfig.resendKeyMasked})` : "Não configurado", color: emailConfig?.resendConfigured ? "text-emerald-600" : "text-slate-400" },
                     { label: "Remetente", value: emailConfig?.senderEmail ?? "—" },
                     { label: "SMTP Office 365", value: emailConfig?.smtpConfigured ? "Configurado (fallback)" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-slate-400" },
                     { label: "Servidor SMTP", value: emailConfig?.smtpHost ? `${emailConfig.smtpHost}:${emailConfig.smtpPort}` : "—" },

@@ -282,8 +282,7 @@ export default function AdminPanel() {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Provider", value: emailConfig?.activeProvider ?? "—", color: emailConfig?.activeProvider !== "Nenhum" ? "text-emerald-600" : "text-red-600" },
-                  { label: "Brevo SMTP", value: emailConfig?.brevoSmtpConfigured ? "Configurado" : "Não configurado", color: emailConfig?.brevoSmtpConfigured ? "text-emerald-600" : "text-slate-400" },
-                  { label: "SMTP Office 365", value: emailConfig?.smtpConfigured ? "Configurado" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-slate-400" },
+                  { label: "Resend", value: emailConfig?.resendConfigured ? "Configurado" : "Não configurado", color: emailConfig?.resendConfigured ? "text-emerald-600" : "text-slate-400" },
                   { label: "Remetente", value: emailConfig?.senderEmail ?? "—" },
                 ].map(item => (
                   <div key={item.label} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">

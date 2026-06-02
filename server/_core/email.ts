@@ -1,22 +1,8 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { ENV } from "./env";
 
 let _transporter: nodemailer.Transporter | null = null;
-
-function getBrevoTransporter(): nodemailer.Transporter | null {
-  const brevoUser = process.env.BREVO_SMTP_USER;
-  const brevoPass = process.env.BREVO_SMTP_PASS;
-  if (!brevoUser || !brevoPass) return null;
-  return nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false,
-    auth: { user: brevoUser, pass: brevoPass },
-    connectionTimeout: 15000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
-}
 
 function getTransporter(): nodemailer.Transporter | null {
   if (_transporter) return _transporter;
@@ -33,20 +19,17 @@ function getTransporter(): nodemailer.Transporter | null {
     socketTimeout: 10000,
     tls: { rejectUnauthorized: false },
   });
-  console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
   return _transporter;
 }
 
 export function checkEmailConfig(): void {
-  const hasBrevoSmtp = !!(process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS);
-  const hasBrevoApi = !!process.env.BREVO_API_KEY;
+  const hasResend = !!process.env.RESEND_API_KEY;
   const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
 
-  if (hasBrevoSmtp) console.log("[Email] Brevo SMTP configurado (primário)");
-  if (hasBrevoApi) console.log("[Email] Brevo API configurado (fallback)");
-  if (hasSmtp) console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser}) (fallback)`);
-  if (!hasBrevoSmtp && !hasBrevoApi && !hasSmtp) {
-    console.warn("[Email] AVISO: Nenhum serviço configurado. Os emails NÃO serão enviados.");
+  if (hasResend) console.log("[Email] Resend configurado (primário — HTTPS)");
+  if (hasSmtp) console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (fallback)`);
+  if (!hasResend && !hasSmtp) {
+    console.warn("[Email] AVISO: Resend e SMTP não configurados. Os emails NÃO serão enviados.");
   }
 }
 
@@ -88,24 +71,6 @@ function buildHtml(heading: string, bodyHtml: string): string {
 </html>`;
 }
 
-async function trySendSmtp(transporter: nodemailer.Transporter, fromEmail: string, to: string, toName: string | undefined, subject: string, html: string, label: string): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const result = await Promise.race([
-      transporter.sendMail({
-        from: `"Portal SOCEM" <${fromEmail}>`,
-        to: toName ? `"${toName}" <${to}>` : to,
-        subject,
-        html,
-      }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout (20s)")), 20000)),
-    ]);
-    console.log(`[Email] Enviado via ${label} "${subject}" para ${to} (messageId: ${result.messageId})`);
-    return { ok: true };
-  } catch (err: any) {
-    return { ok: false, error: `${label}: ${err?.message ?? err}` };
-  }
-}
-
 export async function sendEmail(options: {
   to: string;
   toName?: string;
@@ -114,32 +79,55 @@ export async function sendEmail(options: {
   bodyHtml: string;
   timeoutSeconds?: number;
 }): Promise<{ ok: boolean; error?: string }> {
-  const senderEmail = process.env.BREVO_SENDER_EMAIL ?? ENV.smtpFrom ?? ENV.smtpUser ?? "report@socem.pt";
+  const fromEmail = process.env.RESEND_FROM ?? "onboarding@resend.dev";
   const html = buildHtml(options.heading, options.bodyHtml);
 
-  // 1. Brevo SMTP relay (HTTPS-friendly, funciona no Railway)
-  const brevoTransporter = getBrevoTransporter();
-  if (brevoTransporter) {
-    const r = await trySendSmtp(brevoTransporter, senderEmail, options.to, options.toName, options.subject, html, "Brevo SMTP");
-    if (r.ok) return r;
-    console.log(`[Email] Brevo SMTP falhou, a tentar Office 365...`);
+  // 1. Resend (HTTPS, funciona no Railway, remetente @resend.dev gratuito)
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey) {
+    try {
+      const resend = new Resend(resendApiKey);
+      const { data, error } = await resend.emails.send({
+        from: `Portal SOCEM <${fromEmail}>`,
+        to: options.toName ? [`${options.toName} <${options.to}>`] : [options.to],
+        subject: options.subject,
+        html,
+      });
+      if (error) {
+        console.error(`[Email] Erro Resend: ${error.message}`);
+      } else {
+        console.log(`[Email] Enviado via Resend "${options.subject}" para ${options.to} (id: ${data?.id})`);
+        return { ok: true };
+      }
+    } catch (err: any) {
+      console.error(`[Email] Erro Resend: ${err?.message ?? err}`);
+    }
   }
 
-  // 2. Office 365 SMTP (fallback para dev local)
+  // 2. SMTP (fallback para dev local)
   const transporter = getTransporter();
-  if (transporter) {
-    const r = await trySendSmtp(transporter, senderEmail, options.to, options.toName, options.subject, html, "SMTP Office 365");
-    if (r.ok) return r;
-  }
-
-  const hasBrevo = !!(process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS);
-  const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
-
-  if (!hasBrevo && !hasSmtp) {
+  if (!transporter) {
+    const hasResend = !!process.env.RESEND_API_KEY;
+    if (hasResend) {
+      return { ok: false, error: "Resend falhou — verifica a API key" };
+    }
     console.warn(`[Email] Nenhum serviço configurado — email NÃO enviado para ${options.to}`);
-    return { ok: false, error: "Nenhum serviço de email configurado (BREVO_SMTP_USER+PASS ou SMTP)" };
+    return { ok: false, error: "Nenhum serviço de email configurado (RESEND_API_KEY ou SMTP)" };
   }
 
-  console.error(`[Email] Todos os serviços falharam para ${options.to}`);
-  return { ok: false, error: "Falha em todos os serviços de email" };
+  try {
+    const result = await Promise.race([
+      transporter.sendMail({
+        from: `"Portal SOCEM" <${fromEmail}>`,
+        to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
+        subject: options.subject,
+        html,
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout (20s)")), 20000)),
+    ]);
+    console.log(`[Email] Enviado via SMTP "${options.subject}" para ${options.to} (messageId: ${result.messageId})`);
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: `SMTP: ${err?.message ?? err}` };
+  }
 }
