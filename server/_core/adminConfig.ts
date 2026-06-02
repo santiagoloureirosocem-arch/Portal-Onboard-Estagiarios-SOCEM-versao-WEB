@@ -185,39 +185,28 @@ export function registerAdminConfigRoutes(app: Express) {
     }
   });
 
-  // ─── Email Config ─────────────────────────────────────────────────────────
+  // ─── Data Dump (migração) ─────────────────────────────────────────────────
 
-  app.get("/api/admin/email-config", async (req: Request, res: Response) => {
-    if (!auth(req, res)) return;
-    const apiKey = process.env.SENDGRID_API_KEY;
-    const senderEmail = process.env.SENDGRID_SENDER_EMAIL;
-    const configured = !!(apiKey && senderEmail);
-    const maskedKey = apiKey ? apiKey.slice(0, 6) + "***" : null;
-
-    res.json({
-      configured,
-      service: "SendGrid",
-      senderEmail: senderEmail || null,
-      apiKeyMasked: maskedKey,
-    });
-  });
-
-  app.post("/api/admin/test-email", async (req: Request, res: Response) => {
+  app.get("/api/admin/dump", async (req: Request, res: Response) => {
     if (!auth(req, res)) return;
     try {
-      const to = req.body.to || "santiago.loureiro.socem@gmail.com";
-      const result = await sendEmail({
-        to,
-        toName: to === "informatica@socem.pt" ? "Informática SOCEM" : undefined,
-        subject: "Teste de Email — Portal SOCEM",
-        heading: "Teste SendGrid",
-        bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong> via SendGrid.</p>
-<p style="color:#666;font-size:13px;">Se recebeu este email, o SendGrid está a funcionar corretamente.</p>
-<p style="color:#999;font-size:12px;">Enviado em: ${new Date().toLocaleString("pt-PT")}</p>`,
-      });
-      res.json({ ok: result.ok, error: result.error ?? null });
-    } catch (err: any) {
-      res.status(500).json({ ok: false, error: err?.message || "Erro interno" });
+      const results: Record<string, any[]> = {};
+      const d = await db.getDb();
+      if (!d) { res.status(500).json({ error: "DB offline" }); return; }
+      const tables = ["users", "empresas", "departamentos", "programas",
+        "onboarding_plans", "onboarding_tasks", "plan_assignments",
+        "task_completions", "task_comments", "direct_messages",
+        "notifications", "daily_checkins", "activity_log"];
+      for (const table of tables) {
+        try {
+          const rows = await d.execute(`SELECT * FROM \`${table}\``);
+          results[table] = rows[0] as any[];
+        } catch { results[table] = []; }
+      }
+      res.json(results);
+    } catch (err) {
+      console.error("[Dump] Error:", err);
+      res.status(500).json({ error: "Erro" });
     }
   });
 
