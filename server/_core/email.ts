@@ -1,36 +1,3 @@
-import nodemailer from "nodemailer";
-import { ENV } from "./env";
-
-let _transporter: nodemailer.Transporter | null = null;
-
-function getTransporter(): nodemailer.Transporter | null {
-  if (_transporter) return _transporter;
-  if (!ENV.smtpHost || !ENV.smtpUser || !ENV.smtpPass) {
-    return null;
-  }
-  _transporter = nodemailer.createTransport({
-    host: ENV.smtpHost,
-    port: ENV.smtpPort,
-    secure: ENV.smtpSecure,
-    auth: { user: ENV.smtpUser, pass: ENV.smtpPass },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    tls: { rejectUnauthorized: false },
-  });
-  console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
-  return _transporter;
-}
-
-export function checkEmailConfig(): void {
-  const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
-  if (hasSmtp) {
-    console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
-  } else {
-    console.warn("[Email] AVISO: SMTP não configurado. Os emails NÃO serão enviados.");
-  }
-}
-
 function buildHtml(heading: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="pt">
@@ -75,48 +42,44 @@ export async function sendEmail(options: {
   subject: string;
   heading: string;
   bodyHtml: string;
-  timeoutSeconds?: number;
 }): Promise<{ ok: boolean; error?: string }> {
-  const fromEmail = ENV.smtpFrom ?? ENV.smtpUser ?? "report@socem.pt";
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const senderEmail = process.env.SENDGRID_SENDER_EMAIL;
+
+  if (!apiKey || !senderEmail) {
+    console.warn(`[Email] SendGrid não configurado — email NÃO enviado para ${options.to}`);
+    return { ok: false, error: "SendGrid não configurado (SENDGRID_API_KEY + SENDGRID_SENDER_EMAIL)" };
+  }
+
   const html = buildHtml(options.heading, options.bodyHtml);
 
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.warn(`[Email] SMTP não configurado — email NÃO enviado para ${options.to}`);
-    return { ok: false, error: "SMTP não configurado" };
-  }
+  try {
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{
+          to: [{ email: options.to, name: options.toName || undefined }],
+        }],
+        from: { email: senderEmail, name: "Portal SOCEM" },
+        subject: options.subject,
+        content: [{ type: "text/html", value: html }],
+      }),
+    });
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const result = await Promise.race([
-        transporter.sendMail({
-          from: `"Portal SOCEM" <${fromEmail}>`,
-          to: options.toName ? `"${options.toName}" <${options.to}>` : options.to,
-          subject: options.subject,
-          html,
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout (${options.timeoutSeconds ?? 15}s)`)), (options.timeoutSeconds ?? 15) * 1000)
-        ),
-      ]);
-      console.log(`[Email] Enviado "${options.subject}" para ${options.to} (messageId: ${result.messageId})`);
+    if (res.status === 202) {
+      console.log(`[Email] Enviado via SendGrid "${options.subject}" para ${options.to}`);
       return { ok: true };
-    } catch (err: any) {
-      const msg = String(err?.message ?? err);
-      console.error(`[Email] Tentativa ${attempt}/2: ${msg}`);
-
-      const isTransient =
-        msg.includes("Timeout") || msg.includes("ETIMEDOUT") ||
-        msg.includes("ECONNRESET") || msg.includes("ECONNREFUSED") ||
-        msg.includes("ESOCKET");
-
-      if (!isTransient || attempt >= 2) {
-        return { ok: false, error: msg };
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
     }
-  }
 
-  return { ok: false, error: "Todas as tentativas falharam" };
+    const body = await res.text().catch(() => "");
+    console.error(`[Email] Erro SendGrid (${res.status}): ${body.slice(0, 300)}`);
+    return { ok: false, error: `SendGrid: ${res.status}` };
+  } catch (err: any) {
+    console.error(`[Email] Erro SendGrid: ${err?.message ?? err}`);
+    return { ok: false, error: `SendGrid: ${err?.message ?? err}` };
+  }
 }

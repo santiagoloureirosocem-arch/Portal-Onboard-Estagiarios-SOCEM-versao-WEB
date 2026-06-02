@@ -415,10 +415,10 @@ export default function AdminConfig() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: "Estado", value: emailConfig?.smtpConfigured ? "Configurado" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-red-600" },
-                    { label: "Servidor", value: emailConfig?.smtpHost ? `${emailConfig.smtpHost}:${emailConfig.smtpPort}` : "—" },
-                    { label: "Utilizador", value: emailConfig?.smtpUserMasked ?? "—" },
-                    { label: "Remetente", value: emailConfig?.smtpFrom ?? "—" },
+                    { label: "Serviço", value: "SendGrid", color: "text-emerald-600" },
+                    { label: "Estado", value: emailConfig?.configured ? "Configurado" : "Não configurado", color: emailConfig?.configured ? "text-emerald-600" : "text-red-600" },
+                    { label: "Remetente", value: emailConfig?.senderEmail ?? "—" },
+                    { label: "API Key", value: emailConfig?.apiKeyMasked ?? "—" },
                   ].map(item => (
                     <div key={item.label} className="bg-slate-50 rounded-xl p-3">
                       <p className="text-xs text-slate-400">{item.label}</p>

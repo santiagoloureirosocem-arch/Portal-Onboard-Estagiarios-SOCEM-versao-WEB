@@ -1,7 +1,6 @@
 import { Express, Request, Response } from "express";
 import * as db from "../db";
 import { sendEmail } from "./email";
-import { ENV } from "./env";
 
 export function registerAdminConfigRoutes(app: Express) {
   const ADMIN_PASS = "socem2026";
@@ -190,16 +189,16 @@ export function registerAdminConfigRoutes(app: Express) {
 
   app.get("/api/admin/email-config", async (req: Request, res: Response) => {
     if (!auth(req, res)) return;
-    const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
-    const smtpUser = ENV.smtpUser || null;
-    const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
+    const apiKey = process.env.SENDGRID_API_KEY;
+    const senderEmail = process.env.SENDGRID_SENDER_EMAIL;
+    const configured = !!(apiKey && senderEmail);
+    const maskedKey = apiKey ? apiKey.slice(0, 6) + "***" : null;
 
     res.json({
-      smtpConfigured: hasSmtp,
-      smtpHost: ENV.smtpHost || null,
-      smtpPort: ENV.smtpPort,
-      smtpUserMasked: maskedUser,
-      smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
+      configured,
+      service: "SendGrid",
+      senderEmail: senderEmail || null,
+      apiKeyMasked: maskedKey,
     });
   });
 
@@ -209,13 +208,12 @@ export function registerAdminConfigRoutes(app: Express) {
       const to = req.body.to || "santiago.loureiro.socem@gmail.com";
       const result = await sendEmail({
         to,
-        toName: to === "santiago.loureiro.socem@gmail.com" ? "Santiago Loureiro" : undefined,
+        toName: to === "informatica@socem.pt" ? "Informática SOCEM" : undefined,
         subject: "Teste de Email — Portal SOCEM",
-        heading: "Teste SMTP",
-        bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong>.</p>
-<p style="color:#666;font-size:13px;">Se recebeu este email, o servidor SMTP está a funcionar corretamente.</p>
+        heading: "Teste SendGrid",
+        bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong> via SendGrid.</p>
+<p style="color:#666;font-size:13px;">Se recebeu este email, o SendGrid está a funcionar corretamente.</p>
 <p style="color:#999;font-size:12px;">Enviado em: ${new Date().toLocaleString("pt-PT")}</p>`,
-        timeoutSeconds: 10,
       });
       res.json({ ok: result.ok, error: result.error ?? null });
     } catch (err: any) {

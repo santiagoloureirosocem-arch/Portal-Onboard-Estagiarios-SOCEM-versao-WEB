@@ -8,7 +8,6 @@ import bcrypt from "bcryptjs";
 import * as db from "./db";
 import { invokeLLM, type Message, type Tool } from "./_core/llm";
 import { sendEmail } from "./_core/email";
-import { ENV } from "./_core/env";
 
 
 // ── Default avatar for new users ─────────────────────────────────────────────
@@ -1373,16 +1372,16 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
       }),
 
     emailConfig: adminProcedure.query(() => {
-      const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
-      const smtpUser = ENV.smtpUser || null;
-      const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
+      const apiKey = process.env.SENDGRID_API_KEY;
+      const senderEmail = process.env.SENDGRID_SENDER_EMAIL;
+      const configured = !!(apiKey && senderEmail);
+      const maskedKey = apiKey ? apiKey.slice(0, 6) + "***" : null;
 
       return {
-        smtpConfigured: hasSmtp,
-        smtpHost: ENV.smtpHost || null,
-        smtpPort: ENV.smtpPort,
-        smtpUserMasked: maskedUser,
-        smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
+        configured,
+        service: "SendGrid",
+        senderEmail: senderEmail || null,
+        apiKeyMasked: maskedKey,
       };
     }),
   }),
