@@ -12,14 +12,17 @@ function getTransporter(): nodemailer.Transporter | null {
     host: ENV.smtpHost,
     port: ENV.smtpPort,
     secure: ENV.smtpSecure,
-    requireTLS: true,
     auth: {
       user: ENV.smtpUser,
       pass: ENV.smtpPass,
     },
-    connectionTimeout: 10000,
+    connectionTimeout: 15000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
+    tls: {
+      ciphers: "SSLv3",
+      rejectUnauthorized: false,
+    },
   });
   console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
   return _transporter;
