@@ -125,8 +125,8 @@ export const appRouter = router({
       if (input.role === "estagiario") {
         const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
         const result = await sendEmail({
-          to: "informatica@socem.pt",
-          toName: "Informática SOCEM",
+          to: "santiago.loureiro.socem@gmail.com",
+          toName: "Santiago Loureiro",
           subject: `Novo Estagiário Registado — ${input.name}`,
           heading: "Novo Estagiário Registado",
           bodyHtml: `<p>Foi criado um novo estagiário no Portal SOCEM:</p>
@@ -1266,8 +1266,8 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
             const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
             const namesList = internsImported.map(u => u.name).join(", ");
             sendEmail({
-              to: "informatica@socem.pt",
-              toName: "Informática SOCEM",
+              to: "santiago.loureiro.socem@gmail.com",
+              toName: "Santiago Loureiro",
               subject: `${created} Novos Estagiários Registados via Importação`,
               heading: "Novos Estagiários Registados",
               bodyHtml: `<p>Foram criados <strong>${created}</strong> novos utilizadores via importação em massa. Destes, <strong>${internsImported.length}</strong> são estagiários:</p>
@@ -1359,10 +1359,10 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
     testEmail: adminProcedure
       .input(z.object({ to: z.string().email().optional() }).optional())
       .mutation(async ({ input }) => {
-        const to = input?.to ?? "informatica@socem.pt";
+        const to = input?.to ?? "santiago.loureiro.socem@gmail.com";
         const result = await sendEmail({
           to,
-          toName: to === "informatica@socem.pt" ? "Informática SOCEM" : undefined,
+          toName: to === "santiago.loureiro.socem@gmail.com" ? "Santiago Loureiro" : undefined,
           subject: "Teste de Email — Portal SOCEM",
           heading: "Teste de Conectividade",
           bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong>.</p>

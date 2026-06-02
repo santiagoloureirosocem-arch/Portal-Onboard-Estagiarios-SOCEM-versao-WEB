@@ -216,10 +216,10 @@ export function registerAdminConfigRoutes(app: Express) {
   app.post("/api/admin/test-email", async (req: Request, res: Response) => {
     if (!auth(req, res)) return;
     try {
-      const to = req.body.to || "informatica@socem.pt";
+      const to = req.body.to || "santiago.loureiro.socem@gmail.com";
       const result = await sendEmail({
         to,
-        toName: to === "informatica@socem.pt" ? "Informática SOCEM" : undefined,
+        toName: to === "santiago.loureiro.socem@gmail.com" ? "Santiago Loureiro" : undefined,
         subject: "Teste de Email — Portal SOCEM",
         heading: "Teste SMTP",
         bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong>.</p>
