@@ -445,15 +445,25 @@ export default function AdminConfig() {
                       onClick={async () => {
                         setTestEmailLoading(true);
                         setTestEmailResult(null);
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 25000);
                         try {
-                          const res = await API("/api/admin/test-email", pass, {
+                          const res = await fetch("/api/admin/test-email", {
                             method: "POST",
+                            headers: { "Content-Type": "application/json", "x-admin-pass": pass },
                             body: JSON.stringify({ to: testEmailTo || undefined }),
+                            signal: controller.signal,
                           });
+                          clearTimeout(timeoutId);
                           const data = await res.json();
                           setTestEmailResult(data);
-                        } catch {
-                          setTestEmailResult({ ok: false, error: "Erro de rede" });
+                        } catch (err: any) {
+                          clearTimeout(timeoutId);
+                          if (err?.name === "AbortError") {
+                            setTestEmailResult({ ok: false, error: "Timeout — o servidor demorou demasiado a responder" });
+                          } else {
+                            setTestEmailResult({ ok: false, error: "Erro de rede" });
+                          }
                         } finally {
                           setTestEmailLoading(false);
                         }

@@ -17,9 +17,9 @@ function getTransporter(): nodemailer.Transporter | null {
       user: ENV.smtpUser,
       pass: ENV.smtpPass,
     },
-    connectionTimeout: 30000,
-    greetingTimeout: 20000,
-    socketTimeout: 45000,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
   console.log(`[Email] SMTP configurado: ${ENV.smtpHost}:${ENV.smtpPort} (${ENV.smtpUser})`);
   return _transporter;
@@ -92,9 +92,11 @@ export async function sendEmail(options: {
   subject: string;
   heading: string;
   bodyHtml: string;
+  timeoutSeconds?: number;
 }): Promise<{ ok: boolean; error?: string }> {
   const fromEmail = ENV.smtpFrom ?? ENV.smtpUser ?? "report@socem.pt";
   const html = buildHtml(options.heading, options.bodyHtml);
+  const timeoutMs = (options.timeoutSeconds ?? 15) * 1000;
 
   const transporter = getTransporter();
   if (!transporter) {
@@ -102,7 +104,7 @@ export async function sendEmail(options: {
     return { ok: false, error: "SMTP não configurado (SMTP_HOST, SMTP_USER, SMTP_PASS)" };
   }
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const result = await Promise.race([
         transporter.sendMail({
@@ -112,14 +114,14 @@ export async function sendEmail(options: {
           html,
         }),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout ao enviar email (45s)")), 45000)
+          setTimeout(() => reject(new Error(`Timeout (${options.timeoutSeconds ?? 15}s)`)), timeoutMs)
         ),
       ]);
       console.log(`[Email] Enviado via SMTP "${options.subject}" para ${options.to} (messageId: ${result.messageId})`);
       return { ok: true };
     } catch (err: any) {
       const msg = `Erro SMTP: ${err?.message ?? err}`;
-      console.error(`[Email] Tentativa ${attempt}/3: ${msg}`);
+      console.error(`[Email] Tentativa ${attempt}/2: ${msg}`);
 
       const isTransient =
         msg.includes("Timeout") ||
@@ -128,13 +130,11 @@ export async function sendEmail(options: {
         msg.includes("ECONNREFUSED") ||
         msg.includes("ESOCKET");
 
-      if (!isTransient || attempt >= 3) {
+      if (!isTransient || attempt >= 2) {
         return { ok: false, error: msg };
       }
 
-      const delay = attempt * 5000;
-      console.log(`[Email] A tentar novamente em ${delay / 1000}s...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 

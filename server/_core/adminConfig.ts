@@ -231,6 +231,7 @@ export function registerAdminConfigRoutes(app: Express) {
         bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong>.</p>
 <p style="color:#666;font-size:13px;">Se recebeu este email, o servidor SMTP está a funcionar corretamente.</p>
 <p style="color:#999;font-size:12px;">Enviado em: ${new Date().toLocaleString("pt-PT")}</p>`,
+        timeoutSeconds: 10,
       });
       res.json({ ok: result.ok, error: result.error ?? null });
     } catch (err: any) {
