@@ -1,0 +1,262 @@
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, datetime } from "drizzle-orm/mysql-core";
+
+/**
+ * Core user table backing auth flow.
+ * Extend this file with additional tables as your product grows.
+ * Columns use camelCase to match both database fields and generated types.
+ */
+export const users = mysqlTable("users", {
+  /**
+   * Surrogate primary key. Auto-incremented numeric value managed by the database.
+   * Use this for relations between tables.
+   */
+  id: int("id").autoincrement().primaryKey(),
+  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  name: text("name"),
+  email: varchar("email", { length: 320 }),
+  loginMethod: varchar("loginMethod", { length: 64 }),
+  role: mysqlEnum("role", ["estagiario", "tutor", "admin"]).default("estagiario").notNull(),
+  /** Hashed password for local login. bcryptjs hash or plain for dev. */
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  // Additional fields for onboarding system
+  department: varchar("department", { length: 255 }),
+  position: varchar("position", { length: 255 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  darkMode: boolean("darkMode").default(false).notNull(),
+  avatar: text("avatar"),
+  presence: mysqlEnum("presence", ["online", "ausente", "offline"]).default("online"),
+  emailTaskDeadline: boolean("emailTaskDeadline").default(true).notNull(),
+  emailTaskOverdue: boolean("emailTaskOverdue").default(true).notNull(),
+  emailNewMessage: boolean("emailNewMessage").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+/**
+ * Onboarding plans table - defines the integration plan structure
+ */
+export const onboardingPlans = mysqlTable("onboarding_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  startDate: datetime("startDate"),
+  endDate: datetime("endDate"),
+  status: mysqlEnum("status", ["draft", "active", "completed", "archived"]).default("draft").notNull(),
+  createdBy: int("createdBy").notNull(),
+  isTemplate: boolean("isTemplate").default(false).notNull(),
+  templateOriginPlanId: int("templateOriginPlanId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OnboardingPlan = typeof onboardingPlans.$inferSelect;
+export type InsertOnboardingPlan = typeof onboardingPlans.$inferInsert;
+
+/**
+ * Tasks/stages within an onboarding plan
+ */
+export const onboardingTasks = mysqlTable("onboarding_tasks", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  order: int("order").notNull(),
+  startDate: datetime("startDate"),
+  dueDate: datetime("dueDate"),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed"]).default("pending").notNull(),
+  assignedTo: int("assignedTo"), // User ID of person responsible
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type OnboardingTask = typeof onboardingTasks.$inferSelect;
+export type InsertOnboardingTask = typeof onboardingTasks.$inferInsert;
+
+/**
+ * Assignments - links plans to interns/users
+ */
+export const planAssignments = mysqlTable("plan_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  userId: int("userId").notNull(),
+  assignedBy: int("assignedBy").notNull(), // Admin who assigned
+  startDate: datetime("startDate").notNull(),
+  expectedEndDate: datetime("expectedEndDate"),
+  status: mysqlEnum("status", ["active", "completed", "paused", "cancelled"]).default("active").notNull(),
+  progress: int("progress").default(0).notNull(), // Percentage 0-100
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PlanAssignment = typeof planAssignments.$inferSelect;
+export type InsertPlanAssignment = typeof planAssignments.$inferInsert;
+
+/**
+ * Task completion tracking for each user
+ */
+export const taskCompletions = mysqlTable("task_completions", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),
+  userId: int("userId").notNull(),
+  completedAt: datetime("completedAt"),
+  notes: text("notes"),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TaskCompletion = typeof taskCompletions.$inferSelect;
+export type InsertTaskCompletion = typeof taskCompletions.$inferInsert;
+
+/**
+ * Comments on tasks
+ */
+export const taskComments = mysqlTable("task_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }).notNull(),
+  text: text("text").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TaskComment = typeof taskComments.$inferSelect;
+export type InsertTaskComment = typeof taskComments.$inferInsert;
+
+/**
+ * Attachments on tasks
+ */
+export const taskAttachments = mysqlTable("task_attachments", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),
+  userId: int("userId").notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  fileSize: varchar("fileSize", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TaskAttachment = typeof taskAttachments.$inferSelect;
+export type InsertTaskAttachment = typeof taskAttachments.$inferInsert;
+
+/**
+ * Direct messages between users (estagiários <-> tutores)
+ */
+export const directMessages = mysqlTable("direct_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  senderId: int("senderId").notNull(),
+  senderName: varchar("senderName", { length: 255 }).notNull(),
+  receiverId: int("receiverId").notNull(),
+  text: text("text").notNull().default(""),
+  fileName: varchar("fileName", { length: 255 }),
+  fileUrl: text("fileUrl"),
+  fileSize: varchar("fileSize", { length: 50 }),
+  fileType: varchar("fileType", { length: 50 }),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type InsertDirectMessage = typeof directMessages.$inferInsert;
+
+/**
+ * In-app notifications for users
+ */
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  type: mysqlEnum("type", ["task", "plan", "message", "system", "badge"]).default("system").notNull(),
+  link: varchar("link", { length: 500 }),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+/**
+ * Daily check-ins from interns (mood + notes)
+ */
+export const dailyCheckins = mysqlTable("daily_checkins", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  date: datetime("date").notNull(),
+  mood: mysqlEnum("mood", ["great", "good", "okay", "bad", "terrible"]).notNull(),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DailyCheckin = typeof dailyCheckins.$inferSelect;
+export type InsertDailyCheckin = typeof dailyCheckins.$inferInsert;
+
+/**
+ * AI usage tracking per user - daily request limits
+ */
+export const aiUsage = mysqlTable("ai_usage", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  date: datetime("date").notNull(),
+  count: int("count").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiUsage = typeof aiUsage.$inferSelect;
+export type InsertAiUsage = typeof aiUsage.$inferInsert;
+
+/**
+ * Companies/empresas for the new colaborador form
+ */
+export const empresas = mysqlTable("empresas", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+});
+
+export type Empresa = typeof empresas.$inferSelect;
+export type InsertEmpresa = typeof empresas.$inferInsert;
+
+/**
+ * Departments/departamentos for the new colaborador form
+ */
+export const departamentos = mysqlTable("departamentos", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+});
+
+export type Departamento = typeof departamentos.$inferSelect;
+export type InsertDepartamento = typeof departamentos.$inferInsert;
+
+/**
+ * Software programs/tools for the new colaborador form
+ */
+export const programas = mysqlTable("programas", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+});
+
+export type Programa = typeof programas.$inferSelect;
+export type InsertPrograma = typeof programas.$inferInsert;
+
+/**
+ * Activity/audit log — persistent record of admin and tutor actions
+ */
+export const activityLog = mysqlTable("activity_log", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }).notNull(),
+  action: varchar("action", { length: 64 }).notNull(),
+  description: text("description").notNull(),
+  entityType: mysqlEnum("entityType", ["task", "plan", "user", "assignment", "empresa", "departamento", "programa"]).notNull(),
+  entityId: int("entityId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivityLogEntry = typeof activityLog.$inferSelect;
+export type InsertActivityLogEntry = typeof activityLog.$inferInsert;

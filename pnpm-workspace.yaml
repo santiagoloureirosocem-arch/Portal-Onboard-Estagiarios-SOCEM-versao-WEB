@@ -1,0 +1,4 @@
+allowBuilds:
+  better-sqlite3: false
+  core-js: set this to true or false
+  esbuild: false
