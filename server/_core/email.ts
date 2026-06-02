@@ -96,31 +96,35 @@ async function sendViaBrevo(fromEmail: string, to: string, toName: string | unde
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+    const body = {
+      sender: { name: "Portal SOCEM", email: fromEmail },
+      to: [{ email: to, name: toName || undefined }],
+      subject,
+      htmlContent: html,
+    };
+
     const res = await fetch(BREVO_API_URL, {
       method: "POST",
       headers: {
         "api-key": apiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        sender: { name: "Portal SOCEM", email: fromEmail },
-        to: [{ email: to, name: toName || undefined }],
-        subject,
-        htmlContent: html,
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
+    const resBody = await res.text().catch(() => "");
+    console.log(`[Email] Brevo resposta ${res.status}: ${resBody.slice(0, 300)}`);
+
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error(`[Email] Erro Brevo (${res.status}): ${body}`);
-      return { ok: false, error: `Brevo: ${res.status} - ${body.slice(0, 200)}` };
+      console.error(`[Email] Erro Brevo (${res.status}): ${resBody}`);
+      return { ok: false, error: `Brevo: ${res.status} - ${resBody.slice(0, 200)}` };
     }
 
-    const data = await res.json() as any;
-    console.log(`[Email] Enviado via Brevo "${subject}" para ${to} (id: ${data?.messageId})`);
+    const data = JSON.parse(resBody) as any;
+    console.log(`[Email] Enviado via Brevo "${subject}" para ${to} (messageId: ${data?.messageId})`);
     return { ok: true };
   } catch (err: any) {
     if (err?.name === "AbortError") {
@@ -161,7 +165,7 @@ export async function sendEmail(options: {
   bodyHtml: string;
   timeoutSeconds?: number;
 }): Promise<{ ok: boolean; error?: string }> {
-  const fromEmail = ENV.smtpFrom ?? ENV.smtpUser ?? "report@socem.pt";
+  const fromEmail = ENV.smtpFrom ?? ENV.smtpUser ?? process.env.BREVO_SENDER_EMAIL ?? "report@socem.pt";
   const html = buildHtml(options.heading, options.bodyHtml);
   const timeoutMs = (options.timeoutSeconds ?? 15) * 1000;
 
