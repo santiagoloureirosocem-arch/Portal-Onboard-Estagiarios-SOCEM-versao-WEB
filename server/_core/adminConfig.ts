@@ -185,31 +185,6 @@ export function registerAdminConfigRoutes(app: Express) {
     }
   });
 
-  // ─── Data Dump (migração) ─────────────────────────────────────────────────
-
-  app.get("/api/admin/dump", async (req: Request, res: Response) => {
-    if (!auth(req, res)) return;
-    try {
-      const results: Record<string, any[]> = {};
-      const d = await db.getDb();
-      if (!d) { res.status(500).json({ error: "DB offline" }); return; }
-      const tables = ["users", "empresas", "departamentos", "programas",
-        "onboarding_plans", "onboarding_tasks", "plan_assignments",
-        "task_completions", "task_comments", "direct_messages",
-        "notifications", "daily_checkins", "activity_log"];
-      for (const table of tables) {
-        try {
-          const rows = await d.execute(`SELECT * FROM \`${table}\``);
-          results[table] = rows[0] as any[];
-        } catch { results[table] = []; }
-      }
-      res.json(results);
-    } catch (err) {
-      console.error("[Dump] Error:", err);
-      res.status(500).json({ error: "Erro" });
-    }
-  });
-
   // ─── System Health ────────────────────────────────────────────────────────
 
   app.get("/api/admin/health", async (req: Request, res: Response) => {
