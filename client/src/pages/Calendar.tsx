@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/card';
@@ -239,6 +239,9 @@ export default function Calendar() {
   const { data: plans } = trpc.plans.list.useQuery();
   const { data: allTasksRaw, refetch: refetchTasks } = trpc.tasks.listAll.useQuery();
   const allTasks = allTasksRaw || [];
+
+  // Refetch ao montar para garantir dados atualizados (ex: tarefas apagadas noutra pagina)
+  useEffect(() => { refetchTasks(); }, [refetchTasks]);
 
   // ── Filter by plan ────────────────────────────────────────────────────────────
   const filteredTasks = useMemo(() => {
