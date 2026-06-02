@@ -132,10 +132,14 @@ function ScheduleTaskModal({
 function ScheduledTasksModal({
   tasks, plans, onClose,
 }: { tasks: any[]; plans: any[]; onClose: () => void }) {
+  const [hideCompleted, setHideCompleted] = useState(true);
   const planMap = Object.fromEntries((plans || []).map((p: any) => [p.id, p.title]));
-  const scheduled = tasks.filter(t => t.dueDate).sort((a, b) =>
+  const allScheduled = tasks.filter(t => t.dueDate).sort((a, b) =>
     new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
   );
+  const scheduled = hideCompleted
+    ? allScheduled.filter(t => t.status !== 'completed')
+    : allScheduled;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -144,9 +148,20 @@ function ScheduledTasksModal({
         <div className="flex items-center justify-between mb-5 shrink-0">
           <div>
             <h3 className="font-semibold text-foreground text-lg">Tarefas Agendadas</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">{scheduled.length} tarefa{scheduled.length !== 1 ? 's' : ''} com data definida</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{scheduled.length} tarefa{scheduled.length !== 1 ? 's' : ''}{hideCompleted ? ' por fazer' : ' (todas)'}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"><X size={18} /></button>
+        </div>
+
+        <div className="flex items-center gap-2 mb-3 shrink-0">
+          <button
+            onClick={() => setHideCompleted(!hideCompleted)}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all
+              ${hideCompleted ? 'bg-primary/10 text-primary hover:bg-primary/20' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+          >
+            <Filter size={13} />
+            {hideCompleted ? 'Ocultando concluidas' : 'Mostrar todas'}
+          </button>
         </div>
 
         <div className="overflow-y-auto flex-1 space-y-2 pr-1">
