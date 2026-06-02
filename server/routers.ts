@@ -1373,25 +1373,16 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
       }),
 
     emailConfig: adminProcedure.query(() => {
-      const hasResend = !!process.env.RESEND_API_KEY;
       const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
-      const maskedResendKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.slice(0, 6) + "***" : null;
       const smtpUser = ENV.smtpUser || null;
       const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
 
-      let activeProvider = "Nenhum";
-      if (hasResend) activeProvider = "Resend";
-      else if (hasSmtp) activeProvider = "SMTP Office 365";
-
       return {
-        resendConfigured: hasResend,
-        resendKeyMasked: maskedResendKey,
         smtpConfigured: hasSmtp,
         smtpHost: ENV.smtpHost || null,
         smtpPort: ENV.smtpPort,
         smtpUserMasked: maskedUser,
-        senderEmail: process.env.RESEND_FROM ?? "onboarding@resend.dev",
-        activeProvider,
+        smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
       };
     }),
   }),

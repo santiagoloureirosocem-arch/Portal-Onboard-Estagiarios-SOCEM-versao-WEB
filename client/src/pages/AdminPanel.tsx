@@ -281,9 +281,10 @@ export default function AdminPanel() {
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Provider", value: emailConfig?.activeProvider ?? "—", color: emailConfig?.activeProvider !== "Nenhum" ? "text-emerald-600" : "text-red-600" },
-                  { label: "Resend", value: emailConfig?.resendConfigured ? "Configurado" : "Não configurado", color: emailConfig?.resendConfigured ? "text-emerald-600" : "text-slate-400" },
-                  { label: "Remetente", value: emailConfig?.senderEmail ?? "—" },
+                  { label: "Estado", value: emailConfig?.smtpConfigured ? "Configurado" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-red-600" },
+                  { label: "Servidor", value: emailConfig?.smtpHost ? `${emailConfig.smtpHost}:${emailConfig.smtpPort}` : "—" },
+                  { label: "Utilizador", value: emailConfig?.smtpUserMasked ?? "—" },
+                  { label: "Remetente", value: emailConfig?.smtpFrom ?? "—" },
                 ].map(item => (
                   <div key={item.label} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
                     <p className="text-xs text-slate-400 dark:text-slate-500">{item.label}</p>
@@ -354,7 +355,7 @@ export default function AdminPanel() {
                     { label: "Plataforma", value: health.platform },
                     { label: "Base de Dados", value: health.databaseConnected ? "Conectada" : "Desconectada", color: health.databaseConnected ? "text-emerald-600" : "text-red-600" },
                     { label: "SMTP (Office 365)", value: (health as any).smtpReachable ? "Acessível" : "Inacessível", color: (health as any).smtpReachable ? "text-emerald-600" : "text-red-600" },
-                    { label: "Email Provider", value: emailConfig?.activeProvider ?? "—", color: emailConfig?.activeProvider !== "Nenhum" ? "text-emerald-600" : "text-red-600" },
+                    { label: "Email", value: emailConfig?.smtpConfigured ? "SMTP configurado" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-red-600" },
                     { label: "Utilizadores", value: health.totalUsers },
                     { label: "Planos Ativos", value: health.activePlans },
                     { label: "Total Planos", value: health.totalPlans },
