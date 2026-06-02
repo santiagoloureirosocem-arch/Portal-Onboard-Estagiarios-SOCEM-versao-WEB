@@ -124,11 +124,11 @@ export const appRouter = router({
       if (input.role === "estagiario") {
         const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
         const result = await sendEmail({
-          to: "santiago.loureiro.socem@gmail.com",
-          toName: "Santiago Loureiro",
-          subject: `Novo Estagiário Registado — ${input.name}`,
-          heading: "Novo Estagiário Registado",
-          bodyHtml: `<p>Foi criado um novo estagiário no Portal SOCEM:</p>
+          to: "informatica@socem.pt",
+          toName: "Informatica SOCEM",
+          subject: `Novo Estagiario Registado — ${input.name}`,
+          heading: "Novo Estagiario Registado",
+          bodyHtml: `<p>Foi criado um novo estagiario no Portal SOCEM:</p>
 <div style="background:#fdf2f2;border:1px solid #f5c6c6;border-radius:10px;padding:20px 24px;margin:20px 0;">
   <p style="margin:0;font-size:20px;font-weight:800;color:#1a1a1a;">${input.name}</p>
 </div>
@@ -1265,9 +1265,9 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
             const appUrl = process.env.APP_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ?? process.env.ORIGIN ?? "http://localhost:3000";
             const namesList = internsImported.map(u => u.name).join(", ");
             sendEmail({
-              to: "santiago.loureiro.socem@gmail.com",
-              toName: "Santiago Loureiro",
-              subject: `${created} Novos Estagiários Registados via Importação`,
+              to: "informatica@socem.pt",
+              toName: "Informatica SOCEM",
+              subject: `${created} Novos Estagiarios Registados via Importacao`,
               heading: "Novos Estagiários Registados",
               bodyHtml: `<p>Foram criados <strong>${created}</strong> novos utilizadores via importação em massa. Destes, <strong>${internsImported.length}</strong> são estagiários:</p>
 <div style="background:#f5f5f5;border-radius:8px;padding:14px 18px;margin:16px 0;font-size:13px;color:#333;">${namesList}</div>
@@ -1358,30 +1358,29 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
     testEmail: adminProcedure
       .input(z.object({ to: z.string().email().optional() }).optional())
       .mutation(async ({ input }) => {
-        const to = input?.to ?? "santiago.loureiro.socem@gmail.com";
+        const to = input?.to ?? "informatica@socem.pt";
         const result = await sendEmail({
           to,
-          toName: to === "santiago.loureiro.socem@gmail.com" ? "Santiago Loureiro" : undefined,
+          toName: to === "informatica@socem.pt" ? "Informatica SOCEM" : undefined,
           subject: "Teste de Email — Portal SOCEM",
-          heading: "Teste de Conectividade",
-          bodyHtml: `<p>Este é um email de teste enviado pelo <strong>Portal SOCEM</strong>.</p>
-<p style="color:#666;font-size:13px;">Se recebeu este email, o serviço de email está a funcionar corretamente.</p>
+          heading: "Teste SMTP",
+          bodyHtml: `<p>Este e um email de teste enviado pelo <strong>Portal SOCEM</strong>.</p>
+<p style="color:#666;font-size:13px;">Se recebeu este email, o servidor SMTP esta a funcionar.</p>
 <p style="color:#999;font-size:12px;">Enviado em: ${new Date().toLocaleString("pt-PT")}</p>`,
         });
         return { ok: result.ok, error: result.error ?? null };
       }),
 
     emailConfig: adminProcedure.query(() => {
-      const apiKey = process.env.SENDGRID_API_KEY;
-      const senderEmail = process.env.SENDGRID_SENDER_EMAIL;
-      const configured = !!(apiKey && senderEmail);
-      const maskedKey = apiKey ? apiKey.slice(0, 6) + "***" : null;
+      const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+      const smtpUser = process.env.SMTP_USER || null;
+      const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
 
       return {
-        configured,
-        service: "SendGrid",
-        senderEmail: senderEmail || null,
-        apiKeyMasked: maskedKey,
+        configured: hasSmtp,
+        service: "SMTP Office 365",
+        senderEmail: process.env.SMTP_FROM || process.env.SMTP_USER || null,
+        smtpUserMasked: maskedUser,
       };
     }),
   }),

@@ -281,9 +281,10 @@ export default function AdminPanel() {
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Serviço", value: "SendGrid", color: "text-emerald-600" },
-                  { label: "Estado", value: emailConfig?.configured ? "Configurado" : "Não configurado", color: emailConfig?.configured ? "text-emerald-600" : "text-red-600" },
+                  { label: "Serviço", value: "SMTP Office 365", color: "text-emerald-600" },
+                  { label: "Estado", value: emailConfig?.configured ? "Configurado" : "Nao configurado", color: emailConfig?.configured ? "text-emerald-600" : "text-red-600" },
                   { label: "Remetente", value: emailConfig?.senderEmail ?? "—" },
+                  { label: "Utilizador", value: emailConfig?.smtpUserMasked ?? "—" },
                 ].map(item => (
                   <div key={item.label} className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
                     <p className="text-xs text-slate-400 dark:text-slate-500">{item.label}</p>

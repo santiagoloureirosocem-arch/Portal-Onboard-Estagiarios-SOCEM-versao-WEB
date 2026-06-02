@@ -47,8 +47,8 @@ export function registerEmailColaboradorRoute(app: Express) {
       });
 
       const result = await sendEmail({
-        to: "santiago.loureiro.socem@gmail.com",
-        toName: "Santiago Loureiro",
+        to: "informatica@socem.pt",
+        toName: "Informatica SOCEM",
         subject: `Novo Colaborador Registado — ${nome}`,
         heading: "Novo Colaborador Registado",
         bodyHtml,

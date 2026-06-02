@@ -185,6 +185,24 @@ export function registerAdminConfigRoutes(app: Express) {
     }
   });
 
+  // ─── Email Config ─────────────────────────────────────────────────────────
+
+  app.get("/api/admin/email-config", async (req: Request, res: Response) => {
+    if (!auth(req, res)) return;
+    const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    const smtpUser = process.env.SMTP_USER || null;
+    const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
+    res.json({ configured: hasSmtp, service: "SMTP Office 365", senderEmail: process.env.SMTP_FROM || process.env.SMTP_USER || null, smtpUserMasked: maskedUser });
+  });
+
+  app.post("/api/admin/test-email", async (req: Request, res: Response) => {
+    if (!auth(req, res)) return;
+    const to = req.body.to || "informatica@socem.pt";
+    const result = await sendEmail({ to, subject: "Teste de Email — Portal SOCEM", heading: "Teste SMTP",
+      bodyHtml: `<p>Email de teste do <strong>Portal SOCEM</strong>.</p><p style="color:#999;font-size:12px;">${new Date().toLocaleString("pt-PT")}</p>` });
+    res.json({ ok: result.ok, error: result.error ?? null });
+  });
+
   // ─── System Health ────────────────────────────────────────────────────────
 
   app.get("/api/admin/health", async (req: Request, res: Response) => {
