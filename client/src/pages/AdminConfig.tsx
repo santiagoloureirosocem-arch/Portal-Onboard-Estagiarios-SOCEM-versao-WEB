@@ -416,11 +416,11 @@ export default function AdminConfig() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: "Provider ativo", value: emailConfig?.activeProvider ?? "—", color: emailConfig?.activeProvider !== "Nenhum" ? "text-emerald-600" : "text-red-600" },
-                    { label: "Brevo", value: emailConfig?.brevoConfigured ? `Configurado (${emailConfig.brevoKeyMasked})` : "Não configurado", color: emailConfig?.brevoConfigured ? "text-emerald-600" : "text-slate-400" },
-                    { label: "SMTP", value: emailConfig?.smtpConfigured ? "Configurado (fallback)" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-slate-400" },
+                    { label: "Brevo SMTP", value: emailConfig?.brevoSmtpConfigured ? `Configurado (${emailConfig.brevoSmtpUserMasked})` : "Não configurado", color: emailConfig?.brevoSmtpConfigured ? "text-emerald-600" : "text-slate-400" },
+                    { label: "Remetente", value: emailConfig?.senderEmail ?? "—" },
+                    { label: "SMTP Office 365", value: emailConfig?.smtpConfigured ? "Configurado (fallback)" : "Não configurado", color: emailConfig?.smtpConfigured ? "text-emerald-600" : "text-slate-400" },
                     { label: "Servidor SMTP", value: emailConfig?.smtpHost ? `${emailConfig.smtpHost}:${emailConfig.smtpPort}` : "—" },
                     { label: "Utilizador SMTP", value: emailConfig?.smtpUserMasked ?? "—" },
-                    { label: "Remetente", value: emailConfig?.smtpFrom ?? "—" },
                   ].map(item => (
                     <div key={item.label} className="bg-slate-50 rounded-xl p-3">
                       <p className="text-xs text-slate-400">{item.label}</p>

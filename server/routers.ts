@@ -1373,25 +1373,25 @@ Tens acesso às seguintes ferramentas para consultar dados reais. USA-AS sempre 
       }),
 
     emailConfig: adminProcedure.query(() => {
-      const brevoKey = process.env.BREVO_API_KEY;
-      const hasBrevo = !!brevoKey;
+      const hasBrevoSmtp = !!(process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS);
       const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
-      const maskedBrevoKey = brevoKey ? brevoKey.slice(0, 10) + "***" : null;
+      const maskedBrevoUser = process.env.BREVO_SMTP_USER ? process.env.BREVO_SMTP_USER!.slice(0, 4) + "***" : null;
       const smtpUser = ENV.smtpUser || null;
       const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
+      const senderEmail = process.env.BREVO_SENDER_EMAIL ?? ENV.smtpFrom ?? ENV.smtpUser ?? null;
 
       let activeProvider = "Nenhum";
-      if (hasBrevo) activeProvider = "Brevo";
-      else if (hasSmtp) activeProvider = "SMTP";
+      if (hasBrevoSmtp) activeProvider = "Brevo SMTP";
+      else if (hasSmtp) activeProvider = "SMTP Office 365";
 
       return {
-        brevoConfigured: hasBrevo,
-        brevoKeyMasked: maskedBrevoKey,
+        brevoSmtpConfigured: hasBrevoSmtp,
+        brevoSmtpUserMasked: maskedBrevoUser,
         smtpConfigured: hasSmtp,
         smtpHost: ENV.smtpHost || null,
         smtpPort: ENV.smtpPort,
         smtpUserMasked: maskedUser,
-        smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
+        senderEmail,
         activeProvider,
       };
     }),

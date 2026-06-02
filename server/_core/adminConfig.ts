@@ -190,25 +190,27 @@ export function registerAdminConfigRoutes(app: Express) {
 
   app.get("/api/admin/email-config", async (req: Request, res: Response) => {
     if (!auth(req, res)) return;
-    const brevoKey = process.env.BREVO_API_KEY;
-    const hasBrevo = !!brevoKey;
+    const brevoSmtpUser = process.env.BREVO_SMTP_USER;
+    const brevoSmtpPass = process.env.BREVO_SMTP_PASS;
+    const hasBrevoSmtp = !!(brevoSmtpUser && brevoSmtpPass);
     const hasSmtp = !!(ENV.smtpHost && ENV.smtpUser && ENV.smtpPass);
-    const maskedBrevoKey = brevoKey ? brevoKey.slice(0, 10) + "***" : null;
+    const maskedBrevoUser = brevoSmtpUser ? brevoSmtpUser.slice(0, 4) + "***" : null;
     const smtpUser = ENV.smtpUser || null;
     const maskedUser = smtpUser ? smtpUser.split("@")[0].slice(0, 3) + "***@" + smtpUser.split("@")[1] : null;
+    const senderEmail = process.env.BREVO_SENDER_EMAIL ?? ENV.smtpFrom ?? ENV.smtpUser ?? null;
 
     let activeProvider = "Nenhum";
-    if (hasBrevo) activeProvider = "Brevo";
-    else if (hasSmtp) activeProvider = "SMTP";
+    if (hasBrevoSmtp) activeProvider = "Brevo SMTP";
+    else if (hasSmtp) activeProvider = "SMTP Office 365";
 
     res.json({
-      brevoConfigured: hasBrevo,
-      brevoKeyMasked: maskedBrevoKey,
+      brevoSmtpConfigured: hasBrevoSmtp,
+      brevoSmtpUserMasked: maskedBrevoUser,
       smtpConfigured: hasSmtp,
       smtpHost: ENV.smtpHost || null,
       smtpPort: ENV.smtpPort,
       smtpUserMasked: maskedUser,
-      smtpFrom: ENV.smtpFrom || ENV.smtpUser || null,
+      senderEmail,
       activeProvider,
     });
   });
